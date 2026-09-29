@@ -77,8 +77,22 @@ input:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 .net-row{display:flex;flex-wrap:wrap;gap:8px}
 .net-row>button{flex:1 1 auto}
 .net-code{font:800 48px/1 var(--display);letter-spacing:.22em;text-align:center;padding:14px 0 14px .22em;border-radius:8px;background:var(--bg);user-select:all}
-html,body{margin:0}
-body{min-height:100vh}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
+.wrap{height:100vh;height:100dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex}
+.stage{width:100%;max-width:640px;display:flex}
+.game{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
+.paper{flex:1;min-height:0;display:grid;place-items:center;background:none;box-shadow:none;border-radius:0;overflow:visible}
+canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px 0 var(--line),0 8px 22px rgba(10,20,35,.22)}
+.chip{padding:4px 10px}.chip b{font-size:28px}
+.steps button{padding:5px 8px}
+.status{min-height:2.5em;font-size:14px;line-height:1.25}
+.meters{grid-template-columns:repeat(3,1fr);gap:8px}
+.meter{grid-template-columns:1fr auto;gap:2px 4px;font-size:12px}
+.meter .track{grid-column:1/-1;grid-row:2;height:6px}
+.meter output{min-width:0}
+.btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.btns button{font-size:12.5px;padding:6px 4px}
+@media (max-height:760px){.meters{display:none}.status{min-height:0}}
 </style>
 </head>
 <body>
@@ -103,7 +117,7 @@ body{min-height:100vh}
         <button type="button" id="st3" data-state="todo"><i>3</i>Potencia</button>
       </div>
 
-      <div class="paper"><canvas id="cv" width="800" height="1280" aria-label="Campo de fútbol con tres monedas"></canvas></div>
+      <div class="paper" id="pp"><canvas id="cv" width="800" height="1280" aria-label="Campo de fútbol con tres monedas"></canvas></div>
 
       <p class="status" id="status" aria-live="polite"></p>
 
@@ -737,6 +751,10 @@ newGame();
 requestAnimationFrame(frame);
 openTut();
 })();
+
+(function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
+function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/400,h/640));cv.style.width=Math.floor(400*k)+'px';cv.style.height=Math.floor(640*k)+'px';}
+fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));if(window.ResizeObserver)new ResizeObserver(fit).observe(pp);})();
 </script>
 </body>
 </html>
