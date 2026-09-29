@@ -433,8 +433,9 @@ function hostUpdate(){
   for(let n=0;n<SUB;n++)physics(1/SUB);
   if(oppFoul&&phase==='roll'){oppFoul=false;callFoul('su moneda tocó a la contraria antes que el balón');return;}
   const b=coins[2];
-  if(b.x>GX0&&b.x<GX1&&(b.y<FY0-4||b.y>FY1+4)){goal(b.y<FY0?0:1);return;}
-  if(phase==='roll'&&(b.x<FX0||b.x>FX1||b.y<FY0||b.y>FY1)){outPlay();return;}
+  const inM=b.x>GX0&&b.x<GX1;
+  if(phase==='roll'&&inM&&(b.y<FY0||b.y>FY1)){goal(b.y<FY0?0:1);return;}          // el centro del balón cruza la línea de gol dentro de la boca: gol
+  if(phase==='roll'&&(b.x<FX0||b.x>FX1||(!inM&&(b.y<FY0||b.y>FY1)))){outPlay();return;}
   if(phase==='roll'){
     if(coins.some(c=>c.vx||c.vy))settle=0;
     else if(++settle>12){
@@ -681,7 +682,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='13';
+const VER='14';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
