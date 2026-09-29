@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Karla:wght@400;600;700&display=swap">
+<title>Fútbol Monedas</title>
+<style>
+/* Layout: mesa con el campo de papel a un lado (móvil vertical) y las reglas al otro; en móvil se apilan. */
+:root{
+  --bg:#E3E8EE; --surface:#F2F5F9; --ink:#141B24; --muted:#546171; --line:#C2CBD6;
+  --p1:#2A5BD7; --p2:#12855C; --red:#D62839;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Karla",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0F141A;--surface:#18202A;--ink:#E8EDF3;--muted:#93A0B0;--line:#2B3541;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#0F141A;--surface:#18202A;--ink:#E8EDF3;--muted:#93A0B0;--line:#2B3541;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+*{box-sizing:border-box}
+.wrap{padding-inline:16px;padding-block:16px 28px}
+.stage{max-width:400px;margin-inline:auto}
+.game{display:grid;gap:12px;min-width:0}
+.score{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
+.chip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:10px;background:var(--surface);border:2px solid transparent;min-width:0}
+.chip[data-active="true"]{border-color:var(--pc)}
+.chip .who{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;min-width:0}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--pc);flex:none}
+.chip b{font:800 36px/1 var(--display);font-variant-numeric:tabular-nums}
+.goal-to{display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;line-height:1.2;padding-inline:4px}
+.goal-to strong{font:800 22px/1 var(--display);color:var(--ink)}
+.paper{border-radius:6px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 12px 30px rgba(10,20,35,.22);background:#fff;line-height:0}
+canvas{display:block;width:100%;height:auto;aspect-ratio:400/640;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+.status{min-height:2.9em;margin:0;color:var(--ink)}
+.meters{display:grid;gap:6px}
+.meter{display:grid;grid-template-columns:4.6em 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.track{height:8px;border-radius:4px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.steps button{font-family:var(--body);text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;background:var(--surface);color:var(--muted);font-weight:600;font-size:13px;border:2px solid transparent;min-width:0;overflow:hidden;white-space:nowrap}
+.steps i{font:800 14px/1 var(--display);font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1.5px solid currentColor;flex:none}
+.steps button:disabled{cursor:default;opacity:.6}
+.steps button[data-state="now"]{color:var(--ink);border-color:var(--red)}
+.steps button[data-state="done"]{color:var(--ink)}
+.steps button[data-state="done"] i{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.track{position:relative}
+.track.mid{background-image:linear-gradient(var(--muted),var(--muted));background-size:1px 100%;background-position:center;background-repeat:no-repeat}
+.fill{height:100%;width:100%;background:var(--red);transform-origin:left center;transform:scaleX(0)}
+.meter output{min-width:3.2em;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+button{font:600 14px var(--body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,canvas:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
+@media (max-width:440px){.chip{padding:8px 9px;gap:4px}.chip .who{font-size:11px;letter-spacing:.02em;gap:6px}.chip b{font-size:30px}.goal-to{font-size:11px}}
+[hidden]{display:none!important}
+.tut{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:16px;background:rgba(10,16,24,.62)}
+.tut-card{width:min(100%,380px);max-height:100%;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}
+.tut-art{border-radius:8px;overflow:hidden;background:#fff;line-height:0;border:1px solid var(--line)}
+.tut-art svg{display:block;width:100%;height:auto}
+.tut h2{font:800 26px/1.05 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0}
+.tut p{margin:0;min-height:6.6em}
+.dots{display:flex;justify-content:center;gap:6px}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--red)}
+.tut-btns{display:flex;gap:8px;align-items:center}
+.tut-btns .sp{flex:1}
+button.primary{background:var(--red);border-color:var(--red);color:#fff}
+button.primary:hover{border-color:var(--red);filter:brightness(1.08)}
+.pills{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:26px 12px 8px;font:600 13px Karla,system-ui,sans-serif;line-height:1.3;color:#141B24}
+.pills span{padding:8px;border-radius:8px;border:2px solid #C2CBD6;text-align:center;background:#F2F5F9}
+.pills span.now{border-color:#D62839}
+.pills-note{padding:6px 12px 24px;text-align:center;font:600 13px Karla,system-ui,sans-serif;color:#546171;line-height:1.3}
+input{font:800 26px var(--display);letter-spacing:.2em;text-transform:uppercase;text-align:center;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
+.net-row{display:flex;flex-wrap:wrap;gap:8px}
+.net-row>button{flex:1 1 auto}
+.net-code{font:800 48px/1 var(--display);letter-spacing:.22em;text-align:center;padding:14px 0 14px .22em;border-radius:8px;background:var(--bg);user-select:all}
+html,body{margin:0}
+body{min-height:100vh}
+</style>
+</head>
+<body>
+
+<main class="wrap">
+
+  <div class="stage">
+    <section class="game" aria-label="Partida">
+      <div class="score">
+        <div class="chip" id="chip0" style="--pc:var(--p1)" data-active="true">
+          <span class="who"><i class="dot"></i><span id="n0">Jugador 1</span></span><b id="s0">0</b>
+        </div>
+        <div class="goal-to"><span>Gana con</span><strong>3</strong></div>
+        <div class="chip" id="chip1" style="--pc:var(--p2)" data-active="false">
+          <span class="who"><i class="dot"></i><span id="n1">Jugador 2</span></span><b id="s1">0</b>
+        </div>
+      </div>
+
+      <div class="steps" role="group" aria-label="Pasos del golpe">
+        <button type="button" id="st1" data-state="now"><i>1</i>Dirección</button>
+        <button type="button" id="st2" data-state="todo"><i>2</i>Contacto</button>
+        <button type="button" id="st3" data-state="todo"><i>3</i>Potencia</button>
+      </div>
+
+      <div class="paper"><canvas id="cv" width="800" height="1280" aria-label="Campo de fútbol con tres monedas"></canvas></div>
+
+      <p class="status" id="status" aria-live="polite"></p>
+
+      <div class="meters">
+        <div class="meter"><span>Potencia</span><div class="track"><div class="fill" id="pw"></div></div><output id="pwv">0 %</output></div>
+        <div class="meter"><span>Efecto</span><div class="track mid"><div class="fill" id="ef" style="position:absolute;top:0;bottom:0;left:50%;width:50%;background:var(--p1)"></div></div><output id="efv">0 %</output></div>
+        <div class="meter"><span>Contacto</span><div class="track"><div class="fill" id="ct" style="background:var(--p2)"></div></div><output id="ctv">0 %</output></div>
+      </div>
+
+      <div class="btns">
+        <button type="button" id="back" disabled>Paso anterior</button>
+        <button type="button" id="howto">Cómo se golpea</button>
+        <button type="button" id="online">Jugar online</button>
+        <button type="button" id="newgame">Nueva partida</button>
+        <button type="button" id="snd" aria-pressed="true">Sonido: sí</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="tut" id="tut" role="dialog" aria-modal="true" aria-labelledby="tt" hidden>
+  <div class="tut-card">
+    <div class="tut-art" id="tart"></div>
+    <h2 id="tt"></h2>
+    <p id="tx"></p>
+    <div class="dots" id="tdots" aria-hidden="true"></div>
+    <div class="tut-btns">
+      <button type="button" id="tskip">Saltar</button>
+      <span class="sp"></span>
+      <button type="button" id="tprev">Atrás</button>
+      <button type="button" id="tnext" class="primary">Siguiente</button>
+    </div>
+  </div>
+</div>
+
+<div class="tut" id="net" role="dialog" aria-modal="true" aria-labelledby="nt" hidden>
+  <div class="tut-card">
+    <h2 id="nt">Jugar online</h2>
+    <p id="nx"></p>
+    <div class="net-row" id="nchoose">
+      <button type="button" id="ncreate" class="primary">Crear partida</button>
+      <button type="button" id="njoin">Unirme a una partida</button>
+    </div>
+    <div class="net-code" id="ncode" hidden></div>
+    <div class="net-row" id="njoinform" hidden>
+      <input id="ninput" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="CÓDIGO" aria-label="Código de la partida">
+      <button type="button" id="ngo" class="primary">Entrar</button>
+    </div>
+    <div class="net-row" id="nconn" hidden>
+      <button type="button" id="ndisc">Desconectar</button>
+    </div>
+    <div class="tut-btns"><button type="button" id="nclose">Cerrar</button></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(()=>{
+"use strict";
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=400,H=640,FX0=20,FX1=380,FY0=40,FY1=600,GX0=140,GX1=260,GD=26;
+// Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
+const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
+const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=110,POW_RANGE=160,OMEGA=.012;
+const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const R=21,RB=15,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
+const RED='#D62839',PC=['#2A5BD7','#12855C'];
+const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
+const $=id=>document.getElementById(id);
+let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,foulBen=0,place=null,net=null,VIEW=1;
+const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
+const mine=()=>!net||turn===net.me;
+const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
+
+/* ---------- campo (se dibuja una sola vez) ---------- */
+const pitch=document.createElement('canvas');pitch.width=800;pitch.height=1280;
+(function(){
+  const g=pitch.getContext('2d');g.scale(2,2);
+  g.fillStyle='#FFFFFF';g.fillRect(0,0,W,H);
+  // redes de las porterías
+  for(const [y0,y1] of [[FY0-GD,FY0],[FY1,FY1+GD]]){
+    g.save();g.beginPath();g.rect(GX0,y0,GX1-GX0,y1-y0);g.clip();
+    g.strokeStyle='rgba(214,40,57,.32)';g.lineWidth=1;g.beginPath();
+    for(let k=-GD;k<GX1-GX0+GD;k+=8){g.moveTo(GX0+k,y0);g.lineTo(GX0+k+GD,y1);g.moveTo(GX0+k+GD,y0);g.lineTo(GX0+k,y1);}
+    g.stroke();g.restore();
+  }
+  g.strokeStyle=RED;g.fillStyle=RED;g.lineWidth=2.5;g.lineJoin='round';g.lineCap='round';
+  g.beginPath();
+  g.moveTo(GX0,FY0);g.lineTo(FX0,FY0);g.lineTo(FX0,FY1);g.lineTo(GX0,FY1);
+  g.moveTo(GX1,FY1);g.lineTo(FX1,FY1);g.lineTo(FX1,FY0);g.lineTo(GX1,FY0);
+  g.moveTo(GX0,FY0);g.lineTo(GX0,FY0-GD);g.lineTo(GX1,FY0-GD);g.lineTo(GX1,FY0);
+  g.moveTo(GX0,FY1);g.lineTo(GX0,FY1+GD);g.lineTo(GX1,FY1+GD);g.lineTo(GX1,FY1);
+  g.moveTo(FX0,320);g.lineTo(FX1,320);
+  g.stroke();
+  g.beginPath();g.arc(200,320,50,0,Math.PI*2);g.stroke();
+  g.beginPath();g.arc(200,320,3,0,Math.PI*2);g.fill();
+  g.strokeRect(110,FY0,180,90);g.strokeRect(160,FY0,80,38);
+  g.strokeRect(110,FY1-90,180,90);g.strokeRect(160,FY1-38,80,38);
+  g.beginPath();g.arc(200,FY0+66,2.5,0,Math.PI*2);g.arc(200,FY1-66,2.5,0,Math.PI*2);g.fill();
+  g.beginPath();g.arc(200,106,36,.73,Math.PI-.73);g.stroke();
+  g.beginPath();g.arc(200,534,36,Math.PI+.73,2*Math.PI-.73);g.stroke();
+  g.beginPath();g.arc(FX0,FY0,12,0,Math.PI/2);g.stroke();
+  g.beginPath();g.arc(FX1,FY0,12,Math.PI/2,Math.PI);g.stroke();
+  g.beginPath();g.arc(FX0,FY1,12,-Math.PI/2,0);g.stroke();
+  g.beginPath();g.arc(FX1,FY1,12,Math.PI,Math.PI*1.5);g.stroke();
+})();
+
+/* ---------- sonido ---------- */
+let AC=null;
+function ensureAudio(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});}catch(e){}}
+function tick(v,f){
+  if(!soundOn||!AC)return;
+  try{
+    const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime,a=Math.min(.22,.03+v*.03);
+    o.type='triangle';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.7,t+.09);
+    g.gain.setValueAtTime(a,t);g.gain.exponentialRampToValueAtTime(.0001,t+.1);
+    o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.11);
+  }catch(e){}
+}
+
+/* ---------- estado ---------- */
+const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
+function reset(t){
+  coins=[mk(200,480,R,MASS_COIN,0),mk(200,160,R,MASS_COIN,1),mk(200,320,RB,MASS_BALL,2)];
+  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;beginAim();
+}
+function beginAim(){phase='aim';step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};ui();}
+function beginPlace(){phase='place';drag=null;const c=coins[turn];place={x:c.x,y:c.y};ui();}
+function placeOK(p,c){
+  if(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)return false;
+  for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
+  return true;
+}
+function callFoul(reason){
+  foulBen=1-turn;strike=null;phase='foul';msgT=110;for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
+  msg={t:'¡FALTA!',s:turn,foul:true,reason,sub:'Doble turno para el Jugador '+(foulBen+1)};
+  ui();tick(5,300);
+}
+function newGame(){score=[0,0];over=false;reset(0);hostSync(true);}
+function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.p*55,f:s.f,e:s.e,spin:s.spin};ui();}
+function statusText(){
+  if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net&&net.role==='guest'?'Tu rival puede empezar otra partida.':'Toca el campo para jugar otra vez.');
+  if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
+  if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
+  if(phase==='place'){
+    if(net&&turn!==net.me)return 'Tu rival está colocando su moneda…';
+    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. El balón no se mueve. Después juegas dos golpes seguidos.';
+  }
+  if(phase==='aim'){
+    if(net&&turn!==net.me)return 'Turno de tu rival. Espera a que golpee.';
+    const j=(net?'Tu turno':'Jugador '+(turn+1))+(dbl?' (golpe '+(3-movesLeft)+' de 2)':'');
+    if(step===1)return j+', paso 1 de 3. Toca o arrastra hacia donde quieres tirar y suelta para fijar la dirección.';
+    if(step===2)return j+', paso 2 de 3. Arrastra a izquierda o derecha para elegir con qué parte de la traba golpeas y suelta. La moneda curva hacia ese lado.';
+    return j+', paso 3 de 3. Arrastra hacia abajo para dar potencia y suelta para golpear.';
+  }
+  return 'Las monedas ruedan…';
+}
+function ui(){
+  $('s0').textContent=score[0];$('s1').textContent=score[1];
+  $('chip0').dataset.active=String(!over&&phase!=='goal'&&turn===0);$('chip1').dataset.active=String(!over&&phase!=='goal'&&turn===1);
+  $('status').textContent=statusText();
+  const act=phase==='aim'&&!over&&mine();
+  for(let i=1;i<=3;i++){
+    const b=$('st'+i);
+    b.dataset.state=act?(i<step?'done':i===step?'now':'todo'):'todo';
+    b.disabled=!(act&&(i===1||sel.ok));
+  }
+  $('back').disabled=!(act&&step>1);
+  $('newgame').disabled=!!(net&&net.role==='guest');
+}
+function setContact(v){$('ct').style.transform='scaleX('+v+')';$('ctv').textContent=Math.round(v*100)+' %';}
+function setEffect(e){
+  const el=$('ef');
+  if(e>=0){el.style.left='50%';el.style.transformOrigin='left center';el.style.transform='scaleX('+e+')';}
+  else{el.style.left='0';el.style.transformOrigin='right center';el.style.transform='scaleX('+(-e)+')';}
+  $('efv').textContent=(e<-.005?'← ':e>.005?'→ ':'')+Math.round(Math.abs(e)*100)+' %';
+}
+function refreshAim(){
+  if(phase!=='aim'||!mine()){setPower(0);setContact(0);setEffect(0);return;}
+  const f=fFromE(sel.e);
+  setPower(sel.p);setContact(effAt(f));setEffect(sel.e);
+  $('status').textContent=statusText();
+}
+function setPower(p){$('pw').style.transform='scaleX('+p+')';$('pwv').textContent=Math.round(p*100)+' %';}
+
+/* ---------- física ---------- */
+function physics(dt){
+  const FR=Math.pow(FRIC,dt);
+  for(const c of coins){
+    c.x+=c.vx*dt;c.y+=c.vy*dt;c.vx*=FR;c.vy*=FR;
+    if(c.spin){const a=c.spin*dt,ca=Math.cos(a),sa=Math.sin(a),nx=c.vx*ca-c.vy*sa,ny=c.vx*sa+c.vy*ca;c.vx=nx;c.vy=ny;c.spin*=FR;}
+    if(c.vx*c.vx+c.vy*c.vy<.0025){c.vx=0;c.vy=0;c.spin=0;}
+    if(c.x<FX0+c.r){c.x=FX0+c.r;c.vx=Math.abs(c.vx)*.85;}
+    else if(c.x>FX1-c.r){c.x=FX1-c.r;c.vx=-Math.abs(c.vx)*.85;}
+    const inMouth=c.t===2&&c.x>GX0&&c.x<GX1;
+    if(!inMouth){
+      if(c.y<FY0+c.r){c.y=FY0+c.r;c.vy=Math.abs(c.vy)*.85;}
+      else if(c.y>FY1-c.r){c.y=FY1-c.r;c.vy=-Math.abs(c.vy)*.85;}
+    }
+    for(const [px,py] of posts){
+      const dx=c.x-px,dy=c.y-py,d=Math.hypot(dx,dy),m=c.r+4;
+      if(d<m&&d>0){
+        const nx=dx/d,ny=dy/d;c.x=px+nx*m;c.y=py+ny*m;
+        const vn=c.vx*nx+c.vy*ny;
+        if(vn<0){c.vx-=1.8*vn*nx;c.vy-=1.8*vn*ny;tick(-vn,1500);}
+      }
+    }
+  }
+  for(let i=0;i<coins.length;i++)for(let j=i+1;j<coins.length;j++){
+    const a=coins[i],b=coins[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),min=a.r+b.r;
+    if(d<min&&d>0){
+      const nx=dx/d,ny=dy/d,ov=min-d,ia=1/a.m,ib=1/b.m;
+      a.x-=nx*ov*ia/(ia+ib);a.y-=ny*ov*ia/(ia+ib);
+      b.x+=nx*ov*ib/(ia+ib);b.y+=ny*ov*ib/(ia+ib);
+      const vn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+      if(vn<0){
+        a.spin=0;b.spin=0;if(j===2&&i===turn)touched=true;if(i===0&&j===1&&phase==='roll'&&!touched)oppFoul=true;
+        const j2=-(1.88)*vn/(ia+ib);
+        // Si el balón llega más rápido que la moneda de 1 €, la moneda recibe todavía menos empuje que el que daría su masa.
+        const soft=(j===2&&Math.hypot(b.vx,b.vy)>Math.hypot(a.vx,a.vy))?BALL_SOFT:1;
+        a.vx-=j2*nx*ia*soft;a.vy-=j2*ny*ia*soft;b.vx+=j2*nx*ib;b.vy+=j2*ny*ib;
+        tick(-vn,2300+(i+j)*180);
+      }
+    }
+  }
+}
+function goal(s){
+  score[s]++;for(const c of coins){c.vx=0;c.vy=0;}
+  concede=1-s;over=score[s]>=WIN;phase='goal';
+  msg={t:over?'¡Gana el Jugador '+(s+1)+'!':'¡GOL!',s};
+  msgT=over?0:110;ui();tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);
+}
+function update(){
+  if(net&&net.role==='guest'){guestUpdate();return;}
+  hostUpdate();hostSync();
+}
+function guestUpdate(){
+  if(fx){fx.t++;if(fx.t>10)fx=null;}
+  if(phase==='strike'&&strike&&strike.t<STRIKE_F)strike.t++;
+  if(phase==='roll'||phase==='strike')for(let n=0;n<SUB;n++)physics(1/SUB);
+  refreshAim();
+}
+function hostUpdate(){
+  if(phase==='goal'){if(!over&&--msgT<=0)reset(concede);return;}
+  if(fx){fx.t++;if(fx.t>10)fx=null;}
+  if(phase==='foul'){if(--msgT<=0){msg=null;turn=foulBen;movesLeft=2;dbl=true;beginPlace();}return;}
+  refreshAim();
+  if(phase==='strike'){
+    strike.t++;
+    if(strike.t>=STRIKE_F){
+      const c=coins[turn],sp=(MINV+strike.p*(MAXV-MINV))*effAt(strike.f);
+      fx={cx:c.x,cy:c.y,ux:strike.ux,uy:strike.uy,t:0,f:strike.f};
+      c.vx=strike.ux*sp;c.vy=strike.uy*sp;c.spin=strike.spin;
+      tick(6,1200);strike=null;phase='roll';settle=0;touched=false;oppFoul=false;ui();
+    }
+  }
+  for(let n=0;n<SUB;n++)physics(1/SUB);
+  if(oppFoul&&phase==='roll'){oppFoul=false;callFoul('su moneda tocó a la contraria antes que el balón');return;}
+  const b=coins[2];
+  if(b.x>GX0&&b.x<GX1){if(b.y<FY0-4)goal(0);else if(b.y>FY1+4)goal(1);}
+  if(phase==='roll'){
+    if(coins.some(c=>c.vx||c.vy))settle=0;
+    else if(++settle>12){
+      settle=0;
+      if(!touched)callFoul('su moneda no tocó el balón');
+      else if(--movesLeft>0)beginAim();
+      else{turn=1-turn;movesLeft=1;dbl=false;beginAim();}
+    }
+  }
+}
+
+/* ---------- dibujo ---------- */
+const speck=[];{let z=7;const rnd=()=>(z=(z*16807)%2147483647)/2147483647;for(let i=0;i<90;i++)speck.push([rnd(),rnd(),.45+rnd()*.8]);}
+/* La traba está tumbada con la cara lisa contra el tablero, así que desde arriba se ve la cara interior, rugosa y con el escalón.
+   Golpea de lado con el canto largo.
+   Eje local: +x = dirección del golpe, +y = lado de la punta. Se ve desde arriba. */
+function drawStick(cx,cy,ux,uy,r,o,alpha,f){
+  ctx.save();ctx.globalAlpha=alpha;ctx.translate(cx,cy);ctx.rotate(Math.atan2(uy,ux));if(flipOf(uy)<0)ctx.scale(1,-1);
+  const x1=-(r+o),x0=x1-STICK_W,L=STICK_L;
+  const yAt=g=>-f*L+g*L;                   // g=0 agarre grueso (lado -y), g=1 punta fina (lado +y); la moneda queda en g=f
+  const ya=yAt(0),yb=yAt(1),yS=yAt(.4);
+  const body=()=>{ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x0,ya,STICK_W,L,3);else ctx.rect(x0,ya,STICK_W,L);};
+  ctx.save();ctx.translate(2,3);body();ctx.fillStyle='rgba(0,0,0,.16)';ctx.fill();ctx.restore();
+  body();ctx.fillStyle='#DDBB86';ctx.fill();
+  ctx.save();body();ctx.clip();
+  ctx.fillStyle='rgba(150,100,50,.20)';ctx.fillRect(x0,ya,STICK_W,yS-ya);
+  const gr=ctx.createLinearGradient(0,yS,0,yb);gr.addColorStop(0,'rgba(150,100,50,.10)');gr.addColorStop(1,'rgba(255,255,255,.28)');
+  ctx.fillStyle=gr;ctx.fillRect(x0,yS,STICK_W,yb-yS);
+  ctx.fillStyle='rgba(110,70,30,.65)';ctx.fillRect(x0,yS-2.5,STICK_W,5);
+  ctx.fillStyle='rgba(255,240,210,.75)';ctx.fillRect(x0,yS+2.5,STICK_W,1.4);
+  ctx.fillStyle='rgba(110,70,30,.40)';
+  for(const q of speck){ctx.beginPath();ctx.arc(x0+STICK_W*q[1],yAt(q[0]),q[2],0,Math.PI*2);ctx.fill();}
+  ctx.strokeStyle='rgba(120,80,40,.40)';ctx.lineWidth=.8;ctx.beginPath();
+  ctx.moveTo(x0+5,yAt(.45));ctx.lineTo(x0+6,yAt(.95));ctx.moveTo(x0+12,yAt(.5));ctx.lineTo(x0+11,yAt(.9));ctx.moveTo(x0+8,yAt(.05));ctx.lineTo(x0+7,yAt(.33));ctx.stroke();
+  ctx.restore();
+  body();ctx.strokeStyle='#8A6236';ctx.lineWidth=1.2;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x1,ya);ctx.lineTo(x1,yb);ctx.strokeStyle='#6E4A26';ctx.lineWidth=2.2;ctx.stroke(); // canto que golpea
+  ctx.restore();
+}
+/* Altura del canto sobre el tablero (mm): grueso hasta el escalón y luego se afina hacia la punta.
+   Con el canto fino solo se toca el borde bajo de la moneda (1 € = 2,33 mm de grosor), y el golpe transmite menos. */
+function effAt(g){const h=g<.4?7:7-5*((g-.4)/.6);return 1-TIP_LOSS*(1-Math.min(1,(h-2)/5));}
+function drawCoin(c){
+  ctx.beginPath();ctx.ellipse(c.x+2,c.y+3,c.r,c.r*.96,0,0,Math.PI*2);ctx.fillStyle='rgba(20,30,45,.22)';ctx.fill();
+  const r=c.r;
+  if(c.t<2){
+    let g=ctx.createRadialGradient(c.x-r*.4,c.y-r*.4,r*.2,c.x,c.y,r);
+    g.addColorStop(0,'#F1D98A');g.addColorStop(1,'#B98F2E');
+    ctx.beginPath();ctx.arc(c.x,c.y,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle='#8E6C1E';ctx.lineWidth=1;ctx.stroke();
+    g=ctx.createRadialGradient(c.x-r*.3,c.y-r*.3,r*.1,c.x,c.y,r*.66);
+    g.addColorStop(0,'#F4F6F8');g.addColorStop(1,'#B4BCC6');
+    ctx.beginPath();ctx.arc(c.x,c.y,r*.64,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle=PC[c.t];ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle='#2C333B';ctx.font='700 13px Karla,system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.save();ctx.translate(c.x,c.y);if(VIEW<0)ctx.rotate(Math.PI);ctx.fillText('1€',0,.5);ctx.restore();
+  }else{
+    const g=ctx.createRadialGradient(c.x-r*.4,c.y-r*.4,r*.1,c.x,c.y,r);
+    g.addColorStop(0,'#D9925A');g.addColorStop(1,'#96552A');
+    ctx.beginPath();ctx.arc(c.x,c.y,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle='#6E3B1B';ctx.lineWidth=1;ctx.stroke();
+    ctx.beginPath();ctx.arc(c.x,c.y,r*.78,0,Math.PI*2);ctx.strokeStyle='rgba(255,220,180,.35)';ctx.stroke();
+    ctx.fillStyle='#4A2810';ctx.font='700 10px Karla,system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.save();ctx.translate(c.x,c.y);if(VIEW<0)ctx.rotate(Math.PI);ctx.fillText('5c',0,.5);ctx.restore();
+  }
+}
+/* Trayectoria prevista con el efecto elegido (sin contar choques). Se dibuja solo un tramo. */
+function predict(c,ux,uy,e,p){
+  const sp=(MINV+p*(MAXV-MINV))*effAt(fFromE(e));
+  let x=c.x,y=c.y,vx=ux*sp,vy=uy*sp,sn=e*flipOf(uy)*OMEGA,len=0;
+  const pts=[[x,y]],maxLen=70+p*210;
+  for(let i=0;i<400&&len<maxLen;i++){
+    x+=vx;y+=vy;len+=Math.hypot(vx,vy);vx*=FRIC;vy*=FRIC;
+    const ca=Math.cos(sn),sa=Math.sin(sn),nx=vx*ca-vy*sa,ny=vx*sa+vy*ca;vx=nx;vy=ny;sn*=FRIC;
+    if(i%2===0)pts.push([x,y]);
+    if(vx*vx+vy*vy<.0025)break;
+  }
+  return pts;
+}
+function draw(ts){
+  ctx.setTransform(2*VIEW,0,0,2*VIEW,VIEW<0?2*W:0,VIEW<0?2*H:0);   // el invitado ve el campo girado 180°: su moneda siempre abajo
+  ctx.drawImage(pitch,0,0,W,H);
+  const cur=coins[turn];
+  const aiming=phase==='aim'&&!over&&mine(),f=fFromE(sel.e);
+  if(aiming){
+    if(sel.ok){
+      ctx.save();ctx.strokeStyle=PC[turn];ctx.lineWidth=2.5;ctx.setLineDash([2,7]);ctx.lineCap='round';
+      const pts=predict(cur,sel.ux,sel.uy,sel.e,step===3?sel.p:.55);   // hasta elegir potencia, la previsión usa una media
+      ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(const q of pts)ctx.lineTo(q[0],q[1]);ctx.stroke();
+      if(step===3){ctx.setLineDash([]);ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(cur.x,cur.y,cur.r+9,-Math.PI/2,-Math.PI/2+Math.PI*2*sel.p);ctx.stroke();}
+      ctx.restore();
+    }else{
+      const pulse=RM?0:Math.sin(ts/260)*1.8;
+      ctx.beginPath();ctx.arc(cur.x,cur.y,cur.r+7+pulse,0,Math.PI*2);
+      ctx.strokeStyle=PC[turn];ctx.globalAlpha=.55;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;
+    }
+  }
+  for(const c of coins){if(phase==='place'&&c===coins[turn])continue;drawCoin(c);}
+  if(phase==='place'){
+    const c=coins[turn],ok=placeOK(place,c);
+    ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:place.x,y:place.y});ctx.restore();
+    ctx.beginPath();ctx.arc(place.x,place.y,c.r+6,0,Math.PI*2);ctx.strokeStyle=ok?PC[turn]:RED;ctx.lineWidth=2.5;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // traba
+  if(aiming){
+    drawStick(cur.x,cur.y,sel.ux,sel.uy,cur.r,step===3?4+sel.p*55:12,sel.ok?1:.5,f);
+  }else if(phase==='strike'){
+    const k=strike.t/STRIKE_F;drawStick(cur.x,cur.y,strike.ux,strike.uy,cur.r,strike.o0*(1-k*k),1,strike.f);
+  }
+  if(fx){
+    drawStick(fx.cx,fx.cy,fx.ux,fx.uy,R,fx.t*3.5,Math.max(0,1-fx.t/10),fx.f);
+    if(fx.t<7){
+      const px=fx.cx-fx.ux*R,py=fx.cy-fx.uy*R,base=Math.atan2(-fx.uy,-fx.ux);
+      ctx.strokeStyle='#E0A000';ctx.lineWidth=2;ctx.lineCap='round';ctx.beginPath();
+      for(let k=-2;k<=2;k++){const a=base+k*.55,l1=5+fx.t*1.6,l2=l1+6;
+        ctx.moveTo(px+Math.cos(a)*l1,py+Math.sin(a)*l1);ctx.lineTo(px+Math.cos(a)*l2,py+Math.sin(a)*l2);}
+      ctx.stroke();
+    }
+  }
+  ctx.setTransform(2,0,0,2,0,0);
+  if(msg){
+    ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,236,W,168);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font='800 68px "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,296);
+    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 26px':'800 34px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?msg.sub:score[0]+'  -  '+score[1],W/2,348);
+    if(over){ctx.fillStyle='#546171';ctx.font='600 14px Karla,system-ui,sans-serif';ctx.fillText(net&&net.role==='guest'?'Tu rival puede empezar otra partida':'Toca el campo para jugar otra vez',W/2,383);}
+  }
+}
+
+/* ---------- entrada ---------- */
+function posS(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+function pos(e){const q=posS(e);return VIEW<0?{x:W-q.x,y:H-q.y}:q;}   // coordenadas del campo (con la vista girada del invitado)
+function setDir(p){
+  const c=coins[turn],dx=p.x-c.x,dy=p.y-c.y,d=Math.hypot(dx,dy);
+  if(d>14){sel.ux=dx/d;sel.uy=dy/d;sel.ok=true;}
+}
+function applyDrag(e){
+  if(step===1){setDir(pos(e));return;}
+  const r=posS(e);   // contacto y potencia se miden en pantalla: derecha y abajo son siempre los tuyos
+  if(step===2)sel.e=clamp(drag.e0+(r.x-drag.x0)/EFF_RANGE,-1,1);
+  else sel.p=clamp((r.y-drag.y0)/POW_RANGE,0,1);
+}
+cv.addEventListener('pointerdown',e=>{
+  ensureAudio();
+  if(over){if(!net||net.role==='host')newGame();return;}
+  if(net&&(turn!==net.me||isPending()))return;
+  if(phase==='place'){const p=pos(e);place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
+  if(phase!=='aim')return;
+  const r=posS(e);drag={x0:r.x,y0:r.y,e0:sel.e};applyDrag(e);
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  e.preventDefault();
+});
+cv.addEventListener('pointermove',e=>{if(!drag)return;if(phase==='place'){const p=pos(e);place.x=p.x;place.y=p.y;}else applyDrag(e);});
+function release(e){
+  if(!drag)return;
+  drag=null;
+  if(phase==='place'){
+    const c=coins[turn];
+    if(e.type==='pointerup'&&placeOK(place,c)){
+      if(net&&net.role==='guest'){netSend({t:'place',x:place.x,y:place.y});net.pend=performance.now();}
+      else{c.x=place.x;c.y=place.y;c.vx=c.vy=c.spin=0;beginAim();}
+    }
+    return;
+  }
+  if(e.type!=='pointerup'){if(step===3)sel.p=0;return;}
+  if(step===1){if(sel.ok)step=2;}
+  else if(step===2){step=3;}
+  else if(sel.p>.06){
+    const shot={ux:sel.ux,uy:sel.uy,p:sel.p,f:fFromE(sel.e),e:sel.e,spin:sel.e*flipOf(sel.uy)*OMEGA};
+    if(net&&net.role==='guest'){netSend({t:'shot',...shot});net.pend=performance.now();sel.p=0;}
+    else startStrike(shot);
+  }else sel.p=0;
+  ui();
+}
+cv.addEventListener('pointerup',release);
+cv.addEventListener('pointercancel',release);
+function goStep(n){
+  if(phase!=='aim'||n===step||(n>1&&!sel.ok))return;
+  if(step===3)sel.p=0;
+  step=n;drag=null;ui();
+}
+for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
+$('back').addEventListener('click',()=>{
+  if(phase!=='aim'||step<2)return;
+  if(step===3)sel.p=0;
+  step--;drag=null;ui();
+});
+$('newgame').addEventListener('click',newGame);
+$('snd').addEventListener('click',()=>{
+  soundOn=!soundOn;ensureAudio();$('snd').setAttribute('aria-pressed',String(soundOn));$('snd').textContent='Sonido: '+(soundOn?'sí':'no');
+});
+
+/* ---------- bucle ---------- */
+let last=0,acc=0;
+function frame(ts){
+  if(!last)last=ts;
+  acc+=Math.min(50,ts-last);last=ts;
+  while(acc>=16.667){update();acc-=16.667;}
+  draw(ts);requestAnimationFrame(frame);
+}
+
+/* ---------- tutorial ---------- */
+const coinSvg=(x,y,r,ring)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#D8B255" stroke="#8E6C1E"/><circle cx="${x}" cy="${y}" r="${r*.62}" fill="#E3E7EC" stroke="${ring}" stroke-width="3"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#2C333B" font-family="Karla,system-ui,sans-serif">1€</text>`;
+const arrowHead=(x,y,a)=>`<polygon points="0,-6 12,0 0,6" fill="#141B24" transform="translate(${x} ${y}) rotate(${a})"/>`;
+const stickSvg=(x,y,w)=>`<rect x="${x}" y="${y}" width="${w}" height="16" rx="3" fill="#DDBB86" stroke="#8A6236"/><rect x="${x+w*.4-2}" y="${y}" width="4" height="16" fill="rgba(110,70,30,.65)"/>`;
+const tutSvg=b=>`<svg viewBox="0 0 240 140" role="img" aria-hidden="true"><rect width="240" height="140" fill="#fff"/>${b}</svg>`;
+const TUT=[
+ {t:'1. Dirección',x:'Toca o arrastra por el campo hacia donde quieres que vaya tu moneda y suelta. La línea de puntos marca el recorrido.',
+  a:tutSvg(`<line x1="0" y1="70" x2="240" y2="70" stroke="#D62839" stroke-width="2"/>${coinSvg(90,108,17,'#2A5BD7')}
+   <path d="M98 90 L156 40" stroke="#2A5BD7" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" fill="none"/>
+   <circle cx="168" cy="30" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
+ {t:'2. Contacto',x:'Arrastra a izquierda o derecha y suelta. La traba se desliza y eliges con qué parte del canto golpeas. La moneda curva hacia el lado al que arrastras. Cerca de la punta fina, el golpe pierde fuerza.',
+  a:tutSvg(`${coinSvg(120,50,17,'#2A5BD7')}${stickSvg(50,76,140)}
+   <line x1="90" y1="112" x2="30" y2="112" stroke="#141B24" stroke-width="3" stroke-linecap="round"/>${arrowHead(24,112,180)}
+   <line x1="150" y1="112" x2="210" y2="112" stroke="#141B24" stroke-width="3" stroke-linecap="round"/>${arrowHead(216,112,0)}
+   <text x="52" y="132" font-size="11" fill="#546171" font-family="Karla,system-ui,sans-serif">agarre</text>
+   <text x="188" y="132" font-size="11" fill="#546171" text-anchor="end" font-family="Karla,system-ui,sans-serif">punta fina</text>`)},
+ {t:'3. Potencia',x:'Arrastra hacia abajo para dar potencia y suelta. En ese momento la traba golpea, sin retención.',
+  a:tutSvg(`${coinSvg(100,48,17,'#2A5BD7')}<path d="M100 22 A26 26 0 1 1 74 48" stroke="#2A5BD7" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+   ${stickSvg(60,84,80)}
+   <line x1="190" y1="24" x2="190" y2="104" stroke="#141B24" stroke-width="3" stroke-linecap="round"/>${arrowHead(190,110,90)}
+   <circle cx="190" cy="24" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
+ {t:'Si te equivocas',x:'Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».',
+  a:`<div class="pills"><span>1<br>Dirección</span><span class="now">2<br>Contacto</span><span>3<br>Potencia</span></div><div class="pills-note">Toca uno para volver a ese paso</div>`},
+ {t:'Faltas',x:'Es falta no tocar el balón con tu moneda en tu turno, o que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos.',
+  a:tutSvg(`${stickSvg(50,34,140)}<circle cx="120" cy="76" r="13" fill="#C98354" stroke="#6E3B1B"/><text x="120" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="#4A2810" font-family="Karla,system-ui,sans-serif">5c</text>
+   <circle cx="120" cy="76" r="21" fill="none" stroke="#D62839" stroke-width="3" stroke-dasharray="5 4"/>
+   <text x="120" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#D62839" font-family="Karla,system-ui,sans-serif">FALTA</text>`)}
+];
+let ti=0;
+function showTut(i){
+  ti=i;const p=TUT[i];
+  $('tart').innerHTML=p.a;$('tt').textContent=p.t;$('tx').textContent=p.x;
+  $('tdots').innerHTML=TUT.map((_,k)=>'<i'+(k===i?' class="on"':'')+'></i>').join('');
+  $('tprev').hidden=i===0;$('tskip').hidden=i===TUT.length-1;
+  $('tnext').textContent=i===TUT.length-1?'Empezar':'Siguiente';
+}
+function openTut(){$('tut').hidden=false;showTut(0);$('tnext').focus();}
+function closeTut(){$('tut').hidden=true;}
+$('tnext').addEventListener('click',()=>{ensureAudio();ti<TUT.length-1?showTut(ti+1):closeTut();});
+$('tprev').addEventListener('click',()=>showTut(ti-1));
+$('tskip').addEventListener('click',closeTut);
+$('howto').addEventListener('click',openTut);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
+/* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
+let peer=null,syncN=0,syncKey='';
+const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode=()=>Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join('');
+const rd=(v,n)=>{const k=Math.pow(10,n);return Math.round(v*k)/k;};
+function netSend(m){try{if(net&&net.conn&&net.conn.open)net.conn.send(m);}catch(e){}}
+function labelChips(){
+  $('n0').textContent=net?(net.me===0?'Tú':'Rival'):'Jugador 1';
+  $('n1').textContent=net?(net.me===1?'Tú':'Rival'):'Jugador 2';
+}
+function snapshot(){
+  return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5)]),
+    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,mt:msgT,ms:msg,st:strike,fx:fx};
+}
+function hostSync(force){
+  if(!net||net.role!=='host'||!net.conn||!net.conn.open)return;
+  syncN++;
+  const key=phase+'|'+turn+'|'+movesLeft+'|'+score+'|'+over+'|'+(msg?msg.t:'');
+  const moving=phase==='strike'||phase==='roll'||!!fx;
+  if(force||key!==syncKey||(moving&&syncN%3===0)||syncN%60===0){syncKey=key;netSend(snapshot());}
+}
+function applyState(s){
+  const pp=phase,pt=turn,pm=movesLeft;
+  s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];});
+  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
+  if(phase==='aim'&&(pp!=='aim'||pt!==turn||pm!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
+  if(phase==='place'&&pp!=='place'){drag=null;const c=coins[turn];place={x:c.x,y:c.y};net.pend=0;}
+  if(pp==='strike'&&phase==='roll')tick(6,1200);
+  if(phase==='foul'&&pp!=='foul')tick(5,300);
+  if(phase==='goal'&&pp!=='goal'){tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);}
+  ui();
+}
+const num=v=>typeof v==='number'&&isFinite(v);
+function onHostData(m){
+  if(!m||typeof m!=='object')return;
+  if(m.t==='hi'){hostSync(true);return;}
+  if(m.t==='shot'){
+    if(phase==='aim'&&turn===net.me^1&&!over&&num(m.ux)&&num(m.uy)&&num(m.p)&&num(m.f)&&num(m.e)&&num(m.spin)&&m.p>0&&m.p<=1&&m.f>=.1&&m.f<=.9&&Math.abs(Math.hypot(m.ux,m.uy)-1)<.01)
+      startStrike({ux:m.ux,uy:m.uy,p:m.p,f:m.f,e:clamp(m.e,-1,1),spin:m.spin});
+    hostSync(true);return;
+  }
+  if(m.t==='place'){
+    if(phase==='place'&&turn===net.me^1&&num(m.x)&&num(m.y)){
+      const c=coins[turn];
+      if(placeOK({x:m.x,y:m.y},c)){c.x=m.x;c.y=m.y;c.vx=c.vy=c.spin=0;beginAim();}
+    }
+    hostSync(true);
+  }
+}
+function netView(mode,text){
+  $('nx').textContent=text;
+  $('nchoose').hidden=mode!=='choose';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
+}
+function stopNet(){
+  const n=net;net=null;VIEW=1;
+  try{if(n&&n.conn)n.conn.close();}catch(e){}
+  try{if(peer)peer.destroy();}catch(e){}
+  peer=null;labelChips();
+}
+function openNet(){
+  $('net').hidden=false;
+  if(net)netView('conn','Estás jugando online con un amigo. Si te desconectas, la partida online termina.');
+  else netView('choose','Juega contra un amigo, cada uno en su móvil. Uno crea la partida y el otro se une con el código.');
+}
+function closeNet(){if(!net&&peer)stopNet();$('net').hidden=true;}
+function lost(){
+  if(!net)return;
+  stopNet();newGame();
+  $('net').hidden=false;
+  netView('choose','Se ha perdido la conexión con tu rival. Puedes crear otra partida, unirte a otra o seguir jugando en local.');
+}
+function createGame(){
+  if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
+  stopNet();
+  const code=newCode();
+  netView('create','Creando la partida…');$('ncode').textContent='·····';
+  peer=new Peer('fmon-'+code);
+  peer.on('open',()=>{$('ncode').textContent=code;$('nx').textContent='Dile este código a tu amigo y espera a que se una. Tú serás el Jugador 1 y él, el Jugador 2. Mantén esta pestaña abierta durante la partida.';});
+  peer.on('connection',conn=>{
+    if(net){conn.close();return;}
+    conn.on('open',()=>{
+      if(net)return;
+      net={role:'host',me:0,conn,pend:0};VIEW=1;
+      conn.on('data',onHostData);conn.on('close',lost);conn.on('error',lost);
+      $('net').hidden=true;labelChips();newGame();
+    });
+  });
+  peer.on('error',err=>{
+    if(err.type==='unavailable-id'){createGame();return;}
+    if(net)return;
+    stopNet();netView('choose','No se ha podido crear la partida ('+err.type+'). Inténtalo de nuevo.');
+  });
+}
+function joinGame(raw){
+  const code=String(raw||'').trim().toUpperCase();
+  if(code.length!==5){$('nx').textContent='El código tiene 5 caracteres.';return;}
+  if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
+  stopNet();
+  netView('join','Conectando…');
+  const fail=t=>{clearTimeout(timer);stopNet();netView('join',t);};
+  const timer=setTimeout(()=>fail('No se encuentra esa partida. Revisa el código.'),12000);
+  peer=new Peer();
+  peer.on('open',()=>{
+    const conn=peer.connect('fmon-'+code,{reliable:true});
+    conn.on('open',()=>{
+      clearTimeout(timer);
+      net={role:'guest',me:1,conn,pend:0};VIEW=-1;
+      conn.on('data',m=>{if(m&&m.t==='s')applyState(m);});
+      conn.on('close',lost);conn.on('error',lost);
+      $('net').hidden=true;labelChips();newGame();netSend({t:'hi'});
+    });
+    conn.on('error',()=>fail('No se ha podido conectar. Revisa el código.'));
+  });
+  peer.on('error',err=>fail(err.type==='peer-unavailable'?'No se encuentra esa partida. Revisa el código.':'No se ha podido conectar ('+err.type+').'));
+}
+$('online').addEventListener('click',openNet);
+$('ncreate').addEventListener('click',createGame);
+$('njoin').addEventListener('click',()=>{netView('join','Escribe el código de 5 caracteres que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
+$('ngo').addEventListener('click',()=>joinGame($('ninput').value));
+$('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput').value);});
+$('ndisc').addEventListener('click',()=>{stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
+$('nclose').addEventListener('click',closeNet);
+
+newGame();
+requestAnimationFrame(frame);
+openTut();
+})();
+</script>
+</body>
+</html>
