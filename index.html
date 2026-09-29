@@ -414,7 +414,7 @@ function hostUpdate(){
   if(fx){fx.t++;if(fx.t>10)fx=null;}
   if(phase==='foul'){if(--msgT<=0){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
-    if(rs&&m0.k==='b'){pm={m:'side',s:m0.side};beginPlace();}                                        // saque de banda: el que saca elige dónde colocarse, fuera de la banda
+    if(rs&&m0.k==='b'){chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
     else if(rs&&m0.k==='c'){chain={t:foulBen,m:'any',mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
     else if(rs&&m0.k==='g'){chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
