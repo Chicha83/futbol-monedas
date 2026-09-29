@@ -507,7 +507,7 @@ function predict(c,ux,uy,e,p){
   const sp=(MINV+p*(MAXV-MINV))*effAt(fFromE(e));
   let x=c.x,y=c.y,vx=ux*sp,vy=uy*sp,sn=e*flipOf(uy)*OMEGA,len=0;
   const ball=coins[2],dB=Math.hypot(ball.x-c.x,ball.y-c.y);
-  const maxLen=Math.max(320+p*480,dB*1.35+90);   // más alcance y, dondequiera que esté el balón, la línea siempre llega hasta él
+  const maxLen=Math.max(30,dB-RB);   // la línea llega justo hasta el balón, esté donde esté, y ahí termina
   const pts=[[x,y]];
   for(let i=0;i<900&&len<maxLen;i++){
     x+=vx;y+=vy;len+=Math.hypot(vx,vy);vx*=FRIC;vy*=FRIC;
@@ -684,7 +684,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='15';
+const VER='16';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
