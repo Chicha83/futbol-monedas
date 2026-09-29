@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 .goal-to{display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;line-height:1.2;padding-inline:4px}
 .goal-to strong{font:800 22px/1 var(--display);color:var(--ink)}
 .paper{border-radius:6px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 12px 30px rgba(10,20,35,.22);background:#fff;line-height:0}
-canvas{display:block;width:100%;height:auto;aspect-ratio:400/640;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+canvas{display:block;width:100%;height:auto;aspect-ratio:660/960;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .status{min-height:2.9em;margin:0;color:var(--ink)}
 .meters{display:grid;gap:6px}
 .meter{display:grid;grid-template-columns:4.6em 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
@@ -118,7 +118,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <button type="button" id="st3" data-state="todo"><i>3</i>Potencia</button>
       </div>
 
-      <div class="paper" id="pp"><canvas id="cv" width="800" height="1280" aria-label="Campo de fútbol con tres monedas"></canvas></div>
+      <div class="paper" id="pp"><canvas id="cv" width="1320" height="1920" aria-label="Campo de fútbol con tres monedas"></canvas></div>
 
       <p class="status" id="status" aria-live="polite"></p>
 
@@ -179,10 +179,10 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 (()=>{
 "use strict";
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
-const W=400,H=640,FX0=20,FX1=380,FY0=40,FY1=600,GX0=140,GX1=260,GD=26;
+const W=660,H=960,CX=330,CY=480,FX0=60,FX1=600,FY0=60,FY1=900,GX0=240,GX1=420,GD=39;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
-const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=110,POW_RANGE=160,OMEGA=.012;
+const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=180,POW_RANGE=264,OMEGA=.012;
 const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const R=21,RB=15,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
@@ -196,10 +196,12 @@ const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
 
 /* ---------- campo (se dibuja una sola vez) ---------- */
-const pitch=document.createElement('canvas');pitch.width=800;pitch.height=1280;
+const pitch=document.createElement('canvas');pitch.width=2*W;pitch.height=2*H;
 (function(){
   const g=pitch.getContext('2d');g.scale(2,2);
   g.fillStyle='#FFFFFF';g.fillRect(0,0,W,H);
+  g.translate(30,0);g.scale(1.5,1.5);
+  const FX0=20,FX1=380,FY0=40,FY1=600,GX0=140,GX1=260,GD=26;   // el campo se dibuja en sus medidas originales y se amplía 1,5
   // redes de las porterías
   for(const [y0,y1] of [[FY0-GD,FY0],[FY1,FY1+GD]]){
     g.save();g.beginPath();g.rect(GX0,y0,GX1-GX0,y1-y0);g.clip();
@@ -244,7 +246,7 @@ function tick(v,f){
 /* ---------- estado ---------- */
 const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
 function reset(t){
-  coins=[mk(200,480,R,MASS_COIN,0),mk(200,160,R,MASS_COIN,1),mk(200,320,RB,MASS_BALL,2)];
+  coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
   turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;beginAim();
 }
 function beginAim(){phase='aim';step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};ui();}
@@ -315,7 +317,10 @@ function physics(dt){
     if(c.spin){const a=c.spin*dt,ca=Math.cos(a),sa=Math.sin(a),nx=c.vx*ca-c.vy*sa,ny=c.vx*sa+c.vy*ca;c.vx=nx;c.vy=ny;c.spin*=FR;}
     if(c.vx*c.vx+c.vy*c.vy<.0025){c.vx=0;c.vy=0;c.spin=0;}
     if(c.t!==2){
-    if(c.x<FX0+c.r){c.x=FX0+c.r;c.vx=Math.abs(c.vx)*.85;}
+    if(c.out===1&&c.x-c.r>=FX0)c.out=0;else if(c.out===2&&c.x+c.r<=FX1)c.out=0;
+    if(c.out===1){if(c.x<c.r){c.x=c.r;c.vx=Math.abs(c.vx)*.85;}}
+    else if(c.out===2){if(c.x>W-c.r){c.x=W-c.r;c.vx=-Math.abs(c.vx)*.85;}}
+    else if(c.x<FX0+c.r){c.x=FX0+c.r;c.vx=Math.abs(c.vx)*.85;}
     else if(c.x>FX1-c.r){c.x=FX1-c.r;c.vx=-Math.abs(c.vx)*.85;}
     const inMouth=false;
     if(!inMouth){
@@ -353,15 +358,15 @@ function physics(dt){
 function outPlay(){
   const b=coins[2],lt=lastTouch>=0?lastTouch:turn;
   let taker,kind,bx,by;
-  if(b.x<FX0||b.x>FX1){taker=1-lt;kind='SAQUE DE BANDA';bx=b.x<FX0?FX0+RB+3:FX1-RB-3;by=Math.max(FY0+70,Math.min(FY1-70,b.y));}
+  if(b.x<FX0||b.x>FX1){taker=1-lt;kind='SAQUE DE BANDA';bx=b.x<FX0?FX0:FX1;by=Math.max(FY0+110,Math.min(FY1-110,b.y));}
   else{
     const top=b.y<FY0,def=top?1:0;          // la portería de arriba es la del Jugador 2
-    if(lt===def){taker=1-def;kind='CÓRNER';bx=b.x<200?FX0+RB+3:FX1-RB-3;by=top?FY0+RB+3:FY1-RB-3;}
-    else{taker=def;kind='SAQUE DE PUERTA';bx=200;by=top?FY0+55:FY1-55;}
+    if(lt===def){taker=1-def;kind='CÓRNER';bx=b.x<CX?FX0+RB+3:FX1-RB-3;by=top?FY0+RB+3:FY1-RB-3;}
+    else{taker=def;kind='SAQUE DE PUERTA';bx=CX;by=top?FY0+85:FY1-85;}
   }
   for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
   b.x=bx;b.y=by;strike=null;foulBen=taker;phase='foul';msgT=90;
-  msg={t:kind,s:lt,foul:true,restart:true,reason:'',sub:'Saca el Jugador '+(taker+1)};
+  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':'',side:bx<=FX0?-1:1,reason:'',sub:'Saca el Jugador '+(taker+1)};
   ui();tick(4,520);
 }
 function goal(s){
@@ -383,7 +388,12 @@ function guestUpdate(){
 function hostUpdate(){
   if(phase==='goal'){if(!over&&--msgT<=0)reset(concede);return;}
   if(fx){fx.t++;if(fx.t>10)fx=null;}
-  if(phase==='foul'){if(--msgT<=0){const rs=msg&&msg.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;beginPlace();}return;}
+  if(phase==='foul'){if(--msgT<=0){
+    const rs=msg&&msg.restart,thr=msg&&msg.k==='b'?msg.side:0;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;
+    if(thr){                                   // saque de banda: la moneda entra desde fuera y el balón está justo en la línea
+      const c=coins[turn],b=coins[2];c.x=b.x+thr*(R+RB+2);c.y=b.y;c.vx=c.vy=c.spin=0;c.out=thr<0?1:2;beginAim();
+    }else beginPlace();
+  }return;}
   refreshAim();
   if(phase==='strike'){
     strike.t++;
@@ -403,6 +413,7 @@ function hostUpdate(){
     if(coins.some(c=>c.vx||c.vy))settle=0;
     else if(++settle>12){
       settle=0;
+      for(const c of coins)if(c.out){c.out=0;c.x=clamp(c.x,FX0+c.r,FX1-c.r);}
       if(--movesLeft>0)beginAim();
       else{turn=1-turn;movesLeft=1;dbl=false;beginAim();}
     }
@@ -519,11 +530,11 @@ function draw(ts){
   }
   ctx.setTransform(2,0,0,2,0,0);
   if(msg){
-    ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,236,W,168);
+    ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,CY-120,W,240);
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(msg.t.length>9?'800 34px':'800 68px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,296);
-    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 26px':'800 34px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?msg.sub:score[0]+'  -  '+score[1],W/2,348);
-    if(over){ctx.fillStyle='#546171';ctx.font='600 14px Karla,system-ui,sans-serif';ctx.fillText(net&&net.role==='guest'?'Tu rival puede empezar otra partida':'Toca el campo para jugar otra vez',W/2,383);}
+    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(msg.t.length>9?'800 52px':'800 100px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,CY-42);
+    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px':'800 52px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?msg.sub:score[0]+'  -  '+score[1],W/2,CY+30);
+    if(over){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net&&net.role==='guest'?'Tu rival puede empezar otra partida':'Toca el campo para jugar otra vez',W/2,CY+88);}
   }
 }
 
@@ -653,7 +664,7 @@ function labelChips(){
   $('n1').textContent=net?(net.me===1?'Tú':'Rival'):'Jugador 2';
 }
 function snapshot(){
-  return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5)]),
+  return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
     p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,mt:msgT,ms:msg,st:strike,fx:fx};
 }
 function hostSync(force){
@@ -665,7 +676,7 @@ function hostSync(force){
 }
 function applyState(s){
   const pp=phase,pt=turn,pm=movesLeft;
-  s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];});
+  s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
   phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
   if(phase==='aim'&&(pp!=='aim'||pt!==turn||pm!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
   if(phase==='place'&&pp!=='place'){drag=null;const c=coins[turn];place={x:c.x,y:c.y};net.pend=0;}
@@ -697,7 +708,7 @@ function netView(mode,text){
 }
 function stopNet(){
   const n=net;net=null;VIEW=1;
-  if(n&&n.rc)clearTimeout(n.rc);
+  if(n&&n.rc)clearTimeout(n.rc);if(n&&n.hostRetry)clearTimeout(n.hostRetry);
   try{if(wl)wl.release();}catch(e){}wl=null;
   try{if(n&&n.conn)n.conn.close();}catch(e){}
   try{if(peer)peer.destroy();}catch(e){}
@@ -726,8 +737,8 @@ function wireHost(conn){
   conn.on('error',()=>{if(net&&net.conn===conn)lost();});
 }
 function attachGuest(conn){
-  net.conn=conn;net.down=false;
-  conn.on('data',m=>{if(m&&m.t==='s')applyState(m);});
+  net.conn=conn;net.down=false;net.lastRx=Date.now();
+  conn.on('data',m=>{net.lastRx=Date.now();if(m&&m.t==='s')applyState(m);});
   conn.on('close',()=>{if(net&&net.conn===conn)lost();});
   conn.on('error',()=>{if(net&&net.conn===conn)lost();});
 }
@@ -737,7 +748,7 @@ function guestReconnect(){
   const t0=Date.now();
   const attempt=()=>{
     if(!net||net.role!=='guest')return;
-    if(Date.now()-t0>120000){giveUp('No se ha podido recuperar la conexión con tu rival. Puedes volver a unirte con el mismo código.');return;}
+    if(Date.now()-t0>900000){giveUp('No se ha podido recuperar la conexión con tu rival. Puedes volver a unirte con el mismo código.');return;}
     try{if(peer)peer.destroy();}catch(e){}
     let done=false;
     const retry=()=>{if(done||!net)return;done=true;net.rc=setTimeout(attempt,2000);};
@@ -752,37 +763,66 @@ function guestReconnect(){
   };
   net.rc=setTimeout(attempt,300);
 }
+function guestForce(){                  // descarta una conexión que pueda estar muerta y vuelve a conectar
+  if(!net||net.role!=='guest')return;
+  const old=net.conn;net.conn=null;try{if(old)old.close();}catch(e){}
+  guestReconnect();
+}
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden||!net)return;
   keepAwake();
-  if(net.role==='host'){try{if(peer&&peer.disconnected)peer.reconnect();}catch(e){}return;}
-  if(net.conn&&net.conn.open&&!net.down)netSend({t:'hi'});else lost();
+  if(net.role==='host'){
+    try{if(!peer||peer.destroyed)hostRevive(net.code);else if(peer.disconnected)peer.reconnect();}catch(e){}
+    hostSync(true);return;
+  }
+  if(net.down||!net.conn||!net.conn.open||Date.now()-net.lastRx>2500)guestForce();
+  else netSend({t:'hi'});
 });
-function createGame(){
-  if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
-  stopNet();
-  const code=newCode();
-  netView('create','Creando la partida…');$('ncode').textContent='·····';
-  peer=new Peer('fmon-'+code);
-  peer.on('open',()=>{$('ncode').textContent=code;$('nx').textContent='Dile este código a tu amigo y espera a que se una. Tú serás el Jugador 1 y él, el Jugador 2. Mantén esta pestaña abierta durante la partida.';});
-  peer.on('disconnected',()=>{try{peer.reconnect();}catch(e){}});
-  peer.on('connection',conn=>{
+setInterval(()=>{                          // vigilante: si el anfitrión deja de enviar estado, el invitado reconecta
+  if(net&&net.role==='guest'&&!net.down&&!document.hidden&&Date.now()-net.lastRx>7000)guestForce();
+  if(net&&net.role==='host'&&!document.hidden&&peer&&peer.disconnected){try{peer.reconnect();}catch(e){}}
+},3000);
+function hostPeer(code,first){
+  try{if(peer)peer.destroy();}catch(e){}
+  const p=peer=new Peer('fmon-'+code);
+  p.on('open',()=>{
+    if(first){$('ncode').textContent=code;$('nx').textContent='Dile este código a tu amigo y espera a que se una. Tú serás el Jugador 1 y él, el Jugador 2. Mantén esta pestaña abierta durante la partida.';}
+    else if(net)net.hostRetry=0;
+  });
+  p.on('disconnected',()=>{try{if(peer===p&&!p.destroyed)p.reconnect();}catch(e){}});
+  p.on('close',()=>{if(peer===p&&net&&net.role==='host')hostRevive(code);});
+  p.on('connection',conn=>{
     conn.on('open',()=>{
       if(net&&net.role==='host'){            // el invitado vuelve tras cambiar de app: se retoma la partida
         const old=net.conn;net.conn=conn;try{if(old)old.close();}catch(e){}
         wireHost(conn);hideDown();hostSync(true);return;
       }
       if(net)return;
-      net={role:'host',me:0,conn,pend:0};VIEW=1;
+      net={role:'host',me:0,conn,pend:0,code};VIEW=1;
       wireHost(conn);keepAwake();
       $('net').hidden=true;labelChips();newGame();
     });
   });
-  peer.on('error',err=>{
-    if(err.type==='unavailable-id'){createGame();return;}
-    if(net)return;
+  p.on('error',err=>{
+    if(err.type==='unavailable-id'){
+      if(first){createGame();return;}
+      if(net)net.hostRetry=setTimeout(()=>hostRevive(code),2500);return;   // el servidor aún recuerda el código: se reintenta
+    }
+    if(net){if(net.role==='host'&&(err.type==='network'||err.type==='server-error'||err.type==='socket-error'||err.type==='socket-closed'))net.hostRetry=setTimeout(()=>{try{if(peer===p&&p.disconnected)p.reconnect();}catch(e){}},3000);return;}
     stopNet();netView('choose','No se ha podido crear la partida ('+err.type+'). Inténtalo de nuevo.');
   });
+}
+function hostRevive(code){
+  if(!net||net.role!=='host')return;
+  clearTimeout(net.hostRetry);net.hostRetry=0;
+  hostPeer(code,false);
+}
+function createGame(){
+  if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
+  stopNet();
+  const code=newCode();
+  netView('create','Creando la partida…');$('ncode').textContent='·····';
+  hostPeer(code,true);
 }
 function joinGame(raw){
   const code=String(raw||'').trim().toUpperCase();
@@ -797,7 +837,7 @@ function joinGame(raw){
     const conn=peer.connect('fmon-'+code,{reliable:true});
     conn.on('open',()=>{
       clearTimeout(timer);
-      net={role:'guest',me:1,conn,pend:0,code};VIEW=-1;
+      net={role:'guest',me:1,conn,pend:0,code,lastRx:Date.now()};VIEW=-1;
       attachGuest(conn);keepAwake();
       $('net').hidden=true;labelChips();newGame();netSend({t:'hi'});
     });
@@ -819,7 +859,7 @@ openTut();
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
-function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/400,h/640));cv.style.width=Math.floor(400*k)+'px';cv.style.height=Math.floor(640*k)+'px';}
+function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/660,h/960));cv.style.width=Math.floor(660*k)+'px';cv.style.height=Math.floor(960*k)+'px';}
 fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));if(window.ResizeObserver)new ResizeObserver(fit).observe(pp);})();
 </script>
 </body>
