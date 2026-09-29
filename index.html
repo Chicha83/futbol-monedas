@@ -249,6 +249,15 @@ function reset(t){
   coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
   turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;cornerNext=-1;beginAim();
 }
+function returnOut(){                       // una moneda de jugador que se ha quedado fuera de las líneas vuelve al borde del campo
+  for(let i=0;i<2;i++){
+    const c=coins[i];c.out=0;
+    if(c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1)continue;
+    c.x=clamp(c.x,FX0+c.r,FX1-c.r);c.y=clamp(c.y,FY0+c.r,FY1-c.r);
+    for(let n=0;n<40&&!placeOK({x:c.x,y:c.y},c);n++){c.x+=(CX-c.x)*.04;c.y+=(CY-c.y)*.04;}
+    c.vx=c.vy=c.spin=0;tick(3,400);
+  }
+}
 function donePlace(){                     // tras colocar: en un córner, primero coloca el defensor y luego el que saca; este juega dos golpes
   if(cornerNext>=0){turn=cornerNext;cornerNext=-1;movesLeft=2;dbl=true;beginPlace();}else beginAim();
 }
@@ -319,17 +328,11 @@ function physics(dt){
     c.x+=c.vx*dt;c.y+=c.vy*dt;c.vx*=FR;c.vy*=FR;
     if(c.spin){const a=c.spin*dt,ca=Math.cos(a),sa=Math.sin(a),nx=c.vx*ca-c.vy*sa,ny=c.vx*sa+c.vy*ca;c.vx=nx;c.vy=ny;c.spin*=FR;}
     if(c.vx*c.vx+c.vy*c.vy<.0025){c.vx=0;c.vy=0;c.spin=0;}
-    if(c.t!==2){
-    if(c.out===1&&c.x-c.r>=FX0)c.out=0;else if(c.out===2&&c.x+c.r<=FX1)c.out=0;
-    if(c.out===1){if(c.x<c.r){c.x=c.r;c.vx=Math.abs(c.vx)*.85;}}
-    else if(c.out===2){if(c.x>W-c.r){c.x=W-c.r;c.vx=-Math.abs(c.vx)*.85;}}
-    else if(c.x<FX0+c.r){c.x=FX0+c.r;c.vx=Math.abs(c.vx)*.85;}
-    else if(c.x>FX1-c.r){c.x=FX1-c.r;c.vx=-Math.abs(c.vx)*.85;}
-    const inMouth=false;
-    if(!inMouth){
-      if(c.y<FY0+c.r){c.y=FY0+c.r;c.vy=Math.abs(c.vy)*.85;}
-      else if(c.y>FY1-c.r){c.y=FY1-c.r;c.vy=-Math.abs(c.vy)*.85;}
-    }
+    if(c.t!==2){                                  // las monedas de jugador pueden salirse del campo; solo las frena el borde del papel
+      if(c.x<c.r){c.x=c.r;c.vx=0;}
+      else if(c.x>W-c.r){c.x=W-c.r;c.vx=0;}
+      if(c.y<c.r){c.y=c.r;c.vy=0;}
+      else if(c.y>H-c.r){c.y=H-c.r;c.vy=0;}
     }
     for(const [px,py] of posts){
       const dx=c.x-px,dy=c.y-py,d=Math.hypot(dx,dy),m=c.r+4;
@@ -417,7 +420,7 @@ function hostUpdate(){
     if(coins.some(c=>c.vx||c.vy))settle=0;
     else if(++settle>12){
       settle=0;
-      for(const c of coins)if(c.out){c.out=0;c.x=clamp(c.x,FX0+c.r,FX1-c.r);}
+      returnOut();
       if(--movesLeft>0)beginAim();
       else{turn=1-turn;movesLeft=1;dbl=false;beginAim();}
     }
