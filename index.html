@@ -92,7 +92,8 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 .meter output{min-width:0}
 .btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .btns button{font-size:12.5px;padding:6px 4px}
-@media (max-height:760px){.meters{display:none}.status{min-height:0}}
+@media (max-height:760px){.meters{display:none}}
+.status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;min-height:0}
 </style>
 </head>
 <body>
