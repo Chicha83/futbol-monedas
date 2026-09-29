@@ -402,6 +402,7 @@ function goal(s){
 function update(){
   if(net&&net.role==='guest'){guestUpdate();return;}
   hostUpdate();hostSync();
+  if(net&&net.role==='host'&&++saveN%30===0)saveSession();
 }
 function guestUpdate(){
   if(fx){fx.t++;if(fx.t>10)fx=null;}
@@ -679,7 +680,25 @@ $('tskip').addEventListener('click',closeTut);
 $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
-let peer=null,syncN=0,syncKey='';
+let peer=null,syncN=0,syncKey='',saveN=0;
+const VER='13';
+const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
+/* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
+const SESS='fmon-sess';
+function saveSession(){try{if(!net||!net.code)return;const o={role:net.role,code:net.code,t:Date.now()};if(net.role==='host')o.snap=snapshot();localStorage.setItem(SESS,JSON.stringify(o));}catch(e){}}
+function clearSession(){try{localStorage.removeItem(SESS);}catch(e){}}
+function restoreSession(){
+  let o=null;try{o=JSON.parse(localStorage.getItem(SESS)||'null');}catch(e){}
+  if(!o||!o.code||!window.Peer||Date.now()-o.t>2*3600*1000)return false;
+  if(o.role==='host'&&o.snap){
+    net={role:'host',me:0,conn:null,pend:0,code:o.code,down:true};VIEW=1;labelChips();newGame();applyState(o.snap);
+    net.pend=0;hostPeer(o.code,false);showDown();keepAwake();return true;
+  }
+  if(o.role==='guest'){
+    net={role:'guest',me:1,conn:null,pend:0,code:o.code,lastRx:0};VIEW=-1;labelChips();newGame();guestReconnect();keepAwake();return true;
+  }
+  return false;
+}
 const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode=()=>Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join('');
 const rd=(v,n)=>{const k=Math.pow(10,n);return Math.round(v*k)/k;};
@@ -690,7 +709,7 @@ function labelChips(){
 }
 function snapshot(){
   return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
-    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx};
+    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx,tc:touched,lt:lastTouch};
 }
 function hostSync(force){
   if(!net||net.role!=='host'||!net.conn||!net.conn.open)return;
@@ -700,10 +719,10 @@ function hostSync(force){
   if(force||key!==syncKey||(moving&&syncN%3===0)||syncN%60===0){syncKey=key;netSend(snapshot());}
 }
 function applyState(s){
-  const pp=phase,pt=turn,pm=movesLeft;
+  const pp=phase,pt=turn,pml=movesLeft;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
-  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
-  if(phase==='aim'&&(pp!=='aim'||pt!==turn||pm!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
+  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;if(s.tc!==undefined)touched=s.tc;if(s.lt!==undefined)lastTouch=s.lt;chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
+  if(phase==='aim'&&(pp!=='aim'||pt!==turn||pml!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
   if(phase==='place'&&(pp!=='place'||pt!==turn)){drag=null;place=initPlace(coins[turn]);net.pend=0;}
   if(pp==='strike'&&phase==='roll')tick(6,1200);
   if(phase==='foul'&&pp!=='foul')tick(5,300);
@@ -732,7 +751,7 @@ function netView(mode,text){
   $('nchoose').hidden=mode!=='choose';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
 }
 function stopNet(){
-  const n=net;net=null;VIEW=1;
+  const n=net;net=null;VIEW=1;clearSession();
   if(n&&n.rc)clearTimeout(n.rc);if(n&&n.hostRetry)clearTimeout(n.hostRetry);
   try{if(wl)wl.release();}catch(e){}wl=null;
   try{if(n&&n.conn)n.conn.close();}catch(e){}
@@ -778,7 +797,7 @@ function guestReconnect(){
     let done=false;
     const retry=()=>{if(done||!net)return;done=true;net.rc=setTimeout(attempt,2000);};
     const to=setTimeout(retry,7000);
-    peer=new Peer();
+    peer=new Peer(undefined,PEERCFG);
     peer.on('open',()=>{
       const conn=peer.connect('fmon-'+net.code,{reliable:true});
       conn.on('open',()=>{if(done||!net)return;done=true;clearTimeout(to);net.rc=0;attachGuest(conn);hideDown();keepAwake();netSend({t:'hi'});});
@@ -793,8 +812,8 @@ function guestForce(){                  // descarta una conexión que pueda esta
   const old=net.conn;net.conn=null;try{if(old)old.close();}catch(e){}
   guestReconnect();
 }
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden||!net)return;
+function onResume(){
+  if(!net)return;
   keepAwake();
   if(net.role==='host'){
     try{if(!peer||peer.destroyed)hostRevive(net.code);else if(peer.disconnected)peer.reconnect();}catch(e){}
@@ -802,14 +821,17 @@ document.addEventListener('visibilitychange',()=>{
   }
   if(net.down||!net.conn||!net.conn.open||Date.now()-net.lastRx>2500)guestForce();
   else netSend({t:'hi'});
-});
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){saveSession();return;}onResume();});
+addEventListener('pageshow',onResume);addEventListener('focus',onResume);addEventListener('online',onResume);
+addEventListener('pagehide',saveSession);
 setInterval(()=>{                          // vigilante: si el anfitrión deja de enviar estado, el invitado reconecta
   if(net&&net.role==='guest'&&!net.down&&!document.hidden&&Date.now()-net.lastRx>7000)guestForce();
   if(net&&net.role==='host'&&!document.hidden&&peer&&peer.disconnected){try{peer.reconnect();}catch(e){}}
 },3000);
 function hostPeer(code,first){
   try{if(peer)peer.destroy();}catch(e){}
-  const p=peer=new Peer('fmon-'+code);
+  const p=peer=new Peer('fmon-'+code,PEERCFG);
   p.on('open',()=>{
     if(first){$('ncode').textContent=code;$('nx').textContent='Dile este código a tu amigo y espera a que se una. Tú serás el Jugador 1 y él, el Jugador 2. Mantén esta pestaña abierta durante la partida.';}
     else if(net)net.hostRetry=0;
@@ -824,7 +846,7 @@ function hostPeer(code,first){
       }
       if(net)return;
       net={role:'host',me:0,conn,pend:0,code};VIEW=1;
-      wireHost(conn);keepAwake();
+      wireHost(conn);keepAwake();saveSession();
       $('net').hidden=true;labelChips();newGame();
     });
   });
@@ -857,13 +879,13 @@ function joinGame(raw){
   netView('join','Conectando…');
   const fail=t=>{clearTimeout(timer);stopNet();netView('join',t);};
   const timer=setTimeout(()=>fail('No se encuentra esa partida. Revisa el código.'),12000);
-  peer=new Peer();
+  peer=new Peer(undefined,PEERCFG);
   peer.on('open',()=>{
     const conn=peer.connect('fmon-'+code,{reliable:true});
     conn.on('open',()=>{
       clearTimeout(timer);
       net={role:'guest',me:1,conn,pend:0,code,lastRx:Date.now()};VIEW=-1;
-      attachGuest(conn);keepAwake();
+      attachGuest(conn);keepAwake();saveSession();
       $('net').hidden=true;labelChips();newGame();netSend({t:'hi'});
     });
     conn.on('error',()=>fail('No se ha podido conectar. Revisa el código.'));
@@ -880,7 +902,8 @@ $('nclose').addEventListener('click',closeNet);
 
 newGame();
 requestAnimationFrame(frame);
-openTut();
+{const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
+if(!restoreSession())openTut();
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
