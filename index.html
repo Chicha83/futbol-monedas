@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 .goal-to{display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;line-height:1.2;padding-inline:4px}
 .goal-to strong{font:800 22px/1 var(--display);color:var(--ink)}
 .paper{border-radius:6px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 12px 30px rgba(10,20,35,.22);background:#fff;line-height:0}
-canvas{display:block;width:100%;height:auto;aspect-ratio:660/960;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+canvas{display:block;width:100%;height:auto;aspect-ratio:720/1020;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .status{min-height:2.9em;margin:0;color:var(--ink)}
 .meters{display:grid;gap:6px}
 .meter{display:grid;grid-template-columns:4.6em 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
@@ -118,7 +118,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <button type="button" id="st3" data-state="todo"><i>3</i>Potencia</button>
       </div>
 
-      <div class="paper" id="pp"><canvas id="cv" width="1320" height="1920" aria-label="Campo de fútbol con tres monedas"></canvas></div>
+      <div class="paper" id="pp"><canvas id="cv" width="1440" height="2040" aria-label="Campo de fútbol con tres monedas"></canvas></div>
 
       <p class="status" id="status" aria-live="polite"></p>
 
@@ -179,10 +179,10 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 (()=>{
 "use strict";
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
-const W=660,H=960,CX=330,CY=480,FX0=60,FX1=600,FY0=60,FY1=900,GX0=240,GX1=420,GD=39;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
+const W=720,H=1020,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
-const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=180,POW_RANGE=264,OMEGA=.012;
+const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
 const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const R=21,RB=15,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
@@ -190,7 +190,7 @@ const RED='#D62839',PC=['#2A5BD7','#12855C'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 const $=id=>document.getElementById(id);
-let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,cornerNext=-1,foulBen=0,place=null,net=null,VIEW=1;
+let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,net=null,VIEW=1;
 const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
 const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
@@ -200,7 +200,7 @@ const pitch=document.createElement('canvas');pitch.width=2*W;pitch.height=2*H;
 (function(){
   const g=pitch.getContext('2d');g.scale(2,2);
   g.fillStyle='#FFFFFF';g.fillRect(0,0,W,H);
-  g.translate(30,0);g.scale(1.5,1.5);
+  g.translate(60,30);g.scale(1.5,1.5);
   const FX0=20,FX1=380,FY0=40,FY1=600,GX0=140,GX1=260,GD=26;   // el campo se dibuja en sus medidas originales y se amplía 1,5
   // redes de las porterías
   for(const [y0,y1] of [[FY0-GD,FY0],[FY1,FY1+GD]]){
@@ -247,24 +247,37 @@ function tick(v,f){
 const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
 function reset(t){
   coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
-  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;cornerNext=-1;beginAim();
+  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;chain=null;pm={m:null};beginAim();
 }
 function returnOut(){                       // una moneda de jugador que se ha quedado fuera de las líneas vuelve al borde del campo
   for(let i=0;i<2;i++){
     const c=coins[i];c.out=0;
     if(c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1)continue;
     c.x=clamp(c.x,FX0+c.r,FX1-c.r);c.y=clamp(c.y,FY0+c.r,FY1-c.r);
-    for(let n=0;n<40&&!placeOK({x:c.x,y:c.y},c);n++){c.x+=(CX-c.x)*.04;c.y+=(CY-c.y)*.04;}
+    for(let n=0;n<40&&!placeOK({x:c.x,y:c.y},c,null);n++){c.x+=(CX-c.x)*.04;c.y+=(CY-c.y)*.04;}
     c.vx=c.vy=c.spin=0;tick(3,400);
   }
 }
-function donePlace(){                     // tras colocar: en un córner, primero coloca el defensor y luego el que saca; este juega dos golpes
-  if(cornerNext>=0){turn=cornerNext;cornerNext=-1;movesLeft=2;dbl=true;beginPlace();}else beginAim();
+function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
+  if(chain){const q=chain;chain=null;turn=q.t;movesLeft=q.mv;dbl=q.mv===2;pm={m:q.m,s:q.s,y:q.y};beginPlace();}
+  else{pm={m:null};beginAim();}
 }
 function beginAim(){phase='aim';step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};ui();}
-function beginPlace(){phase='place';drag=null;const c=coins[turn];place={x:c.x,y:c.y};ui();}
-function placeOK(p,c){
-  if(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)return false;
+function initPlace(c){
+  const b=coins[2];
+  if(pm.m==='side')return{x:pm.s<0?FX0-32:FX1+32,y:b.y};
+  if(pm.m==='line')return{x:CX,y:pm.y};
+  return{x:c.x,y:c.y};
+}
+function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();}
+function snapPlace(p){if(pm.m==='line'){p.y=pm.y;p.x=clamp(p.x,SAX0,SAX1);}return p;}
+function placeOK(p,c,mode){
+  const m=mode===undefined?pm.m:mode;let ok;
+  if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
+  else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
+  else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
+  else ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r);
+  if(!ok)return false;
   for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
   return true;
 }
@@ -282,7 +295,12 @@ function statusText(){
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
   if(phase==='place'){
     if(net&&turn!==net.me)return 'Tu rival está colocando su moneda…';
-    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(cornerNext>=0?'Colocas a tu defensor donde quieras; después saca el córner tu rival.':dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón ya está en su sitio. Después haces tu golpe.');
+    const who=net?'':'Jugador '+(turn+1)+', ';
+    if(pm.m==='side')return who+(net?'Elige':'elige')+' dónde colocar tu moneda, fuera de la banda (toca o arrastra y suelta). El balón está en la línea; después haces tu golpe.';
+    if(pm.m==='line')return who+(net?'Coloca':'coloca')+' tu moneda sobre la línea de gol, dentro del área pequeña (arrastra y suelta). Después disparas el balón.';
+    if(pm.m==='any')return who+(net?'Coloca':'coloca')+' tu moneda donde quieras, incluso fuera del campo. Después juegas dos golpes: sacar y rematar.';
+    if(chain)return who+(net?'Coloca':'coloca')+' tu moneda donde quieras dentro del campo; después saca tu rival.';
+    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón no se mueve. Después haces tu golpe.');
   }
   if(phase==='aim'){
     if(net&&turn!==net.me)return 'Turno de tu rival. Espera a que golpee.';
@@ -368,11 +386,11 @@ function outPlay(){
   else{
     const top=b.y<FY0,def=top?1:0;          // la portería de arriba es la del Jugador 2
     if(lt===def){taker=1-def;kind='CÓRNER';bx=b.x<CX?FX0+RB+3:FX1-RB-3;by=top?FY0+RB+3:FY1-RB-3;}
-    else{taker=def;kind='SAQUE DE PUERTA';bx=CX;by=top?FY0+85:FY1-85;}
+    else{taker=def;kind='SAQUE DE PUERTA';bx=CX;by=top?FY0+SAD:FY1-SAD;}
   }
   for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
   b.x=bx;b.y=by;strike=null;foulBen=taker;phase='foul';msgT=90;
-  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':'',side:bx<=FX0?-1:1,reason:'',sub:'Saca el Jugador '+(taker+1)};
+  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':kind==='SAQUE DE PUERTA'?'g':'',side:bx<=FX0?-1:1,gy:b.y<CY?FY0:FY1,reason:'',sub:'Saca el Jugador '+(taker+1)};
   ui();tick(4,520);
 }
 function goal(s){
@@ -395,10 +413,10 @@ function hostUpdate(){
   if(phase==='goal'){if(!over&&--msgT<=0)reset(concede);return;}
   if(fx){fx.t++;if(fx.t>10)fx=null;}
   if(phase==='foul'){if(--msgT<=0){
-    const msg0=msg,rs=msg&&msg.restart,thr=msg&&msg.k==='b'?msg.side:0;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;
-    if(thr){                                   // saque de banda: la moneda entra desde fuera y el balón está justo en la línea
-      const c=coins[turn],b=coins[2];c.x=b.x+thr*(R+RB+2);c.y=b.y;c.vx=c.vy=c.spin=0;c.out=thr<0?1:2;beginAim();
-    }else if(msg0&&msg0.k==='c'){cornerNext=foulBen;turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
+    const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
+    if(rs&&m0.k==='b'){pm={m:'side',s:m0.side};beginPlace();}                                        // saque de banda: el que saca elige dónde colocarse, fuera de la banda
+    else if(rs&&m0.k==='c'){chain={t:foulBen,m:'any',mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
+    else if(rs&&m0.k==='g'){chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
   }return;}
   refreshAim();
@@ -562,13 +580,13 @@ cv.addEventListener('pointerdown',e=>{
   ensureAudio();
   if(over){if(!net||net.role==='host')newGame();return;}
   if(net&&(turn!==net.me||isPending()))return;
-  if(phase==='place'){const p=pos(e);place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
+  if(phase==='place'){const p=snapPlace(pos(e));place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
   if(phase!=='aim')return;
   const r=posS(e);drag={x0:r.x,y0:r.y,e0:sel.e};applyDrag(e);
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   e.preventDefault();
 });
-cv.addEventListener('pointermove',e=>{if(!drag)return;if(phase==='place'){const p=pos(e);place.x=p.x;place.y=p.y;}else applyDrag(e);});
+cv.addEventListener('pointermove',e=>{if(!drag)return;if(phase==='place'){const p=snapPlace(pos(e));place.x=p.x;place.y=p.y;}else applyDrag(e);});
 function release(e){
   if(!drag)return;
   drag=null;
@@ -640,7 +658,7 @@ const TUT=[
    <circle cx="190" cy="24" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
  {t:'Si te equivocas',x:'Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».',
   a:`<div class="pills"><span>1<br>Dirección</span><span class="now">2<br>Contacto</span><span>3<br>Potencia</span></div><div class="pills-note">Toca uno para volver a ese paso</div>`},
- {t:'Faltas y saques',x:'Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó. En el córner, el defensor coloca primero su moneda donde quiera, después coloca la suya el que saca, y este juega dos golpes: sacar y rematar.',
+ {t:'Faltas y saques',x:'Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó. En el saque de banda eliges dónde colocarte fuera de la banda; en el córner, el defensor coloca primero su moneda, después el que saca coloca la suya donde quiera y juega dos golpes: sacar y rematar; en el saque de puerta, el rival coloca primero su moneda y quien saca se pone sobre la línea de gol y dispara el balón, que está en el límite del área pequeña.',
   a:tutSvg(`${stickSvg(50,34,140)}<circle cx="120" cy="76" r="13" fill="#C98354" stroke="#6E3B1B"/><text x="120" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="#4A2810" font-family="Karla,system-ui,sans-serif">5c</text>
    <circle cx="120" cy="76" r="21" fill="none" stroke="#D62839" stroke-width="3" stroke-dasharray="5 4"/>
    <text x="120" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#D62839" font-family="Karla,system-ui,sans-serif">FALTA</text>`)}
@@ -672,7 +690,7 @@ function labelChips(){
 }
 function snapshot(){
   return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
-    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:cornerNext,mt:msgT,ms:msg,st:strike,fx:fx};
+    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx};
 }
 function hostSync(force){
   if(!net||net.role!=='host'||!net.conn||!net.conn.open)return;
@@ -684,9 +702,9 @@ function hostSync(force){
 function applyState(s){
   const pp=phase,pt=turn,pm=movesLeft;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
-  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;cornerNext=s.cn;msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
+  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
   if(phase==='aim'&&(pp!=='aim'||pt!==turn||pm!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
-  if(phase==='place'&&(pp!=='place'||pt!==turn)){drag=null;const c=coins[turn];place={x:c.x,y:c.y};net.pend=0;}
+  if(phase==='place'&&(pp!=='place'||pt!==turn)){drag=null;place=initPlace(coins[turn]);net.pend=0;}
   if(pp==='strike'&&phase==='roll')tick(6,1200);
   if(phase==='foul'&&pp!=='foul')tick(5,300);
   if(phase==='goal'&&pp!=='goal'){tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);}
@@ -866,7 +884,7 @@ openTut();
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
-function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/660,h/960));cv.style.width=Math.floor(660*k)+'px';cv.style.height=Math.floor(960*k)+'px';}
+function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/720,h/1020));cv.style.width=Math.floor(720*k)+'px';cv.style.height=Math.floor(1020*k)+'px';}
 fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));if(window.ResizeObserver)new ResizeObserver(fit).observe(pp);})();
 </script>
 </body>
