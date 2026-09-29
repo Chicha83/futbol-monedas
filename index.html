@@ -506,12 +506,14 @@ function drawCoin(c){
 function predict(c,ux,uy,e,p){
   const sp=(MINV+p*(MAXV-MINV))*effAt(fFromE(e));
   let x=c.x,y=c.y,vx=ux*sp,vy=uy*sp,sn=e*flipOf(uy)*OMEGA,len=0;
-  const pts=[[x,y]],maxLen=70+p*210;
-  for(let i=0;i<400&&len<maxLen;i++){
+  const ball=coins[2],dB=Math.hypot(ball.x-c.x,ball.y-c.y);
+  const maxLen=Math.max(320+p*480,dB*1.35+90);   // más alcance y, dondequiera que esté el balón, la línea siempre llega hasta él
+  const pts=[[x,y]];
+  for(let i=0;i<900&&len<maxLen;i++){
     x+=vx;y+=vy;len+=Math.hypot(vx,vy);vx*=FRIC;vy*=FRIC;
     const ca=Math.cos(sn),sa=Math.sin(sn),nx=vx*ca-vy*sa,ny=vx*sa+vy*ca;vx=nx;vy=ny;sn*=FRIC;
+    const v=Math.hypot(vx,vy);if(v>0&&v<5){vx*=5/v;vy*=5/v;}   // el trazo no se apaga por la fricción: solo enseña el rumbo y la curva
     if(i%2===0)pts.push([x,y]);
-    if(vx*vx+vy*vy<.0025)break;
   }
   return pts;
 }
@@ -522,7 +524,7 @@ function draw(ts){
   const aiming=phase==='aim'&&!over&&mine(),f=fFromE(sel.e);
   if(aiming){
     if(sel.ok){
-      ctx.save();ctx.strokeStyle=PC[turn];ctx.lineWidth=2.5;ctx.setLineDash([2,7]);ctx.lineCap='round';
+      ctx.save();ctx.strokeStyle=PC[turn];ctx.lineWidth=4.5;ctx.setLineDash([3,11]);ctx.lineCap='round';
       const pts=predict(cur,sel.ux,sel.uy,sel.e,step===3?sel.p:.55);   // hasta elegir potencia, la previsión usa una media
       ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(const q of pts)ctx.lineTo(q[0],q[1]);ctx.stroke();
       if(step===3){ctx.setLineDash([]);ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(cur.x,cur.y,cur.r+9,-Math.PI/2,-Math.PI/2+Math.PI*2*sel.p);ctx.stroke();}
@@ -682,7 +684,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='14';
+const VER='15';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
