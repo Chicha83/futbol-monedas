@@ -190,7 +190,7 @@ const RED='#D62839',PC=['#2A5BD7','#12855C'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 const $=id=>document.getElementById(id);
-let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,foulBen=0,place=null,net=null,VIEW=1;
+let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,cornerNext=-1,foulBen=0,place=null,net=null,VIEW=1;
 const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
 const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
@@ -247,7 +247,10 @@ function tick(v,f){
 const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
 function reset(t){
   coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
-  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;beginAim();
+  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;cornerNext=-1;beginAim();
+}
+function donePlace(){                     // tras colocar: en un córner, primero coloca el defensor y luego el que saca; este juega dos golpes
+  if(cornerNext>=0){turn=cornerNext;cornerNext=-1;movesLeft=2;dbl=true;beginPlace();}else beginAim();
 }
 function beginAim(){phase='aim';step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};ui();}
 function beginPlace(){phase='place';drag=null;const c=coins[turn];place={x:c.x,y:c.y};ui();}
@@ -270,7 +273,7 @@ function statusText(){
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
   if(phase==='place'){
     if(net&&turn!==net.me)return 'Tu rival está colocando su moneda…';
-    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón ya está en su sitio. Después haces tu golpe.');
+    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(cornerNext>=0?'Colocas a tu defensor donde quieras; después saca el córner tu rival.':dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón ya está en su sitio. Después haces tu golpe.');
   }
   if(phase==='aim'){
     if(net&&turn!==net.me)return 'Turno de tu rival. Espera a que golpee.';
@@ -366,7 +369,7 @@ function outPlay(){
   }
   for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
   b.x=bx;b.y=by;strike=null;foulBen=taker;phase='foul';msgT=90;
-  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':'',side:bx<=FX0?-1:1,reason:'',sub:'Saca el Jugador '+(taker+1)};
+  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':'',side:bx<=FX0?-1:1,reason:'',sub:'Saca el Jugador '+(taker+1)};
   ui();tick(4,520);
 }
 function goal(s){
@@ -389,10 +392,11 @@ function hostUpdate(){
   if(phase==='goal'){if(!over&&--msgT<=0)reset(concede);return;}
   if(fx){fx.t++;if(fx.t>10)fx=null;}
   if(phase==='foul'){if(--msgT<=0){
-    const rs=msg&&msg.restart,thr=msg&&msg.k==='b'?msg.side:0;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;
+    const msg0=msg,rs=msg&&msg.restart,thr=msg&&msg.k==='b'?msg.side:0;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;
     if(thr){                                   // saque de banda: la moneda entra desde fuera y el balón está justo en la línea
       const c=coins[turn],b=coins[2];c.x=b.x+thr*(R+RB+2);c.y=b.y;c.vx=c.vy=c.spin=0;c.out=thr<0?1:2;beginAim();
-    }else beginPlace();
+    }else if(msg0&&msg0.k==='c'){cornerNext=foulBen;turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
+    else beginPlace();
   }return;}
   refreshAim();
   if(phase==='strike'){
@@ -569,7 +573,7 @@ function release(e){
     const c=coins[turn];
     if(e.type==='pointerup'&&placeOK(place,c)){
       if(net&&net.role==='guest'){netSend({t:'place',x:place.x,y:place.y});net.pend=performance.now();}
-      else{c.x=place.x;c.y=place.y;c.vx=c.vy=c.spin=0;beginAim();}
+      else{c.x=place.x;c.y=place.y;c.vx=c.vy=c.spin=0;donePlace();}
     }
     return;
   }
@@ -633,7 +637,7 @@ const TUT=[
    <circle cx="190" cy="24" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
  {t:'Si te equivocas',x:'Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».',
   a:`<div class="pills"><span>1<br>Dirección</span><span class="now">2<br>Contacto</span><span>3<br>Potencia</span></div><div class="pills-note">Toca uno para volver a ese paso</div>`},
- {t:'Faltas y saques',x:'Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó, colocando su moneda donde quiera.',
+ {t:'Faltas y saques',x:'Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó. En el córner, el defensor coloca primero su moneda donde quiera, después coloca la suya el que saca, y este juega dos golpes: sacar y rematar.',
   a:tutSvg(`${stickSvg(50,34,140)}<circle cx="120" cy="76" r="13" fill="#C98354" stroke="#6E3B1B"/><text x="120" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="#4A2810" font-family="Karla,system-ui,sans-serif">5c</text>
    <circle cx="120" cy="76" r="21" fill="none" stroke="#D62839" stroke-width="3" stroke-dasharray="5 4"/>
    <text x="120" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#D62839" font-family="Karla,system-ui,sans-serif">FALTA</text>`)}
@@ -665,7 +669,7 @@ function labelChips(){
 }
 function snapshot(){
   return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
-    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,mt:msgT,ms:msg,st:strike,fx:fx};
+    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:cornerNext,mt:msgT,ms:msg,st:strike,fx:fx};
 }
 function hostSync(force){
   if(!net||net.role!=='host'||!net.conn||!net.conn.open)return;
@@ -677,9 +681,9 @@ function hostSync(force){
 function applyState(s){
   const pp=phase,pt=turn,pm=movesLeft;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
-  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
+  phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;cornerNext=s.cn;msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
   if(phase==='aim'&&(pp!=='aim'||pt!==turn||pm!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
-  if(phase==='place'&&pp!=='place'){drag=null;const c=coins[turn];place={x:c.x,y:c.y};net.pend=0;}
+  if(phase==='place'&&(pp!=='place'||pt!==turn)){drag=null;const c=coins[turn];place={x:c.x,y:c.y};net.pend=0;}
   if(pp==='strike'&&phase==='roll')tick(6,1200);
   if(phase==='foul'&&pp!=='foul')tick(5,300);
   if(phase==='goal'&&pp!=='goal'){tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);}
@@ -697,7 +701,7 @@ function onHostData(m){
   if(m.t==='place'){
     if(phase==='place'&&turn===net.me^1&&num(m.x)&&num(m.y)){
       const c=coins[turn];
-      if(placeOK({x:m.x,y:m.y},c)){c.x=m.x;c.y=m.y;c.vx=c.vy=c.spin=0;beginAim();}
+      if(placeOK({x:m.x,y:m.y},c)){c.x=m.x;c.y=m.y;c.vx=c.vy=c.spin=0;donePlace();}
     }
     hostSync(true);
   }
