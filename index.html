@@ -190,7 +190,7 @@ const RED='#D62839',PC=['#2A5BD7','#12855C'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 const $=id=>document.getElementById(id);
-let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,foulBen=0,place=null,net=null,VIEW=1;
+let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,foulBen=0,place=null,net=null,VIEW=1;
 const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
 const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
@@ -245,7 +245,7 @@ function tick(v,f){
 const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
 function reset(t){
   coins=[mk(200,480,R,MASS_COIN,0),mk(200,160,R,MASS_COIN,1),mk(200,320,RB,MASS_BALL,2)];
-  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;beginAim();
+  turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;beginAim();
 }
 function beginAim(){phase='aim';step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};ui();}
 function beginPlace(){phase='place';drag=null;const c=coins[turn];place={x:c.x,y:c.y};ui();}
@@ -264,10 +264,11 @@ function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.
 function statusText(){
   if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net&&net.role==='guest'?'Tu rival puede empezar otra partida.':'Toca el campo para jugar otra vez.');
   if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
+  if(phase==='foul'&&msg&&msg.restart)return msg.t.charAt(0)+msg.t.slice(1).toLowerCase()+': saca el Jugador '+(foulBen+1)+'.';
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
   if(phase==='place'){
     if(net&&turn!==net.me)return 'Tu rival está colocando su moneda…';
-    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. El balón no se mueve. Después juegas dos golpes seguidos.';
+    return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón ya está en su sitio. Después haces tu golpe.');
   }
   if(phase==='aim'){
     if(net&&turn!==net.me)return 'Turno de tu rival. Espera a que golpee.';
@@ -313,12 +314,14 @@ function physics(dt){
     c.x+=c.vx*dt;c.y+=c.vy*dt;c.vx*=FR;c.vy*=FR;
     if(c.spin){const a=c.spin*dt,ca=Math.cos(a),sa=Math.sin(a),nx=c.vx*ca-c.vy*sa,ny=c.vx*sa+c.vy*ca;c.vx=nx;c.vy=ny;c.spin*=FR;}
     if(c.vx*c.vx+c.vy*c.vy<.0025){c.vx=0;c.vy=0;c.spin=0;}
+    if(c.t!==2){
     if(c.x<FX0+c.r){c.x=FX0+c.r;c.vx=Math.abs(c.vx)*.85;}
     else if(c.x>FX1-c.r){c.x=FX1-c.r;c.vx=-Math.abs(c.vx)*.85;}
-    const inMouth=c.t===2&&c.x>GX0&&c.x<GX1;
+    const inMouth=false;
     if(!inMouth){
       if(c.y<FY0+c.r){c.y=FY0+c.r;c.vy=Math.abs(c.vy)*.85;}
       else if(c.y>FY1-c.r){c.y=FY1-c.r;c.vy=-Math.abs(c.vy)*.85;}
+    }
     }
     for(const [px,py] of posts){
       const dx=c.x-px,dy=c.y-py,d=Math.hypot(dx,dy),m=c.r+4;
@@ -337,7 +340,7 @@ function physics(dt){
       b.x+=nx*ov*ib/(ia+ib);b.y+=ny*ov*ib/(ia+ib);
       const vn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
       if(vn<0){
-        a.spin=0;b.spin=0;if(j===2&&i===turn)touched=true;if(i===0&&j===1&&phase==='roll'&&!touched)oppFoul=true;
+        a.spin=0;b.spin=0;if(j===2&&i===turn)touched=true;if(j===2&&i<2)lastTouch=i;if(i===0&&j===1&&phase==='roll'&&!touched)oppFoul=true;
         const j2=-(1.88)*vn/(ia+ib);
         // Si el balón llega más rápido que la moneda de 1 €, la moneda recibe todavía menos empuje que el que daría su masa.
         const soft=(j===2&&Math.hypot(b.vx,b.vy)>Math.hypot(a.vx,a.vy))?BALL_SOFT:1;
@@ -346,6 +349,20 @@ function physics(dt){
       }
     }
   }
+}
+function outPlay(){
+  const b=coins[2],lt=lastTouch>=0?lastTouch:turn;
+  let taker,kind,bx,by;
+  if(b.x<FX0||b.x>FX1){taker=1-lt;kind='SAQUE DE BANDA';bx=b.x<FX0?FX0+RB+3:FX1-RB-3;by=Math.max(FY0+70,Math.min(FY1-70,b.y));}
+  else{
+    const top=b.y<FY0,def=top?1:0;          // la portería de arriba es la del Jugador 2
+    if(lt===def){taker=1-def;kind='CÓRNER';bx=b.x<200?FX0+RB+3:FX1-RB-3;by=top?FY0+RB+3:FY1-RB-3;}
+    else{taker=def;kind='SAQUE DE PUERTA';bx=200;by=top?FY0+55:FY1-55;}
+  }
+  for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
+  b.x=bx;b.y=by;strike=null;foulBen=taker;phase='foul';msgT=90;
+  msg={t:kind,s:lt,foul:true,restart:true,reason:'',sub:'Saca el Jugador '+(taker+1)};
+  ui();tick(4,520);
 }
 function goal(s){
   score[s]++;for(const c of coins){c.vx=0;c.vy=0;}
@@ -366,7 +383,7 @@ function guestUpdate(){
 function hostUpdate(){
   if(phase==='goal'){if(!over&&--msgT<=0)reset(concede);return;}
   if(fx){fx.t++;if(fx.t>10)fx=null;}
-  if(phase==='foul'){if(--msgT<=0){msg=null;turn=foulBen;movesLeft=2;dbl=true;beginPlace();}return;}
+  if(phase==='foul'){if(--msgT<=0){const rs=msg&&msg.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;beginPlace();}return;}
   refreshAim();
   if(phase==='strike'){
     strike.t++;
@@ -380,13 +397,13 @@ function hostUpdate(){
   for(let n=0;n<SUB;n++)physics(1/SUB);
   if(oppFoul&&phase==='roll'){oppFoul=false;callFoul('su moneda tocó a la contraria antes que el balón');return;}
   const b=coins[2];
-  if(b.x>GX0&&b.x<GX1){if(b.y<FY0-4)goal(0);else if(b.y>FY1+4)goal(1);}
+  if(b.x>GX0&&b.x<GX1&&(b.y<FY0-4||b.y>FY1+4)){goal(b.y<FY0?0:1);return;}
+  if(phase==='roll'&&(b.x<FX0||b.x>FX1||b.y<FY0||b.y>FY1)){outPlay();return;}
   if(phase==='roll'){
     if(coins.some(c=>c.vx||c.vy))settle=0;
     else if(++settle>12){
       settle=0;
-      if(!touched)callFoul('su moneda no tocó el balón');
-      else if(--movesLeft>0)beginAim();
+      if(--movesLeft>0)beginAim();
       else{turn=1-turn;movesLeft=1;dbl=false;beginAim();}
     }
   }
@@ -504,7 +521,7 @@ function draw(ts){
   if(msg){
     ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,236,W,168);
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font='800 68px "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,296);
+    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(msg.t.length>9?'800 34px':'800 68px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,296);
     ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 26px':'800 34px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?msg.sub:score[0]+'  -  '+score[1],W/2,348);
     if(over){ctx.fillStyle='#546171';ctx.font='600 14px Karla,system-ui,sans-serif';ctx.fillText(net&&net.role==='guest'?'Tu rival puede empezar otra partida':'Toca el campo para jugar otra vez',W/2,383);}
   }
@@ -605,7 +622,7 @@ const TUT=[
    <circle cx="190" cy="24" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
  {t:'Si te equivocas',x:'Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».',
   a:`<div class="pills"><span>1<br>Dirección</span><span class="now">2<br>Contacto</span><span>3<br>Potencia</span></div><div class="pills-note">Toca uno para volver a ese paso</div>`},
- {t:'Faltas',x:'Es falta no tocar el balón con tu moneda en tu turno, o que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos.',
+ {t:'Faltas y saques',x:'Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó, colocando su moneda donde quiera.',
   a:tutSvg(`${stickSvg(50,34,140)}<circle cx="120" cy="76" r="13" fill="#C98354" stroke="#6E3B1B"/><text x="120" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="#4A2810" font-family="Karla,system-ui,sans-serif">5c</text>
    <circle cx="120" cy="76" r="21" fill="none" stroke="#D62839" stroke-width="3" stroke-dasharray="5 4"/>
    <text x="120" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#D62839" font-family="Karla,system-ui,sans-serif">FALTA</text>`)}
@@ -680,22 +697,67 @@ function netView(mode,text){
 }
 function stopNet(){
   const n=net;net=null;VIEW=1;
+  if(n&&n.rc)clearTimeout(n.rc);
+  try{if(wl)wl.release();}catch(e){}wl=null;
   try{if(n&&n.conn)n.conn.close();}catch(e){}
   try{if(peer)peer.destroy();}catch(e){}
   peer=null;labelChips();
 }
 function openNet(){
   $('net').hidden=false;
-  if(net)netView('conn','Estás jugando online con un amigo. Si te desconectas, la partida online termina.');
+  if(net)netView('conn','Estás jugando online con un amigo. Si sales un momento de la app, la conexión se recupera sola al volver.');
   else netView('choose','Juega contra un amigo, cada uno en su móvil. Uno crea la partida y el otro se une con el código.');
 }
 function closeNet(){if(!net&&peer)stopNet();$('net').hidden=true;}
+let wl=null;
+async function keepAwake(){try{if(navigator.wakeLock&&net&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;});}}catch(e){}}
+function showDown(){$('net').hidden=false;netView('conn',net&&net.role==='guest'?'Se ha perdido la conexión (quizá cambiaste de app o de pantalla). Reconectando…':'Tu rival se ha desconectado (quizá ha cambiado de app). Esperando a que vuelva… Su partida se recupera sola.');}
+function hideDown(){if(net)net.down=false;$('net').hidden=true;}
+function giveUp(t){stopNet();newGame();$('net').hidden=false;netView('choose',t);}
 function lost(){
   if(!net)return;
-  stopNet();newGame();
-  $('net').hidden=false;
-  netView('choose','Se ha perdido la conexión con tu rival. Puedes crear otra partida, unirte a otra o seguir jugando en local.');
+  if(net.role==='guest'){guestReconnect();return;}
+  if(net.down)return;
+  net.down=true;showDown();
 }
+function wireHost(conn){
+  conn.on('data',m=>{onHostData(m);});
+  conn.on('close',()=>{if(net&&net.conn===conn)lost();});
+  conn.on('error',()=>{if(net&&net.conn===conn)lost();});
+}
+function attachGuest(conn){
+  net.conn=conn;net.down=false;
+  conn.on('data',m=>{if(m&&m.t==='s')applyState(m);});
+  conn.on('close',()=>{if(net&&net.conn===conn)lost();});
+  conn.on('error',()=>{if(net&&net.conn===conn)lost();});
+}
+function guestReconnect(){
+  if(!net||net.role!=='guest'||net.rc)return;
+  net.down=true;showDown();
+  const t0=Date.now();
+  const attempt=()=>{
+    if(!net||net.role!=='guest')return;
+    if(Date.now()-t0>120000){giveUp('No se ha podido recuperar la conexión con tu rival. Puedes volver a unirte con el mismo código.');return;}
+    try{if(peer)peer.destroy();}catch(e){}
+    let done=false;
+    const retry=()=>{if(done||!net)return;done=true;net.rc=setTimeout(attempt,2000);};
+    const to=setTimeout(retry,7000);
+    peer=new Peer();
+    peer.on('open',()=>{
+      const conn=peer.connect('fmon-'+net.code,{reliable:true});
+      conn.on('open',()=>{if(done||!net)return;done=true;clearTimeout(to);net.rc=0;attachGuest(conn);hideDown();keepAwake();netSend({t:'hi'});});
+      conn.on('error',()=>{clearTimeout(to);retry();});
+    });
+    peer.on('error',()=>{clearTimeout(to);retry();});
+  };
+  net.rc=setTimeout(attempt,300);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!net)return;
+  keepAwake();
+  if(net.role==='host'){try{if(peer&&peer.disconnected)peer.reconnect();}catch(e){}return;}
+  if(net.conn&&net.conn.open&&!net.down)netSend({t:'hi'});else lost();
+});
 function createGame(){
   if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
   stopNet();
@@ -703,12 +765,16 @@ function createGame(){
   netView('create','Creando la partida…');$('ncode').textContent='·····';
   peer=new Peer('fmon-'+code);
   peer.on('open',()=>{$('ncode').textContent=code;$('nx').textContent='Dile este código a tu amigo y espera a que se una. Tú serás el Jugador 1 y él, el Jugador 2. Mantén esta pestaña abierta durante la partida.';});
+  peer.on('disconnected',()=>{try{peer.reconnect();}catch(e){}});
   peer.on('connection',conn=>{
-    if(net){conn.close();return;}
     conn.on('open',()=>{
+      if(net&&net.role==='host'){            // el invitado vuelve tras cambiar de app: se retoma la partida
+        const old=net.conn;net.conn=conn;try{if(old)old.close();}catch(e){}
+        wireHost(conn);hideDown();hostSync(true);return;
+      }
       if(net)return;
       net={role:'host',me:0,conn,pend:0};VIEW=1;
-      conn.on('data',onHostData);conn.on('close',lost);conn.on('error',lost);
+      wireHost(conn);keepAwake();
       $('net').hidden=true;labelChips();newGame();
     });
   });
@@ -731,9 +797,8 @@ function joinGame(raw){
     const conn=peer.connect('fmon-'+code,{reliable:true});
     conn.on('open',()=>{
       clearTimeout(timer);
-      net={role:'guest',me:1,conn,pend:0};VIEW=-1;
-      conn.on('data',m=>{if(m&&m.t==='s')applyState(m);});
-      conn.on('close',lost);conn.on('error',lost);
+      net={role:'guest',me:1,conn,pend:0,code};VIEW=-1;
+      attachGuest(conn);keepAwake();
       $('net').hidden=true;labelChips();newGame();netSend({t:'hi'});
     });
     conn.on('error',()=>fail('No se ha podido conectar. Revisa el código.'));
