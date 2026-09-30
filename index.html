@@ -703,13 +703,16 @@ function callFoul(reason){
 }
 function newGame(){if(net&&net.local){net.g.newGame();return;}score=[0,0];over=false;reset(0);}
 function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.p*55,f:s.f,e:s.e,spin:s.spin};ui();}
-function statusText(){
+const dn=i=>names[i]||(net&&net.me===i&&acct?acct.name:'')||(team[i]>=0?TEAMS[team[i]][1]:'Jugador '+(i+1));
+const fixN=t=>String(t).replace(/Jugador ([12])/g,(m,d)=>dn(d-1));
+function statusText(){return fixN(statusText0());}
+function statusText0(){
   if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':'Toca el campo para pedir la revancha.'):'Toca el campo para jugar otra vez.');
   if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
   if(phase==='foul'&&msg&&msg.restart)return msg.t.charAt(0)+msg.t.slice(1).toLowerCase()+': saca el Jugador '+(foulBen+1)+'.';
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
   if(phase==='place'){
-    if(net&&turn!==net.me)return 'Tu rival está colocando su moneda…';
+    if(net&&turn!==net.me)return dn(turn)+' está colocando su moneda…';
     const who=net?'':'Jugador '+(turn+1)+', ';
     if(pm.m==='side')return who+(net?'Elige':'elige')+' dónde colocar tu moneda, fuera de la banda (toca o arrastra y suelta). El balón está en la línea; después haces tu golpe.';
     if(pm.m==='line')return who+(net?'Coloca':'coloca')+' tu moneda sobre la línea de gol, dentro del área pequeña (arrastra y suelta). Después disparas el balón.';
@@ -719,7 +722,7 @@ function statusText(){
     return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón no se mueve. Después haces tu golpe.');
   }
   if(phase==='aim'){
-    if(net&&turn!==net.me)return 'Turno de tu rival. Espera a que golpee.';
+    if(net&&turn!==net.me)return 'Turno de '+dn(turn)+'. Espera a que golpee.';
     const j=(net?'Tu turno':'Jugador '+(turn+1))+(dbl?' (golpe '+(3-movesLeft)+' de 2)':'');
     if(step===1)return j+', paso 1 de 3. Toca o arrastra hacia donde quieres tirar y suelta para fijar la dirección.';
     if(step===2)return j+', paso 2 de 3. Arrastra a izquierda o derecha para elegir con qué parte de la traba golpeas y suelta. La moneda curva hacia ese lado.';
@@ -999,8 +1002,8 @@ function draw(ts){
   if(msg){
     ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,CY-120,W,240);
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(msg.t.length>9?'800 52px':'800 100px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,CY-42);
-    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px':'800 52px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?msg.sub:score[0]+'  -  '+score[1],W/2,CY+30);
+    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(fixN(msg.t).length>9?'800 52px':'800 100px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(fixN(msg.t),W/2,CY-42);
+    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px':'800 52px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?fixN(msg.sub):score[0]+'  -  '+score[1],W/2,CY+30);
     if(over){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net?(net.tn?'Partido de torneo terminado':'Toca el campo para pedir la revancha'):'Toca el campo para jugar otra vez',W/2,CY+88);}
   }
 }
@@ -1424,7 +1427,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='51';
+const VER='52';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
