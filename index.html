@@ -281,9 +281,22 @@ const TEAMS=[
 ];
 const TGROUPS=[[0,'LaLiga EA Sports'],[20,'LaLiga Hypermotion (Segunda)'],[42,'Mejores clubes de Europa']];
 let team=[-1,-1];
+const AWAY='S,#1D2A44,#EE2523|S,#1B2F6B,#CB3524|S,#0A1F44,#D91A21|S,#1E2A5A,#8AC3EE|S,#111111,#0761AF|S,#111111,#00A650|S,#F2C500,#A50044|S,#F2F2F2,#005999|S,#FFFFFF,#C8102E|S,#0B5FA5,#FFFFFF|S,#FFFFFF,#00A550|S,#111111,#E4002B|S,#FFFFFF,#0057B8|S,#111111,#0074C8|S,#111111,#0BB363|S,#1E2A5A,#FEBE10|S,#111111,#0067B1|S,#C8102E,#FFFFFF|S,#111111,#F29A00|S,#111111,#FFE667|S,#0A3D91,#FFFFFF|S,#111111,#FFFFFF|S,#D50000,#FFFFFF|S,#0033A0,#FFDD00|S,#FFFFFF,#111111|S,#FFFFFF,#0A3D91|S,#FFFFFF,#0A5DA8|S,#0A3D91,#FFFFFF|S,#FFFFFF,#0A5DA8|S,#1E2A5A,#B5DDF5|S,#FFFFFF,#0B8A3B|S,#F2C400,#0A3D91|S,#111111,#C8102E|S,#111111,#C8102E|S,#111111,#0067B1|S,#111111,#C8102E|S,#FFFFFF,#003DA5|S,#C8102E,#FFFFFF|S,#FFFFFF,#5B2C83|S,#FFFFFF,#0A3D91|S,#FFFFFF,#C8102E|S,#0A3D91,#FFDD00|S,#1C2C5B,#6CABDD|S,#F2C500,#1C2C5B|S,#FFFFFF,#C8102E|S,#FFFFFF,#034694|S,#FFFFFF,#DA291C|S,#132257,#FFFFFF|S,#0A3D91,#FFFFFF|S,#FFFFFF,#670E36|S,#FFFFFF,#0A3D91|S,#FFFFFF,#FB090B|S,#111111,#FFFFFF|S,#FFFFFF,#12A0D7|S,#FFFFFF,#1E71B8|S,#FFFFFF,#8E1F2F|S,#0A1F44,#DC052D|S,#111111,#FDE100|S,#111111,#E32221|S,#FFFFFF,#004170|S,#2FAEE0,#FFFFFF|S,#111111,#E30613|S,#FFFFFF,#00875A|S,#FFFFFF,#003D8C'.split('|').map(k=>k.split(','));   // segunda equipación de cada club (mismo orden que TEAMS)
+const rgb=h=>{const n=parseInt(h.slice(1),16);return[n>>16,(n>>8)&255,n&255];};
+const cdist=(a,b)=>{const x=rgb(a),y=rgb(b);return Math.hypot(x[0]-y[0],x[1]-y[1],x[2]-y[2]);};
+let kitMemo='',kitRes=[-1,-1];
+function kits(){                            // equipación de cada moneda: si los colores chocan, el visitante (Jugador 2) usa la segunda (id+1000)
+  const key=team[0]+','+team[1];if(key===kitMemo)return kitRes;
+  let k1=team[1];
+  if(team[0]>=0&&team[1]>=0){
+    const h=TEAMS[team[0]][3],m=TEAMS[team[1]][3],a=AWAY[team[1]][1];
+    if(team[0]===team[1]||cdist(h,m)<95){if(team[0]===team[1]||cdist(h,a)>cdist(h,m))k1=team[1]+1000;}
+  }
+  kitMemo=key;kitRes=[team[0],k1];return kitRes;
+}
 const lum=h=>{const n=parseInt(h.slice(1),16);return(.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255))/255;};
 function drawKit(g,x,y,rad,ti){          // pinta la equipación (colores del club) dentro de un círculo
-  const [,,pt,a,b]=TEAMS[ti];
+  const [,,pt,a,b]=ti>=1000?[0,0,...AWAY[ti-1000]]:TEAMS[ti];
   g.save();g.beginPath();g.arc(x,y,rad,0,Math.PI*2);g.clip();g.translate(x,y);
   g.fillStyle=a;g.fillRect(-rad,-rad,2*rad,2*rad);g.fillStyle=b;
   if(pt==='V'){const w=2*rad/5;for(let k=1;k<5;k+=2)g.fillRect(-rad+k*w,-rad,w,2*rad);}
@@ -599,7 +612,7 @@ function drawCoin(c){
   ctx.beginPath();ctx.ellipse(c.x+2,c.y+3,c.r,c.r*.96,0,0,Math.PI*2);ctx.fillStyle='rgba(20,30,45,.22)';ctx.fill();
   const r=c.r;
   if(c.t<2){
-    coinFace(ctx,c.x,c.y,r,team[c.t],PC[c.t],VIEW<0);
+    coinFace(ctx,c.x,c.y,r,kits()[c.t],PC[c.t],VIEW<0);
   }else{
     const g=ctx.createRadialGradient(c.x-r*.4,c.y-r*.4,r*.1,c.x,c.y,r);
     g.addColorStop(0,'#D9925A');g.addColorStop(1,'#96552A');
@@ -792,7 +805,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='18';
+const VER='19';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
@@ -832,7 +845,7 @@ function markTeams(){
   document.querySelectorAll('#tmtabs button').forEach(b=>b.classList.toggle('sel',+b.dataset.p===tmSel));
   $('tmtabs').hidden=!!net;
   $('tmt').textContent=net?'Tu equipo':'Equipos';
-  $('tmx').textContent=net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club.';
+  $('tmx').textContent=net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.';
 }
 function buildTeams(){
   if(tmBuilt)return;tmBuilt=true;
