@@ -1,5 +1,6 @@
 // Base de datos del juego (un único Hub): usuarios con PIN de 4 cifras, estadísticas, ranking y torneos.
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const BOTS = ['IA Lobo', 'IA Halcón', 'IA Tigre', 'IA Toro', 'IA Zorro', 'IA Águila', 'IA Oso', 'IA Pantera'];
 const LOCK_MS = 15 * 60 * 1000;
 const MAX_FAILS = 5;
 
@@ -42,7 +43,7 @@ export class Hub {
         id INTEGER PRIMARY KEY AUTOINCREMENT, p0 INTEGER, p1 INTEGER, s0 INTEGER, s1 INTEGER, ts INTEGER, tm INTEGER DEFAULT 0)`);
       this.sql.exec(`CREATE TABLE IF NOT EXISTS tournaments(
         id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE, name TEXT, owner INTEGER, state TEXT, size INTEGER DEFAULT 0,
-        created INTEGER, champion INTEGER DEFAULT 0)`);
+        created INTEGER, champion INTEGER DEFAULT 0, maxp INTEGER DEFAULT 8, bots INTEGER DEFAULT 0)`);
       this.sql.exec(`CREATE TABLE IF NOT EXISTS tmembers(tid INTEGER, pid INTEGER, joined INTEGER, PRIMARY KEY(tid,pid))`);
       this.sql.exec(`CREATE TABLE IF NOT EXISTS tmatches(
         id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER, rnd INTEGER, idx INTEGER, p0 INTEGER DEFAULT 0, p1 INTEGER DEFAULT 0,
@@ -157,7 +158,7 @@ export class Hub {
       if (s0 === s1) return { ok: 1 };
       this.setWinner(m, s0 > s1 ? 0 : 1, s0, s1);
     }
-    if (p0 && p1 && p0 !== p1 && s0 !== s1) this.stats(p0, p1, s0, s1, tm);
+    if (p0 > 0 && p1 > 0 && p0 !== p1 && s0 !== s1) this.stats(p0, p1, s0, s1, tm);
     return { ok: 1 };
   }
   stats(p0, p1, s0, s1, tm) {
@@ -173,13 +174,14 @@ export class Hub {
     if (!t) bad('No existe ese torneo.', 404);
     return t;
   }
-  pname(id) { if (!id) return ''; const r = this.one('SELECT name FROM players WHERE id=?', id); return r ? r.name : '?'; }
+  pname(id) { if (!id) return ''; if (id < 0) return BOTS[(-id - 1) % BOTS.length]; const r = this.one('SELECT name FROM players WHERE id=?', id); return r ? r.name : '?'; }
   tCreate(b) {
     const u = this.auth(b.sid);
     const name = cleanName(b.name).slice(0, 30) || ('Copa de ' + u.name);
     let code;
     do { code = rndCode(5); } while (this.one('SELECT id FROM tournaments WHERE code=?', code));
-    this.q('INSERT INTO tournaments(code,name,owner,state,created) VALUES(?,?,?,?,?)', code, name, u.id, 'open', Date.now());
+    const maxp = Number(b.size) === 4 ? 4 : 8;
+    this.q('INSERT INTO tournaments(code,name,owner,state,created,maxp,bots) VALUES(?,?,?,?,?,?,?)', code, name, u.id, 'open', Date.now(), maxp, b.bots ? 1 : 0);
     const t = this.tour(code);
     this.q('INSERT INTO tmembers(tid,pid,joined) VALUES(?,?,?)', t.id, u.id, Date.now());
     return this.tGet(code, b.sid);
@@ -189,7 +191,7 @@ export class Hub {
     if (t.state !== 'open') bad('Ese torneo ya ha empezado.');
     if (this.one('SELECT pid FROM tmembers WHERE tid=? AND pid=?', t.id, u.id)) return this.tGet(t.code, b.sid);
     const n = this.one('SELECT COUNT(*) AS n FROM tmembers WHERE tid=?', t.id).n;
-    if (n >= 64) bad('El torneo está completo (64 jugadores).');
+    if (n >= t.maxp) bad('El torneo está completo (' + t.maxp + ' jugadores).');
     this.q('INSERT INTO tmembers(tid,pid,joined) VALUES(?,?,?)', t.id, u.id, Date.now());
     return this.tGet(t.code, b.sid);
   }
@@ -205,9 +207,11 @@ export class Hub {
     if (t.owner !== u.id) bad('Solo el creador puede empezar el torneo.', 403);
     if (t.state !== 'open') bad('Ese torneo ya ha empezado.');
     const ids = this.q('SELECT pid FROM tmembers WHERE tid=?', t.id).map(r => r.pid);
-    if (ids.length < 2) bad('Hacen falta al menos 2 jugadores.');
+    if (ids.length < 2 && !t.bots) bad('Hacen falta al menos 2 jugadores (o activa las IA al crear el torneo).');
+    if (t.bots) { let k = 1; while (ids.length < t.maxp) ids.push(-(k++)); }       // los huecos se rellenan con IA
     for (let i = ids.length - 1; i > 0; i--) { const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     let size = 2; while (size < ids.length) size *= 2;
+    if (size > t.maxp) size = t.maxp;
     const order = seedOrder(size);                  // posición -> número de cabeza de serie
     const slot = order.map(seed => ids[seed - 1] || 0);
     const rounds = Math.log2(size);
@@ -224,6 +228,7 @@ export class Hub {
       this.q("UPDATE tmatches SET winner=?, state='done' WHERE id=?", w, m.id);
       this.advance(t, m.rnd, m.idx, w);
     }
+    this.autoBots(t);
     return this.tGet(t.code, b.sid);
   }
   advance(t, rnd, idx, winnerPid) {
@@ -239,6 +244,17 @@ export class Hub {
     const w = seat === 0 ? m.p0 : m.p1;
     this.q("UPDATE tmatches SET winner=?, s0=?, s1=?, state='done' WHERE id=?", w, s0, s1, m.id);
     this.advance(t, m.rnd, m.idx, w);
+    this.autoBots(t);
+  }
+  autoBots(t) {                                   // los partidos entre dos IA se resuelven solos
+    for (let n = 0; n < 20; n++) {
+      const m = this.one("SELECT * FROM tmatches WHERE tid=? AND state='ready' AND p0<0 AND p1<0 LIMIT 1", t.id);
+      if (!m) return;
+      const seat = crypto.getRandomValues(new Uint8Array(1))[0] & 1, lose = crypto.getRandomValues(new Uint8Array(1))[0] % 3;
+      const w = seat === 0 ? m.p0 : m.p1;
+      this.q("UPDATE tmatches SET winner=?, s0=?, s1=?, state='done' WHERE id=?", w, seat === 0 ? 3 : lose, seat === 1 ? 3 : lose, m.id);
+      this.advance(t, m.rnd, m.idx, w);
+    }
   }
   tGet(code, sid) {
     const t = this.tour(code);
@@ -256,7 +272,7 @@ export class Hub {
       if (me && r.state === 'ready' && (r.p0 === me || r.p1 === me)) mine = { id: r.id, opp: this.pname(r.p0 === me ? r.p1 : r.p0), rnd: r.rnd };
     }
     return {
-      code: t.code, name: t.name, state: t.state, size: t.size, owner: this.pname(t.owner), isOwner: t.owner === me,
+      code: t.code, name: t.name, state: t.state, size: t.size, maxp: t.maxp, bots: !!t.bots, owner: this.pname(t.owner), isOwner: t.owner === me,
       joined: !!members.find(x => x.id === me), count: members.length, members: members.map(x => x.name),
       champion: this.pname(t.champion), rounds, mine
     };
@@ -271,7 +287,7 @@ export class Hub {
       const stub = this.env.ROOM.get(this.env.ROOM.idFromName(room));
       await stub.fetch('https://room/init', {
         method: 'POST',
-        body: JSON.stringify({ matchId: m.id, seats: [{ pid: m.p0, name: this.pname(m.p0), tok: tok0 }, { pid: m.p1, name: this.pname(m.p1), tok: tok1 }] })
+        body: JSON.stringify({ matchId: m.id, seats: [{ pid: m.p0, name: this.pname(m.p0), tok: m.p0 < 0 ? 'bot' : tok0, bot: m.p0 < 0 }, { pid: m.p1, name: this.pname(m.p1), tok: m.p1 < 0 ? 'bot' : tok1, bot: m.p1 < 0 }] })
       });
       this.q('UPDATE tmatches SET room=?, tok0=?, tok1=? WHERE id=?', room, tok0, tok1, m.id);
     }

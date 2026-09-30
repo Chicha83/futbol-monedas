@@ -1,5 +1,5 @@
 // Sala de una partida: el servidor calcula toda la física; los móviles solo envían golpes y dibujan lo que reciben.
-import { createGame } from '../game.js';
+import { createGame, plan } from '../game.js';
 
 const STEP = 1000 / 60;
 const IDLE_MS = 20 * 60 * 1000;      // sin golpes ni colocaciones durante 20 min: se cierra la sala
@@ -9,7 +9,8 @@ export class Room {
     this.state = state;
     this.env = env;
     this.g = createGame();
-    this.seats = [0, 1].map(() => ({ tok: null, ws: null, pid: 0, name: '', team: -1 }));
+    this.seats = [0, 1].map(() => ({ tok: null, ws: null, pid: 0, name: '', team: -1, bot: false }));
+    this.thinking = false;
     this.matchId = 0;          // partido de torneo (0 = partida libre)
     this.reported = false;
     this.timer = null;
@@ -32,7 +33,7 @@ export class Room {
   async save() {
     try {
       await this.state.storage.put('room', {
-        seats: this.seats.map(s => ({ tok: s.tok, pid: s.pid, name: s.name, team: s.team })),
+        seats: this.seats.map(s => ({ tok: s.tok, pid: s.pid, name: s.name, team: s.team, bot: s.bot })),
         matchId: this.matchId,
         reported: this.reported,
         snap: this.g.snapshot(null)
@@ -46,7 +47,7 @@ export class Room {
     if (url.pathname === '/init') {                 // lo llama el torneo para reservar los dos asientos
       const b = await req.json();
       if (!this.seats[0].tok) {
-        b.seats.forEach((x, i) => { Object.assign(this.seats[i], { tok: x.tok, pid: x.pid, name: x.name }); });
+        b.seats.forEach((x, i) => { Object.assign(this.seats[i], { tok: x.tok, pid: x.pid, name: x.name, bot: !!x.bot, team: x.bot ? Math.floor(Math.random() * 64) : -1 }); });
         this.matchId = b.matchId || 0;
         await this.save();
       }
@@ -114,6 +115,7 @@ export class Room {
       }, 60000);
     }
     this.broadcast(true);
+    this.botCheck();
     return seat;
   }
 
@@ -126,11 +128,11 @@ export class Room {
         if (Number.isInteger(m.i) && m.i >= -1 && m.i < 64) { s.team = m.i; this.save(); this.broadcast(true); }
         return;
       case 'shot':
-        if (this.g.shot(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); }
+        if (this.g.shot(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); this.botCheck(); }
         else this.send(ws, this.snap());
         return;
       case 'place':
-        if (this.g.placeCoin(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); this.save(); }
+        if (this.g.placeCoin(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); this.save(); this.botCheck(); }
         else this.send(ws, this.snap());
         return;
       case 'new':
@@ -141,7 +143,7 @@ export class Room {
 
   snap() {
     const o = this.g.snapshot(this.seats.map(s => s.team));
-    o.up = this.seats.map(s => !!s.ws);
+    o.up = this.seats.map(s => !!s.ws || s.bot);
     o.nm = this.seats.map(s => s.name || '');
     o.tn = this.matchId ? 1 : 0;
     return o;
@@ -170,7 +172,24 @@ export class Room {
     const moving = this.g.moving;
     if (this.g.key !== key0 || (moving && this.syncN % 3 === 0) || this.syncN % 60 === 0) { this.syncN = 0; this.broadcast(); }
     if (this.g.over) this.finish();
-    if (this.g.idleWait || this.g.over) { this.stop(); this.broadcast(); this.save(); }
+    if (this.g.idleWait || this.g.over) { this.stop(); this.broadcast(); this.save(); this.botCheck(); }
+  }
+
+  botCheck() {                               // si le toca mover a un bot (partido de torneo contra la IA), piensa y juega
+    if (this.thinking || this.g.over || !this.g.idleWait) return;
+    const seat = this.g.turn, s = this.seats[seat];
+    if (!s || !s.bot || !this.seats.some(x => !x.bot && x.ws)) return;
+    this.thinking = true;
+    setTimeout(() => {
+      plan(this.g, seat, 2, a => {
+        this.thinking = false;
+        if (this.g.turn !== seat || !this.g.idleWait || this.g.over) return;
+        let ok = a.t === 'shot' ? this.g.shot(seat, a) : this.g.placeCoin(seat, a);
+        if (!ok && this.g.phase === 'place') { const i = this.g.placeInfo(); ok = this.g.placeCoin(seat, { x: i.init.x, y: i.init.y }); }
+        if (ok) { this.lastAct = Date.now(); this.run(); this.broadcast(true); if (a.t === 'place') this.save(); this.botCheck(); }
+        else setTimeout(() => this.botCheck(), 1000);
+      });
+    }, 900 + Math.random() * 900);
   }
 
   async finish() {
