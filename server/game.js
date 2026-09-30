@@ -29,6 +29,7 @@ function returnOut(){                       // una moneda de jugador que se ha q
     c.vx=c.vy=c.spin=0;tick(3,400);
   }
 }
+function gkLim(gy){return gy<CY?FY0+.75*(FY1-FY0):FY1-.75*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
 function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
   if(chain){const q=chain;chain=null;turn=q.t;movesLeft=q.mv;dbl=q.mv===2;pm={m:q.m,s:q.s,y:q.y};beginPlace();}
   else{pm={m:null};beginAim();}
@@ -38,6 +39,7 @@ function initPlace(c){
   const b=coins[2];
   if(pm.m==='side')return{x:pm.s<0?FX0-32:FX1+32,y:b.y};
   if(pm.m==='line')return{x:CX,y:pm.y};
+  if(pm.m==='gkdef')return{x:CX,y:gkLim(pm.y)};
   return{x:c.x,y:c.y};
 }
 function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();}
@@ -47,6 +49,7 @@ function placeOK(p,c,mode){
   if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
+  else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
   else ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r);
   if(!ok)return false;
   for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
@@ -125,7 +128,7 @@ function hostUpdate(){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
     if(rs&&m0.k==='b'){chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
     else if(rs&&m0.k==='c'){chain={t:foulBen,m:'any',mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
-    else if(rs&&m0.k==='g'){chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
+    else if(rs&&m0.k==='g'){pm={m:'gkdef',y:m0.gy};chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
   }return;}
   refreshAim();

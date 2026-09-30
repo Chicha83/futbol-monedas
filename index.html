@@ -538,6 +538,7 @@ function returnOut(){                       // una moneda de jugador que se ha q
     c.vx=c.vy=c.spin=0;tick(3,400);
   }
 }
+function gkLim(gy){return gy<CY?FY0+.75*(FY1-FY0):FY1-.75*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
 function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
   if(chain){const q=chain;chain=null;turn=q.t;movesLeft=q.mv;dbl=q.mv===2;pm={m:q.m,s:q.s,y:q.y};beginPlace();}
   else{pm={m:null};beginAim();}
@@ -547,6 +548,7 @@ function initPlace(c){
   const b=coins[2];
   if(pm.m==='side')return{x:pm.s<0?FX0-32:FX1+32,y:b.y};
   if(pm.m==='line')return{x:CX,y:pm.y};
+  if(pm.m==='gkdef')return{x:CX,y:gkLim(pm.y)};
   return{x:c.x,y:c.y};
 }
 function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();}
@@ -556,6 +558,7 @@ function placeOK(p,c,mode){
   if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
+  else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
   else ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r);
   if(!ok)return false;
   for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
@@ -578,6 +581,7 @@ function statusText(){
     const who=net?'':'Jugador '+(turn+1)+', ';
     if(pm.m==='side')return who+(net?'Elige':'elige')+' dónde colocar tu moneda, fuera de la banda (toca o arrastra y suelta). El balón está en la línea; después haces tu golpe.';
     if(pm.m==='line')return who+(net?'Coloca':'coloca')+' tu moneda sobre la línea de gol, dentro del área pequeña (arrastra y suelta). Después disparas el balón.';
+    if(pm.m==='gkdef')return who+(net?'Coloca':'coloca')+' tu moneda donde quieras, pero sin pasar de las tres cuartas partes del campo (la línea marcada). Después saca tu rival.';
     if(pm.m==='any')return who+(net?'Coloca':'coloca')+' tu moneda donde quieras, incluso fuera del campo. Después juegas dos golpes: sacar y rematar.';
     if(chain)return who+(net?'Coloca':'coloca')+' tu moneda donde quieras dentro del campo; después saca tu rival.';
     return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón no se mueve. Después haces tu golpe.');
@@ -697,7 +701,7 @@ function hostUpdate(){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
     if(rs&&m0.k==='b'){chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
     else if(rs&&m0.k==='c'){chain={t:foulBen,m:'any',mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
-    else if(rs&&m0.k==='g'){chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
+    else if(rs&&m0.k==='g'){pm={m:'gkdef',y:m0.gy};chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
   }return;}
   refreshAim();
@@ -807,6 +811,7 @@ function draw(ts){
     }
   }
   for(const c of coins){if(phase==='place'&&c===coins[turn])continue;drawCoin(c);}
+  if(phase==='place'&&pm.m==='gkdef'){const ly=gkLim(pm.y);ctx.save();ctx.strokeStyle=PC[turn];ctx.globalAlpha=.6;ctx.lineWidth=3;ctx.setLineDash([14,10]);ctx.beginPath();ctx.moveTo(FX0,ly);ctx.lineTo(FX1,ly);ctx.stroke();ctx.restore();}
   if(phase==='place'){
     const c=coins[turn],ok=placeOK(place,c);
     ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:place.x,y:place.y});ctx.restore();
@@ -986,6 +991,7 @@ function returnOut(){                       // una moneda de jugador que se ha q
     c.vx=c.vy=c.spin=0;tick(3,400);
   }
 }
+function gkLim(gy){return gy<CY?FY0+.75*(FY1-FY0):FY1-.75*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
 function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
   if(chain){const q=chain;chain=null;turn=q.t;movesLeft=q.mv;dbl=q.mv===2;pm={m:q.m,s:q.s,y:q.y};beginPlace();}
   else{pm={m:null};beginAim();}
@@ -995,6 +1001,7 @@ function initPlace(c){
   const b=coins[2];
   if(pm.m==='side')return{x:pm.s<0?FX0-32:FX1+32,y:b.y};
   if(pm.m==='line')return{x:CX,y:pm.y};
+  if(pm.m==='gkdef')return{x:CX,y:gkLim(pm.y)};
   return{x:c.x,y:c.y};
 }
 function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();}
@@ -1004,6 +1011,7 @@ function placeOK(p,c,mode){
   if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
+  else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
   else ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r);
   if(!ok)return false;
   for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
@@ -1082,7 +1090,7 @@ function hostUpdate(){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
     if(rs&&m0.k==='b'){chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
     else if(rs&&m0.k==='c'){chain={t:foulBen,m:'any',mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
-    else if(rs&&m0.k==='g'){chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
+    else if(rs&&m0.k==='g'){pm={m:'gkdef',y:m0.gy};chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
   }return;}
   refreshAim();
@@ -1248,7 +1256,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='27';
+const VER='28';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
