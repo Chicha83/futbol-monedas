@@ -225,6 +225,11 @@ const LEVELS={
   2:{off:[-48,-40,-32,-24,-16,-8,0,8,16,24,32,40,48],pw:[.55,.8,1],ef:[0,-.45,.45],noise:3.5,top:3},
   3:{off:[-50,-42,-35,-28,-21,-14,-7,0,7,14,21,28,35,42,50],pw:[.5,.7,.85,1],ef:[0,-.5,-.25,.25,.5],noise:1.2,top:2}
 };
+function levelParams(level){                      // nivel 1-3; los decimales mezclan dos niveles (así la IA de un torneo depende de lo bueno que sea su equipo)
+  const lv=Math.max(1,Math.min(3,+level||2)),B=LEVELS[Math.round(lv)];
+  const f=(a,b,c)=>lv<=2?a+(b-a)*(lv-1):b+(c-b)*(lv-2);
+  return {off:B.off,pw:B.pw,ef:B.ef,noise:f(9,3.5,1.2),top:Math.max(2,Math.round(f(5,3,2))),lv};
+}
 let SIM=null;
 const fE=e=>.5+e*.38;
 function score_(o,seat,gy){                        // gy: y de la portería que ataca; valor alto = mejor resultado para 'seat'
@@ -249,14 +254,14 @@ function score_(o,seat,gy){                        // gy: y de la portería que 
   return v;
 }
 export function plan(main,seat,level,done){
-  const L=LEVELS[level]||LEVELS[2];
+  const L=levelParams(level);
   if(main.phase==='place'){done(planPlace(main.placeInfo(),seat));return;}
   const snap=main.snapshot(null),b=snap.c[2],c=snap.c[seat];
   const gy=seat===0?FY0:FY1;
   const a0=Math.atan2(b[1]-c[1],b[0]-c[0]);
   const cands=[];
   for(const off of L.off)for(const p of L.pw)for(const e of L.ef)cands.push({a:a0+off*Math.PI/180,p,e});
-  if(level>=2)for(let k=0;k<8;k++)cands.push({a:k*Math.PI/4,p:.45,e:0});      // golpes sin contacto (colocarse)
+  if(L.lv>=1.5)for(let k=0;k<8;k++)cands.push({a:k*Math.PI/4,p:.45,e:0});      // golpes sin contacto (colocarse)
   if(!SIM)SIM=createGame();
   const res=[];let i=0;
   const slice=()=>{

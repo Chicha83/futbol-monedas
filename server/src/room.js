@@ -37,7 +37,7 @@ export class Room {
   async save() {
     try {
       await this.state.storage.put('room', {
-        seats: this.seats.map(s => ({ tok: s.tok, pid: s.pid, name: s.name, team: s.team, bot: s.bot })),
+        seats: this.seats.map(s => ({ tok: s.tok, pid: s.pid, name: s.name, team: s.team, bot: s.bot, lv: s.lv })),
         matchId: this.matchId,
         reported: this.reported,
         left: this.left,
@@ -53,7 +53,7 @@ export class Room {
     if (url.pathname === '/init') {                 // lo llama el torneo para reservar los dos asientos
       const b = await req.json();
       if (!this.seats[0].tok) {
-        b.seats.forEach((x, i) => { Object.assign(this.seats[i], { tok: x.tok, pid: x.pid, name: x.name, bot: !!x.bot, team: x.bot ? Math.floor(Math.random() * 64) : -1 }); });
+        b.seats.forEach((x, i) => { Object.assign(this.seats[i], { tok: x.tok, pid: x.pid, name: x.name, bot: !!x.bot, team: x.bot ? (Number.isInteger(x.team) && x.team >= 0 ? x.team : Math.floor(Math.random() * 64)) : -1, lv: x.lv || 2 }); });
         this.matchId = b.matchId || 0;
         await this.save();
       }
@@ -262,7 +262,7 @@ export class Room {
     if (!s || !s.bot || !this.seats.some(x => !x.bot && x.ws)) return;
     this.thinking = true;
     setTimeout(() => {
-      plan(this.g, seat, 2, a => {
+      plan(this.g, seat, s.lv || 2, a => {
         this.thinking = false;
         if (this.g.turn !== seat || !this.g.idleWait || this.g.over) return;
         let ok = a.t === 'shot' ? this.g.shot(seat, a) : this.g.placeCoin(seat, a);

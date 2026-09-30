@@ -1,6 +1,7 @@
 import { newVapid, sendPush, endpointOk } from './push.js';
 // Base de datos del juego (un único Hub): usuarios con PIN de 4 cifras, estadísticas, ranking y torneos.
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+import { botTeam, botSkill, eloOf, winProb } from './elo.js';
 const BOTS = ['IA Lobo', 'IA Halcón', 'IA Tigre', 'IA Toro', 'IA Zorro', 'IA Águila', 'IA Oso', 'IA Pantera'];
 const LOCK_MS = 15 * 60 * 1000;
 const MAX_FAILS = 5;
@@ -49,6 +50,7 @@ export class Hub {
       this.sql.exec(`CREATE TABLE IF NOT EXISTS tmatches(
         id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER, rnd INTEGER, idx INTEGER, p0 INTEGER DEFAULT 0, p1 INTEGER DEFAULT 0,
         winner INTEGER DEFAULT 0, s0 INTEGER DEFAULT 0, s1 INTEGER DEFAULT 0, state TEXT, room TEXT, tok0 TEXT, tok1 TEXT)`);
+      try { this.sql.exec('ALTER TABLE tournaments ADD COLUMN blevel INTEGER DEFAULT 2'); } catch (e) { /* ya existe */ }   // nivel de la IA del torneo: 1 baja, 2 media, 3 alta
       for (const c of ['t0', 't1']) { try { this.sql.exec('ALTER TABLE tmatches ADD COLUMN ' + c + ' INTEGER DEFAULT -1'); } catch (e) { /* ya existe */ } }   // equipo de cada jugador en el partido
       this.sql.exec('CREATE INDEX IF NOT EXISTS tm_tid ON tmatches(tid)');
       this.sql.exec(`CREATE TABLE IF NOT EXISTS push(endpoint TEXT PRIMARY KEY, pid INTEGER, p256dh TEXT, auth TEXT,
@@ -238,6 +240,7 @@ export class Hub {
     if (!t) bad('No existe ese torneo.', 404);
     return t;
   }
+  botTm(t, pid) { return botTeam(t.blevel || 2, t.id, -pid); }     // equipo de una IA del torneo
   pname(id) { if (!id) return ''; if (id < 0) return BOTS[(-id - 1) % BOTS.length]; const r = this.one('SELECT name FROM players WHERE id=?', id); return r ? r.name : '?'; }
   tCreate(b) {
     const u = this.auth(b.sid);
@@ -245,7 +248,8 @@ export class Hub {
     let code;
     do { code = rndCode(5); } while (this.one('SELECT id FROM tournaments WHERE code=?', code));
     const maxp = Number(b.size) === 4 ? 4 : 8;
-    this.q('INSERT INTO tournaments(code,name,owner,state,created,maxp,bots) VALUES(?,?,?,?,?,?,?)', code, name, u.id, 'open', Date.now(), maxp, b.bots ? 1 : 0);
+    const lv = [1, 2, 3].includes(Number(b.ai)) ? Number(b.ai) : 2;
+    this.q('INSERT INTO tournaments(code,name,owner,state,created,maxp,bots,blevel) VALUES(?,?,?,?,?,?,?,?)', code, name, u.id, 'open', Date.now(), maxp, b.bots ? 1 : 0, lv);
     const t = this.tour(code);
     this.q('INSERT INTO tmembers(tid,pid,joined) VALUES(?,?,?)', t.id, u.id, Date.now());
     return this.tGet(code, b.sid);
@@ -315,9 +319,10 @@ export class Hub {
     for (let n = 0; n < 20; n++) {
       const m = this.one("SELECT * FROM tmatches WHERE tid=? AND state='ready' AND p0<0 AND p1<0 LIMIT 1", t.id);
       if (!m) return;
-      const seat = crypto.getRandomValues(new Uint8Array(1))[0] & 1, lose = crypto.getRandomValues(new Uint8Array(1))[0] % 3;
+      const tm0 = this.botTm(t, m.p0), tm1 = this.botTm(t, m.p1);      // gana más a menudo el equipo mejor (según su Elo)
+      const seat = Math.random() < winProb(eloOf(tm0), eloOf(tm1)) ? 0 : 1, lose = crypto.getRandomValues(new Uint8Array(1))[0] % 3;
       const w = seat === 0 ? m.p0 : m.p1;
-      this.q("UPDATE tmatches SET winner=?, s0=?, s1=?, state='done', t0=?, t1=? WHERE id=?", w, seat === 0 ? 3 : lose, seat === 1 ? 3 : lose, crypto.getRandomValues(new Uint8Array(1))[0] % 64, crypto.getRandomValues(new Uint8Array(1))[0] % 64, m.id);
+      this.q("UPDATE tmatches SET winner=?, s0=?, s1=?, state='done', t0=?, t1=? WHERE id=?", w, seat === 0 ? 3 : lose, seat === 1 ? 3 : lose, tm0, tm1, m.id);
       this.advance(t, m.rnd, m.idx, w);
     }
   }
@@ -331,13 +336,13 @@ export class Hub {
     let mine = null;
     for (const r of rows) {
       (rounds[r.rnd - 1] = rounds[r.rnd - 1] || []).push({
-        id: r.id, p0: this.pname(r.p0), p1: this.pname(r.p1), s0: r.s0, s1: r.s1, state: r.state, t0: r.t0 === undefined ? -1 : r.t0, t1: r.t1 === undefined ? -1 : r.t1,
+        id: r.id, p0: this.pname(r.p0), p1: this.pname(r.p1), s0: r.s0, s1: r.s1, state: r.state, t0: r.t0 >= 0 ? r.t0 : (r.p0 < 0 ? this.botTm(t, r.p0) : -1), t1: r.t1 >= 0 ? r.t1 : (r.p1 < 0 ? this.botTm(t, r.p1) : -1),
         w: r.winner ? (r.winner === r.p0 ? 0 : 1) : -1
       });
       if (me && r.state === 'ready' && (r.p0 === me || r.p1 === me)) mine = { id: r.id, opp: this.pname(r.p0 === me ? r.p1 : r.p0), rnd: r.rnd };
     }
     return {
-      code: t.code, name: t.name, state: t.state, size: t.size, maxp: t.maxp, bots: !!t.bots, owner: this.pname(t.owner), isOwner: t.owner === me,
+      code: t.code, name: t.name, state: t.state, size: t.size, maxp: t.maxp, bots: !!t.bots, ai: t.blevel || 2, owner: this.pname(t.owner), isOwner: t.owner === me,
       joined: !!members.find(x => x.id === me), count: members.length, members: members.map(x => x.name),
       champion: this.pname(t.champion), rounds, mine
     };
@@ -352,7 +357,7 @@ export class Hub {
       const stub = this.env.ROOM.get(this.env.ROOM.idFromName(room));
       await stub.fetch('https://room/init', {
         method: 'POST',
-        body: JSON.stringify({ matchId: m.id, seats: [{ pid: m.p0, name: this.pname(m.p0), tok: m.p0 < 0 ? 'bot' : tok0, bot: m.p0 < 0 }, { pid: m.p1, name: this.pname(m.p1), tok: m.p1 < 0 ? 'bot' : tok1, bot: m.p1 < 0 }] })
+        body: JSON.stringify({ matchId: m.id, seats: [m.p0, m.p1].map((pid, i) => { const tm = pid < 0 ? this.botTm(t, pid) : -1; return { pid, name: this.pname(pid), tok: pid < 0 ? 'bot' : (i === 0 ? tok0 : tok1), bot: pid < 0, team: tm, lv: pid < 0 ? botSkill(eloOf(tm)) : 0 }; }) })
       });
       this.q('UPDATE tmatches SET room=?, tok0=?, tok1=? WHERE id=?', room, tok0, tok1, m.id);
     }
