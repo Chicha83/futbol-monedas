@@ -1424,7 +1424,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='46';
+const VER='47';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -2008,7 +2008,8 @@ team=loadTeams();labelChips();
 newGame();
 requestAnimationFrame(frame);
 {const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
-if(!restoreSession()&&!restoreAI()){if(locRestore()){locOn=true;$('wel').hidden=true;}else wBoot();}
+if(!restoreSession()&&!restoreAI()){if(locRestore())locOn=true;}
+wBoot();   // siempre se entra por la pantalla principal; si hay un partido guardado, aparece «Volver al partido»
 /* ---------- botón Atrás: de la partida sale a la pantalla principal; desde ahí hacen falta dos pulsaciones para salir ---------- */
 function matchOn(){return !!net||locOn;}
 function toastMsg(t){let d=$('bktoast');if(!d){d=document.createElement('div');d.id='bktoast';d.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;background:rgba(10,19,34,.95);color:#fff;border:1px solid #4da3ff;border-radius:12px;padding:10px 16px;font:600 14px system-ui;max-width:86vw;text-align:center';document.body.appendChild(d);}d.textContent=t;d.hidden=false;clearTimeout(d.tm);d.tm=setTimeout(()=>{d.hidden=true;},2500);}
