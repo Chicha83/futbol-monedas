@@ -340,7 +340,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     <div class="net-row" id="nconn" hidden>
       <button type="button" id="ndisc">Salir de la partida</button>
     </div>
-    <div class="tut-btns"><button type="button" id="nclose">Cerrar</button></div>
+    <div class="tut-btns"><button type="button" id="nback" hidden>Atrás</button><button type="button" id="nclose">Cerrar</button></div>
   </div>
 </div>
 
@@ -1424,7 +1424,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='48';
+const VER='49';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1614,7 +1614,14 @@ $('cinput').addEventListener('keydown',e=>{if(e.key==='Enter')chatSend($('cinput
 for(const q of QUICK){const b=el('button','',q);b.type='button';b.addEventListener('click',()=>chatSend(q));$('cquick').appendChild(b);}
 function netView(mode,text){
   $('nx').textContent=text;
+  $('nback').hidden=mode==='choose'||mode==='conn';
   $('nchoose').hidden=mode!=='choose';$('nai').hidden=mode!=='ai';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
+}
+function netBack(){
+  const txt='Juega contra la IA, o contra un amigo desde otro móvil.';
+  if(!$('nai').hidden||!$('njoinform').hidden){netView('choose',txt);return true;}
+  if(!$('ncode').hidden){if(net&&!net.started)stopNet();netView('choose',txt);return true;}
+  return false;
 }
 function stopNet(){
   const n=net;net=null;VIEW=1;names=['',''];clearSession();team=loadTeams();
@@ -1682,7 +1689,7 @@ function openNet(){
   if(net)netView('conn',net.local?'Estás jugando contra la IA ('+AILEV[net.level-1]+').':net.started?'Estás jugando online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
   else netView('choose',(acct?'Hola, '+acct.name+'. ':'')+'Juega contra la IA, o contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.');
 }
-function closeNet(){if(net&&!net.started)stopNet();$('net').hidden=true;}
+function closeNet(){if(net&&!net.started)stopNet();$('net').hidden=true;if(!net&&!locOn&&$('wel').hidden)showWelcome();}
 function createGame(){
   const code=newCode();
   netView('create','Creando la sala…');$('ncode').textContent='·····';
@@ -1707,6 +1714,7 @@ $('ngo').addEventListener('click',()=>joinGame($('ninput').value));
 $('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput').value);});
 $('ndisc').addEventListener('click',()=>{stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
 $('nclose').addEventListener('click',closeNet);
+$('nback').addEventListener('click',netBack);
 $('nvsai').addEventListener('click',()=>netView('ai','Elige la dificultad de la IA.'));
 for(const k of [1,2,3])$('nai'+k).addEventListener('click',()=>startAI(k));
 $('nai0').addEventListener('click',()=>netView('choose','Juega contra la IA, o contra un amigo desde otro móvil.'));
@@ -2017,7 +2025,13 @@ try{history.replaceState({r:1},'');history.pushState({g:1},'');}catch(e){}
 addEventListener('popstate',()=>{
   const rep=()=>{try{history.pushState({g:1},'');}catch(e){}};
   const open=[...document.querySelectorAll('.tut:not([hidden])')].pop();
-  if(open){if(open.id==='net')closeNet();else if(open.id==='teams')closeTeams();else open.hidden=true;rep();return;}
+  if(open){
+    if(open.id==='net'){if(!netBack())closeNet();}
+    else if(open.id==='teams')closeTeams();
+    else if(open.id==='tour'&&!$('tview').hidden&&$('tback')){$('tback').click();}
+    else open.hidden=true;
+    rep();return;}
+  if(!$('wel').hidden&&!$('wlogin').hidden&&wMode==='new'){wSetMode('login');rep();return;}
   if($('wel').hidden){showWelcome();rep();if(matchOn())toastMsg('El partido sigue en curso. Vuelve con «Volver al partido».');return;}
   if(Date.now()-exitArm<2500){history.back();return;}
   exitArm=Date.now();toastMsg('Pulsa otra vez atrás para salir del juego');rep();
