@@ -35,7 +35,18 @@ function returnOut(){                       // una moneda de jugador que se ha q
   }
 }
 const RETGAP=4*R;   // al volver al campo, la moneda queda al menos a una moneda de hueco de la rival
-const BDIST=3*2*R;   // 3 monedas de distancia (entre bordes) en saques de banda y córners
+const BDIST=6*2*R;   // 6 monedas de distancia (entre bordes) en saques de banda y córners
+const AREAX0=GX0-60,AREAX1=GX1+60,AREAD=150;   // área grande prohibida al defensor en los córners
+function segD(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/l));return Math.hypot(px-ax-t*dx,py-ay-t*dy);}
+function cornerBan(p,c,b,gy){                      // córner: prohibido el área y el pasillo de tiro balón-portería
+  const inArea=p.x>=AREAX0-c.r&&p.x<=AREAX1+c.r&&(gy<CY?p.y<=gy+AREAD+c.r:p.y>=gy-AREAD-c.r);
+  if(inArea)return true;
+  const m=c.r+RB+6,ax=b.x,ay=b.y,bx=GX0,by=gy,cx=GX1,cy=gy;
+  const s=(x1,y1,x2,y2,x3,y3)=>(x1-x3)*(y2-y3)-(x2-x3)*(y1-y3);
+  const d1=s(p.x,p.y,ax,ay,bx,by),d2=s(p.x,p.y,bx,by,cx,cy),d3=s(p.x,p.y,cx,cy,ax,ay);
+  const inTri=!((d1<0||d2<0||d3<0)&&(d1>0||d2>0||d3>0));
+  return inTri||segD(p.x,p.y,ax,ay,bx,by)<m||segD(p.x,p.y,ax,ay,cx,cy)<m||segD(p.x,p.y,bx,by,cx,cy)<m;
+}
 function gkLim(gy){return gy<CY?FY0+.25*(FY1-FY0):FY1-.25*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
 function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
   if(chain){const q=chain;chain=null;turn=q.t;movesLeft=q.mv;dbl=q.mv===2;pm={m:q.m,s:q.s,y:q.y};beginPlace();}
@@ -59,7 +70,7 @@ function placeOK(p,c,mode){
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
   else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y>=gkLim(pm.y):p.y<=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
-  else if(m==='bdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&Math.hypot(p.x-coins[2].x,p.y-coins[2].y)>=BDIST+c.r+RB;   // saque de banda: el que defiende, a 3 monedas del balón
+  else if(m==='bdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&Math.hypot(p.x-coins[2].x,p.y-coins[2].y)>=BDIST+c.r+RB&&!(pm.k==='c'&&cornerBan(p,c,coins[2],pm.y));   // saque de banda/córner: el que defiende, a 6 monedas del balón (y en córner fuera del área y del pasillo de tiro)
   else ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r);
   if(!ok)return false;
   for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
@@ -136,8 +147,8 @@ function hostUpdate(){
   if(fx){fx.t++;if(fx.t>10)fx=null;}
   if(phase==='foul'){if(--msgT<=0){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
-    if(rs&&m0.k==='b'){pm={m:'bdef'};chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
-    else if(rs&&m0.k==='c'){pm={m:'bdef'};chain={t:foulBen,m:'any',s:m0.side,y:m0.gy,mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
+    if(rs&&m0.k==='b'){pm={m:'bdef',k:'b'};chain={t:foulBen,m:'side',s:m0.side,mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
+    else if(rs&&m0.k==='c'){pm={m:'bdef',k:'c',y:m0.gy};chain={t:foulBen,m:'any',s:m0.side,y:m0.gy,mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
     else if(rs&&m0.k==='g'){pm={m:'gkdef',y:m0.gy};chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
   }return;}
@@ -200,7 +211,7 @@ function probe(seat,m){                     // simula un golpe entero y devuelve
     foul:phase==='foul'&&msg&&msg.foul&&!msg.restart,restart:phase==='foul'&&msg&&msg.restart?msg.k:'',taker:foulBen};
 }
 function placeInfo(){
-  return {mode:pm.m,pm:{m:pm.m,s:pm.s,y:pm.y},defender:!!chain,turn,ok:(x,y)=>placeOK({x,y},coins[turn]),init:initPlace(coins[turn]),snap:snapPlace,
+  return {mode:pm.m,pm:{m:pm.m,s:pm.s,y:pm.y,k:pm.k},defender:!!chain,turn,ok:(x,y)=>placeOK({x,y},coins[turn]),init:initPlace(coins[turn]),snap:snapPlace,
     ball:{x:coins[2].x,y:coins[2].y},me:{x:coins[turn].x,y:coins[turn].y}};
 }
 function restore(s){
@@ -307,6 +318,9 @@ function planPlace(info,seat){
   }
   }
   for(const [x,y] of cand)if(info.ok(x,y))return place(x,y);
+  if(info.defender){let best=null,bd=1e9;const tx=b.x+(CX-b.x)*.0,ty=b.y+(ownY-b.y)*.55;   // defensa con zona prohibida: el punto legal más cercano a la línea balón-mi portería
+    for(let x=FX0+R;x<=FX1-R;x+=15)for(let y=FY0+R;y<=FY1-R;y+=15)if(info.ok(x,y)){const d=Math.hypot(x-CX,y-ty)+Math.hypot(x-b.x,y-b.y)*.3;if(d<bd){bd=d;best=[x,y];}}
+    if(best)return place(best[0],best[1]);}
   for(const dist of [48,60,80,110,150,210,250,300])for(let k=0;k<24;k++){const a=k*Math.PI/12,x=b.x+Math.cos(a)*dist,y=b.y+Math.sin(a)*dist;if(info.ok(x,y))return place(x,y);}
   return fallback;
 }
