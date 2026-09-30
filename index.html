@@ -1083,7 +1083,7 @@ function goStep(n){
   step=n;drag=null;ui();
 }
 for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
-$('menubtn').addEventListener('click',()=>{menuSync();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt)r.textContent='Conexión con el rival: '+net.rtt+' ms';}}$('menu').hidden=false;});
+$('menubtn').addEventListener('click',()=>{menuSync();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt){const a=(net.rs||[net.rtt]).slice().sort((x,y)=>x-y);r.textContent='Conexión: '+a[Math.floor(a.length/2)]+' ms (máx. '+a[a.length-1]+') · Fluidez: '+fpsNow+' fps';}}}$('menu').hidden=false;});
 $('menuclose').addEventListener('click',()=>{$('menu').hidden=true;});
 $('menu').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.id!=='snd'&&b.id!=='menuclose')$('menu').hidden=true;});
 $('back').addEventListener('click',()=>{
@@ -1101,7 +1101,7 @@ $('snd').addEventListener('click',()=>{
 
 /* ---------- bucle ---------- */
 let last=0,acc=0;
-let aimK='',aimT=0;
+let aimK='',aimT=0,fpsN=0,fpsT=0,fpsNow=0;
 function aimSync(){   // manda al rival, en directo, lo que estoy apuntando o dónde arrastro la moneda (unas 12 veces por segundo como mucho)
   const n=net;if(!n||n.local||!n.ws||n.ws.readyState!==1||over||!mine()||isPending())return;
   const now=performance.now();if(now-aimT<80)return;
@@ -1116,6 +1116,7 @@ function frame(ts){
   if(!last)last=ts;
   acc+=Math.min(50,ts-last);last=ts;
   while(acc>=16.667){update();acc-=16.667;}
+  fpsN++;if(ts-fpsT>1000){fpsNow=Math.round(fpsN*1000/(ts-fpsT));fpsN=0;fpsT=ts;}
   aimSync();crowdUpdate();draw(ts);requestAnimationFrame(frame);
 }
 
@@ -1468,7 +1469,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='63';
+const VER='64';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1695,7 +1696,7 @@ function openSocket(){
       if(!n.started){netView('create','Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.');$('ncode').textContent=n.code;}
     }else if(m.t==='s')applyState(m);
     else if(m.t==='aim'){rem={...m,t:Date.now()};}
-    else if(m.t==='q'){if(n.pt)n.rtt=Math.round(performance.now()-n.pt);}
+    else if(m.t==='q'){if(n.pt){const v=Math.round(performance.now()-n.pt);n.pt=0;n.rtt=v;(n.rs=n.rs||[]).push(v);if(n.rs.length>12)n.rs.shift();}}
     else if(m.t==='chat')chatRecv(m);
     else if(m.t==='err')fail(m.e||'No se ha podido entrar en la sala.');
   };
@@ -1728,9 +1729,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)onResume()
 addEventListener('pageshow',onResume);addEventListener('focus',onResume);addEventListener('online',onResume);
 setInterval(()=>{                          // vigilante: si el servidor deja de contestar, se reconecta
   const n=net;if(!n||n.closed||n.local||document.hidden)return;
-  if(n.ws&&n.ws.readyState===1){if(Date.now()-n.lastRx>20000)reopen();else{n.pt=performance.now();netSend({t:'p'});}}
+  if(n.ws&&n.ws.readyState===1){if(Date.now()-n.lastRx>20000)reopen();else if(!n.pt||performance.now()-n.pt>6000){n.pt=performance.now();netSend({t:'p'});}}
   else if(!n.rc)reopen();
-},8000);
+},3000);
 function openNet(){
   $('net').hidden=false;
   if(net)netView('conn',net.local?'Estás jugando contra la IA ('+AILEV[net.level-1]+').':net.started?'Estás jugando online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
