@@ -127,6 +127,7 @@ input:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 #tmx{min-height:0}
 .tgh{grid-column:1/-1;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 2px 0}
 #tmtabs button.sel,#tsize button.sel,#tai button.sel{border-color:var(--red)}
+#rm.champ .tut-card{border:2px solid #FFD54A;box-shadow:0 0 34px rgba(255,213,74,.45)}#rm.champ h2{color:#FFD54A;font-size:30px}
 .chk{display:flex;gap:8px;align-items:center;font-size:14px}
 .chk input{width:auto;padding:0;margin:0;font:inherit;letter-spacing:0;text-transform:none}
 input.txt{font:600 16px var(--body);letter-spacing:0;text-transform:none;text-align:left}
@@ -404,6 +405,15 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
 "use strict";
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let rmTm=0,rmOn=false;   // cartel de revancha
+async function tChamp(){                   // tras ganar un partido de torneo: si el torneo ya ha terminado, eres el campeón
+  const n=net;if(!n||n.champBusy||!acct||!tourCode)return;
+  n.champBusy=true;
+  for(let i=0;i<8&&net===n;i++){
+    try{const t=await api('/api/t/get',{code:tourCode,sid:acct.sid});if(t.state==='done'){n.champ=t.champion===acct.name?1:0;n.champName=t.name;rmSync();return;}}catch(e){}
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  if(net===n)n.champ=0;
+}
 const W=720,H=1020,VM=30,VW=W-2*30,VH=H-2*30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=300,GX1=420,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
@@ -1502,7 +1512,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='72';
+const VER='73';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1803,9 +1813,12 @@ function rmSync(){                         // cartel de fin de partida: Revancha
   const me=net.me,o=1-me,rv=net.rv||[false,false],gone=net.gn>=0&&net.gn!==me,w=score[0]>score[1]?0:1;
   const pn=i=>names[i]||(net.local?(i===0?(acct?acct.name:'Tú'):'IA'):(me===i?(acct?acct.name:'Tú'):'Rival'));
   const tn=!!net.tn,elim=tn&&w!==me;
-  $('rmt').textContent=elim?'Has sido eliminado':w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
-  $('rmx').textContent=score[0]+' - '+score[1]+(tn?(elim?' · Has perdido el partido y quedas fuera del torneo.':' · Partido de torneo ganado. Mira el torneo para ver lo que sigue.'):gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
-  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;$('rmexit').textContent=elim?'Volver al menú principal':'Salir al menú principal';
+  if(tn&&!elim&&net.champ===undefined)tChamp();            // ¿era la final? el servidor lo sabe cuando registra el resultado
+  const champ=tn&&!elim&&net.champ===1;
+  $('rmt').textContent=champ?'🏆 ¡Campeón del torneo!':elim?'Has sido eliminado':w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
+  box.classList.toggle('champ',champ);
+  $('rmx').textContent=score[0]+' - '+score[1]+(tn?(elim?' · Has perdido el partido y quedas fuera del torneo.':champ?' · Has ganado '+(net.champName||'el torneo')+'. ¡Enhorabuena, campeón!':' · Partido de torneo ganado. Mira el torneo para ver lo que sigue.'):gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
+  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;$('rmexit').textContent=elim||champ?'Volver al menú principal':'Salir al menú principal';
   box.hidden=false;
 }
 $('rmre').addEventListener('click',()=>{if(!net)return;if(!net.local){net.rv=(net.rv||[false,false]).slice();net.rv[net.me]=true;}netSend({t:'new'});rmSync();});
