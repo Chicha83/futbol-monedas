@@ -270,7 +270,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     </div>
   </div>
 </div>
-<button type="button" id="pconfirm" class="primary" hidden style="position:fixed;left:50%;transform:translateX(-50%);bottom:28px;z-index:5;padding:11px 22px;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.4)">Colocar aquí ✔</button>
+<button type="button" id="pconfirm" class="primary" hidden style="position:fixed;z-index:5;margin:0;padding:0;font-size:17px;box-shadow:0 4px 14px rgba(0,0,0,.4)">Colocar aquí ✔</button>
 <div class="tut" id="menu" role="dialog" aria-modal="true" aria-label="Menú" hidden>
   <div class="tut-card">
     <h2>Menú</h2>
@@ -988,7 +988,7 @@ function draw(ts){
     else{const ly=gkLim(pm.y);if(pm.y<CY)ctx.fillRect(FX0,FY0,FX1-FX0,ly-FY0);else ctx.fillRect(FX0,ly,FX1-FX0,FY1-ly);ctx.beginPath();ctx.moveTo(FX0,ly);ctx.lineTo(FX1,ly);ctx.stroke();}
     ctx.restore();
   }
-  {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;}}
+  {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;const r=document.querySelector('.steps').getBoundingClientRect(),k=[r.left,r.top,r.width,r.height].map(Math.round).join();if(pb.dataset.k!==k){pb.dataset.k=k;pb.style.left=r.left+'px';pb.style.top=r.top+'px';pb.style.width=r.width+'px';pb.style.height=r.height+'px';}}}   // el botón va sobre la fila de pasos (vacía mientras se coloca), nunca sobre los medidores de abajo
   if(phase==='place'){
     const c=coins[turn],ok=placeOK(place,c);
     ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:place.x,y:place.y});ctx.restore();
@@ -1444,7 +1444,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='56';
+const VER='57';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
