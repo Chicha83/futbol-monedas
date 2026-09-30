@@ -281,6 +281,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
         <button type="button" id="teamsbtn">Equipos</button>
         <button type="button" id="snd" aria-pressed="true">Sonido: sí</button>
       </div>
+    <small id="rtt" hidden style="opacity:.7"></small>
     <div class="tut-btns"><span class="sp"></span><button type="button" id="menuclose">Volver al partido</button></div>
   </div>
 </div>
@@ -399,7 +400,7 @@ const RED='#FF4D5E',PC=['#3D8BFF','#FFB020'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 const $=id=>document.getElementById(id);
-let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,net=null,VIEW=1;
+let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,net=null,VIEW=1,rem=null;
 const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
 const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
@@ -970,13 +971,16 @@ function draw(ts){
   ctx.setTransform(2*VIEW,0,0,2*VIEW,VIEW<0?2*(W-VM):-2*VM,VIEW<0?2*(H-VM):-2*VM);   // el invitado ve el campo girado 180°: su moneda siempre abajo
   ctx.drawImage(pitch,0,0,W,H);
   const cur=coins[turn];
-  const aiming=phase==='aim'&&!over&&mine(),f=fFromE(sel.e);
-  if(aiming){
-    if(sel.ok){
+  const aiming=phase==='aim'&&!over&&mine();
+  const ra=(!mine()&&phase==='aim'&&!over&&net&&!net.local&&rem&&rem.s&&Date.now()-rem.t<3000)?rem:null;   // lo que está apuntando el rival, en directo
+  const A=aiming?{ux:sel.ux,uy:sel.uy,e:sel.e,p:sel.p,ok:sel.ok,st:step}:ra?{ux:ra.ux,uy:ra.uy,e:ra.e,p:ra.p,ok:!!ra.ok,st:ra.s}:null;
+  const f=fFromE(A?A.e:sel.e);
+  if(A){
+    if(A.ok){
       ctx.save();ctx.strokeStyle=PC[turn];ctx.lineWidth=4.5;ctx.setLineDash([3,11]);ctx.lineCap='round';
-      const pts=predict(cur,sel.ux,sel.uy,sel.e,step===3?sel.p:.55);   // hasta elegir potencia, la previsión usa una media
+      const pts=predict(cur,A.ux,A.uy,A.e,A.st===3?A.p:.55);   // hasta elegir potencia, la previsión usa una media
       ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(const q of pts)ctx.lineTo(q[0],q[1]);ctx.stroke();
-      if(step===3){ctx.setLineDash([]);ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(cur.x,cur.y,cur.r+9,-Math.PI/2,-Math.PI/2+Math.PI*2*sel.p);ctx.stroke();}
+      if(A.st===3){ctx.setLineDash([]);ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(cur.x,cur.y,cur.r+9,-Math.PI/2,-Math.PI/2+Math.PI*2*A.p);ctx.stroke();}
       ctx.restore();
     }else{
       const pulse=RM?0:Math.sin(ts/260)*1.8;
@@ -994,13 +998,13 @@ function draw(ts){
   }
   {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;const r=document.querySelector('.steps').getBoundingClientRect(),k=[r.left,r.bottom,r.width].map(Math.round).join();if(pb.dataset.k!==k){pb.dataset.k=k;pb.style.left=r.left+'px';pb.style.top=(r.bottom+6)+'px';pb.style.width=r.width+'px';pb.style.height='46px';}}}   // el botón va justo debajo de la fila de pasos, en el hueco antes del campo; nunca sobre los medidores de abajo
   if(phase==='place'){
-    const c=coins[turn],ok=placeOK(place,c);
-    ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:place.x,y:place.y});ctx.restore();
-    ctx.beginPath();ctx.arc(place.x,place.y,c.r+6,0,Math.PI*2);ctx.strokeStyle=ok?PC[turn]:RED;ctx.lineWidth=2.5;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);
+    const c=coins[turn],pl=(!mine()&&net&&!net.local&&rem&&rem.pl&&Date.now()-rem.t<3000)?{x:rem.pl[0],y:rem.pl[1]}:place,ok=placeOK(pl,c);
+    ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:pl.x,y:pl.y});ctx.restore();
+    ctx.beginPath();ctx.arc(pl.x,pl.y,c.r+6,0,Math.PI*2);ctx.strokeStyle=ok?PC[turn]:RED;ctx.lineWidth=2.5;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);
   }
   // traba
-  if(aiming){
-    drawStick(cur.x,cur.y,sel.ux,sel.uy,cur.r,step===3?4+sel.p*55:12,sel.ok?1:.5,f);
+  if(A){
+    drawStick(cur.x,cur.y,A.ux,A.uy,cur.r,A.st===3?4+A.p*55:12,A.ok?1:.5,f);
   }else if(phase==='strike'){
     const k=strike.t/STRIKE_F;drawStick(cur.x,cur.y,strike.ux,strike.uy,cur.r,strike.o0*(1-k*k),1,strike.f);
   }
@@ -1079,7 +1083,7 @@ function goStep(n){
   step=n;drag=null;ui();
 }
 for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
-$('menubtn').addEventListener('click',()=>{menuSync();$('menu').hidden=false;});
+$('menubtn').addEventListener('click',()=>{menuSync();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt)r.textContent='Conexión con el rival: '+net.rtt+' ms';}}$('menu').hidden=false;});
 $('menuclose').addEventListener('click',()=>{$('menu').hidden=true;});
 $('menu').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.id!=='snd'&&b.id!=='menuclose')$('menu').hidden=true;});
 $('back').addEventListener('click',()=>{
@@ -1097,11 +1101,22 @@ $('snd').addEventListener('click',()=>{
 
 /* ---------- bucle ---------- */
 let last=0,acc=0;
+let aimK='',aimT=0;
+function aimSync(){   // manda al rival, en directo, lo que estoy apuntando o dónde arrastro la moneda (unas 12 veces por segundo como mucho)
+  const n=net;if(!n||n.local||!n.ws||n.ws.readyState!==1||over||!mine()||isPending())return;
+  const now=performance.now();if(now-aimT<80)return;
+  let o=null;
+  if(phase==='aim')o={t:'aim',s:step,ux:+sel.ux.toFixed(3),uy:+sel.uy.toFixed(3),e:+sel.e.toFixed(2),p:+sel.p.toFixed(2),ok:sel.ok?1:0};
+  else if(phase==='place'&&place)o={t:'aim',pl:[Math.round(place.x),Math.round(place.y)]};
+  if(!o)return;
+  const k=JSON.stringify(o);if(k===aimK)return;
+  aimK=k;aimT=now;try{n.ws.send(k);}catch(e){}
+}
 function frame(ts){
   if(!last)last=ts;
   acc+=Math.min(50,ts-last);last=ts;
   while(acc>=16.667){update();acc-=16.667;}
-  crowdUpdate();draw(ts);requestAnimationFrame(frame);
+  aimSync();crowdUpdate();draw(ts);requestAnimationFrame(frame);
 }
 
 /* ---------- tutorial ---------- */
@@ -1453,7 +1468,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='62';
+const VER='63';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1585,6 +1600,7 @@ $('tmtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-p
 /* ---------- estado que llega del servidor ---------- */
 function applyState(s){
   const pp=phase,pt=turn,pml=movesLeft;
+  if(s.p!==pp||s.tu!==pt)rem=null;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
   if(s.bh){if(bhSeen>=0&&s.bh[0]>bhSeen&&s.bh[0]-bhSeen<6)playBall(s.bh[1]);bhSeen=s.bh[0];}
   phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;if(s.tc!==undefined)touched=s.tc;if(s.lt!==undefined)lastTouch=s.lt;chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
@@ -1678,6 +1694,8 @@ function openSocket(){
       if(n.down){n.down=false;clearTimeout(n.dt);if(n.downShown){n.downShown=false;$('net').hidden=true;}}
       if(!n.started){netView('create','Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.');$('ncode').textContent=n.code;}
     }else if(m.t==='s')applyState(m);
+    else if(m.t==='aim'){rem={...m,t:Date.now()};}
+    else if(m.t==='q'){if(n.pt)n.rtt=Math.round(performance.now()-n.pt);}
     else if(m.t==='chat')chatRecv(m);
     else if(m.t==='err')fail(m.e||'No se ha podido entrar en la sala.');
   };
@@ -1710,7 +1728,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)onResume()
 addEventListener('pageshow',onResume);addEventListener('focus',onResume);addEventListener('online',onResume);
 setInterval(()=>{                          // vigilante: si el servidor deja de contestar, se reconecta
   const n=net;if(!n||n.closed||n.local||document.hidden)return;
-  if(n.ws&&n.ws.readyState===1){if(Date.now()-n.lastRx>20000)reopen();else netSend({t:'p'});}
+  if(n.ws&&n.ws.readyState===1){if(Date.now()-n.lastRx>20000)reopen();else{n.pt=performance.now();netSend({t:'p'});}}
   else if(!n.rc)reopen();
 },8000);
 function openNet(){

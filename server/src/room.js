@@ -127,6 +127,18 @@ export class Room {
       case 'vis': s.hidden = !!m.h; return;           // el móvil avisa si la app está en segundo plano
       case 'p': try { ws.send('{"t":"q"}'); } catch (e) { /* nada */ } return;
       case 'hi': this.send(ws, this.snap()); return;
+      case 'aim': {                                    // lo que apunta o arrastra el jugador que tiene el turno, en directo para el rival
+        if (seat !== this.g.turn || !(this.g.phase === 'aim' || this.g.phase === 'place')) return;
+        const now = Date.now();
+        if (now - (s.lastAim || 0) < 40) return;
+        s.lastAim = now;
+        const o = this.seats[1 - seat];
+        if (!o || !o.ws) return;
+        const n = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
+        if (Array.isArray(m.pl)) this.send(o.ws, { t: 'aim', pl: [n(m.pl[0]), n(m.pl[1])] });
+        else this.send(o.ws, { t: 'aim', s: Math.max(1, Math.min(3, n(m.s) | 0)), ux: n(m.ux), uy: n(m.uy), e: n(m.e), p: n(m.p), ok: m.ok ? 1 : 0 });
+        return;
+      }
       case 'chat': {                                   // mensaje al rival (no se guarda)
         const now = Date.now();
         if (now - (s.lastChat || 0) < 700) return;
@@ -184,7 +196,7 @@ export class Room {
     let key0 = this.g.key;
     while (this.acc >= STEP) { this.g.step(); this.syncN++; this.acc -= STEP; }
     const moving = this.g.moving;
-    if (this.g.key !== key0 || (moving && this.syncN % 3 === 0) || this.syncN % 60 === 0) { this.syncN = 0; this.broadcast(); }
+    if (this.g.key !== key0 || (moving && this.syncN % 2 === 0) || this.syncN % 60 === 0) { this.syncN = 0; this.broadcast(); }
     if (this.g.over) this.finish();
     if (this.g.idleWait || this.g.over) { this.stop(); this.broadcast(); this.save(); this.botCheck(); }
   }
