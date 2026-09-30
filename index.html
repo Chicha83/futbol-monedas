@@ -402,7 +402,7 @@ function crowdInit(){
     const boo=crowdBus(nb,m,[[300,5,10],[520,4,7],[820,3,3]]);                       // ¡buuuu! (formante u, grave)
     CR={m,rg,bab,che,boo,roar:0,roarK:0};
     setInterval(crowdVoices,180);
-    loadSample('ambiente.mp3',b=>{CR.amb=b;});loadSample('gol.mp3',b=>{CR.golB=b;});
+    loadSample('ambiente.mp3',b=>{CR.amb=b;});loadSample('gol.mp3',b=>{CR.golB=b;});loadSample('balon.mp3',b=>{CR.balB=b;});
   }catch(e){CR=null;}
 }
 function clap(t,lv){                            // aplauso suelto: golpecito corto de ruido
@@ -443,6 +443,15 @@ function crowdUpdate(){                      // el ambiente es siempre el mismo,
     CR.che.tgt=on&&CR.roar>t&&!CR.golB?.18:0;CR.che.bus.gain.setTargetAtTime(CR.che.tgt,t,.3);
     CR.boo.tgt=0;CR.boo.bus.gain.setTargetAtTime(0,t,.3);
   }catch(e){}
+}
+let bhN=0,bhV=0,bhSeen=-1;
+function ballHit(v){                        // golpe de la moneda al balón: grabación real (host cuenta el golpe y el invitado lo reproduce)
+  bhN++;bhV=v;playBall(v);
+}
+function playBall(v){
+  if(!soundOn||!AC)return;
+  if(CR&&CR.balB){try{const x=AC.createBufferSource(),g=AC.createGain();x.buffer=CR.balB;x.playbackRate.value=rnd(.95,1.06);g.gain.value=clamp(.35+v/10,.35,1);x.connect(g);g.connect(CR.m);x.start();return;}catch(e){}}
+  tick(v,2300);
 }
 function crowdGoal(){                        // mismo sonido de gol para los dos equipos
   if(!soundOn)return;
@@ -591,7 +600,7 @@ function physics(dt){
         // Si el balón llega más rápido que la moneda de 1 €, la moneda recibe todavía menos empuje que el que daría su masa.
         const soft=(j===2&&Math.hypot(b.vx,b.vy)>Math.hypot(a.vx,a.vy))?BALL_SOFT:1;
         a.vx-=j2*nx*ia*soft;a.vy-=j2*ny*ia*soft;b.vx+=j2*nx*ib;b.vy+=j2*ny*ib;
-        tick(-vn,2300+(i+j)*180);
+        if(j===2&&i<2)ballHit(-vn);else tick(-vn,2300+(i+j)*180);
       }
     }
   }
@@ -892,7 +901,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='23';
+const VER='24';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
@@ -961,7 +970,7 @@ $('tgrid').addEventListener('click',e=>{const b=e.target.closest('button[data-i]
 $('tmtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(b){tmSel=+b.dataset.p;markTeams();}});
 function snapshot(){
   return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
-    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx,tc:touched,lt:lastTouch,tm:team};
+    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx,tc:touched,lt:lastTouch,tm:team,bh:[bhN,rd(bhV,2)]};
 }
 function hostSync(force){
   if(!net||net.role!=='host'||!net.conn||!net.conn.open)return;
@@ -973,6 +982,7 @@ function hostSync(force){
 function applyState(s){
   const pp=phase,pt=turn,pml=movesLeft;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
+  if(s.bh){if(bhSeen>=0&&s.bh[0]>bhSeen&&s.bh[0]-bhSeen<6)playBall(s.bh[1]);bhSeen=s.bh[0];}
   phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc;over=s.ov;foulBen=s.fb;if(s.tc!==undefined)touched=s.tc;if(s.lt!==undefined)lastTouch=s.lt;chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt;msg=s.ms;strike=s.st;fx=s.fx;
   if(phase==='aim'&&(pp!=='aim'||pt!==turn||pml!==movesLeft)){step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:false,e:0,p:0};net.pend=0;}
   if(phase==='place'&&(pp!=='place'||pt!==turn)){drag=null;place=initPlace(coins[turn]);net.pend=0;}
