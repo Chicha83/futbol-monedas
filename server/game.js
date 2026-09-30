@@ -1,7 +1,7 @@
 // Lógica de la partida (copiada del juego del cliente, sin dibujo ni sonido). Se ejecuta en el servidor.
 // Generado a partir de index.html: si cambia la física o las reglas, hay que volver a generar este fichero.
 const GOAL_MS=8300;
-const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=10,OMEGA=.012;   // copia de las constantes para la IA
+const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=12.5,OMEGA=.012;   // copia de las constantes para la IA
 export function createGame(opts){
 const goalWait=(opts&&opts.goalMs)||(()=>GOAL_MS);
 const W=720,H=1020,VM=30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=300,GX1=420,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
@@ -10,7 +10,7 @@ const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
 const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const R=21,RB=10,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
+const R=21,RB=12.5,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 
 const tick=()=>{},ui=()=>{},refreshAim=()=>{};
