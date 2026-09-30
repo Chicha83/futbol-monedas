@@ -233,6 +233,8 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     <div id="whome" hidden>
       <div class="wbig">
         <p id="whello" style="font:800 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.03em"></p>
+        <p id="wresx" hidden style="margin:0 0 6px;font-size:13px;opacity:.85">Tienes un partido en curso. Seguirá jugándose: vuelve cuando quieras.</p>
+        <button type="button" id="wresume" class="primary" hidden>Volver al partido</button>
         <button type="button" id="wai" class="primary">Jugar contra la IA</button>
         <button type="button" id="won">Partida online con un amigo</button>
         <button type="button" id="wtour">Torneos (4 u 8 jugadores)</button>
@@ -392,7 +394,7 @@ const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
 const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const R=21,RB=15,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
+const R=21,RB=10,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
 const RED='#FF4D5E',PC=['#3D8BFF','#FFB020'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
@@ -818,7 +820,7 @@ function update(){
   if(net){guestUpdate();return;}
   hostUpdate();locSave();
 }
-const LOCKEY='fmon-loc';let locKey='';
+let locOn=false,exitArm=0;const LOCKEY='fmon-loc';let locKey='';
 function locSave(){
   try{
     if(!$('wel').hidden)return;
@@ -1126,7 +1128,7 @@ const Engine=(()=>{
 // Lógica de la partida (copiada del juego del cliente, sin dibujo ni sonido). Se ejecuta en el servidor.
 // Generado a partir de index.html: si cambia la física o las reglas, hay que volver a generar este fichero.
 const GOAL_MS=8300;
-const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=15,OMEGA=.012;   // copia de las constantes para la IA
+const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=10,OMEGA=.012;   // copia de las constantes para la IA
 function createGame(opts){
 const goalWait=(opts&&opts.goalMs)||(()=>GOAL_MS);
 const W=720,H=1020,VM=30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=300,GX1=420,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
@@ -1135,7 +1137,7 @@ const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
 const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const R=21,RB=15,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
+const R=21,RB=10,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 
 const tick=()=>{},ui=()=>{},refreshAim=()=>{};
@@ -1419,7 +1421,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='43';
+const VER='44';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1774,6 +1776,7 @@ async function wBoot(){
 }
 function wHome(){
   wShow('whome');
+  $('wresume').hidden=$('wresx').hidden=!matchOn();
   const p=acct.profile||{name:acct.name,played:0,won:0,lost:0,gf:0,ga:0,history:[]};
   $('whello').textContent='Hola, '+p.name;
   const st=$('wstats');st.textContent='';
@@ -1824,8 +1827,8 @@ for(const k of ['wname','wpin','wpin2'])$(k).addEventListener('keydown',e=>{if(e
 $('wgo').addEventListener('click',wSubmit);
 $('wtlogin').addEventListener('click',()=>wSetMode('login'));
 $('wtnew').addEventListener('click',()=>wSetMode('new'));
-$('woff').addEventListener('click',()=>{$('wel').hidden=true;});
-$('wloc').addEventListener('click',()=>{$('wel').hidden=true;});
+$('woff').addEventListener('click',()=>{locOn=true;$('wel').hidden=true;});
+$('wloc').addEventListener('click',()=>{locOn=true;$('wel').hidden=true;});
 $('wai').addEventListener('click',()=>{$('wel').hidden=true;openNet();netView('ai','Elige la dificultad de la IA.');});
 $('won').addEventListener('click',()=>{$('wel').hidden=true;openNet();});
 $('wtour').addEventListener('click',openTour);
@@ -1998,7 +2001,20 @@ team=loadTeams();labelChips();
 newGame();
 requestAnimationFrame(frame);
 {const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
-if(!restoreSession()&&!restoreAI()){if(locRestore())$('wel').hidden=true;else wBoot();}
+if(!restoreSession()&&!restoreAI()){if(locRestore()){locOn=true;$('wel').hidden=true;}else wBoot();}
+/* ---------- botón Atrás: de la partida sale a la pantalla principal; desde ahí hacen falta dos pulsaciones para salir ---------- */
+function matchOn(){return !!net||locOn;}
+function toastMsg(t){let d=$('bktoast');if(!d){d=document.createElement('div');d.id='bktoast';d.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;background:rgba(10,19,34,.95);color:#fff;border:1px solid #4da3ff;border-radius:12px;padding:10px 16px;font:600 14px system-ui;max-width:86vw;text-align:center';document.body.appendChild(d);}d.textContent=t;d.hidden=false;clearTimeout(d.tm);d.tm=setTimeout(()=>{d.hidden=true;},2500);}
+try{history.replaceState({r:1},'');history.pushState({g:1},'');}catch(e){}
+addEventListener('popstate',()=>{
+  const rep=()=>{try{history.pushState({g:1},'');}catch(e){}};
+  const open=[...document.querySelectorAll('.tut:not([hidden])')].pop();
+  if(open){if(open.id==='net')closeNet();else if(open.id==='teams')closeTeams();else open.hidden=true;rep();return;}
+  if($('wel').hidden){showWelcome();rep();if(matchOn())toastMsg('El partido sigue en curso. Vuelve con «Volver al partido».');return;}
+  if(Date.now()-exitArm<2500){history.back();return;}
+  exitArm=Date.now();toastMsg('Pulsa otra vez atrás para salir del juego');rep();
+});
+$('wresume').addEventListener('click',()=>{$('wel').hidden=true;});
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
