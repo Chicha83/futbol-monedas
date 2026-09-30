@@ -375,64 +375,54 @@ function tick(v,f){
 
 /* ---------- ambiente de estadio: murmullo, ánimos al local, pitos al visitante y gol cantado ---------- */
 let CR=null;
-const VOW={a:[800,1250],e:[520,1800],i:[320,2200],o:[520,900],u:[330,800]};
 const rnd=(a,b)=>a+Math.random()*(b-a);
 function noiseBuf(sec){const n=AC.sampleRate*sec,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;return b;}
-function crowdBus(n,f0,f1,vows,dest){          // coro de n voces (sierra) que pasan por dos formantes compartidos: suena a gente, no a tono
-  const bus=AC.createGain();bus.gain.value=0;
-  const fa=AC.createBiquadFilter(),fb=AC.createBiquadFilter();fa.type=fb.type='bandpass';fa.Q.value=2.2;fb.Q.value=3;
-  const mix=AC.createGain();mix.gain.value=1;
-  const vs=[];
-  for(let i=0;i<n;i++){
-    const o=AC.createOscillator(),g=AC.createGain(),l=AC.createOscillator(),lg=AC.createGain();
-    o.type='sawtooth';o.frequency.value=rnd(f0,f1);g.gain.value=0;
-    l.frequency.value=rnd(3.5,6.5);lg.gain.value=rnd(2,9);l.connect(lg);lg.connect(o.frequency);l.start();
-    o.connect(g);g.connect(mix);o.start();vs.push({o,g});
+/* Sin tonos ni osciladores: el público es ruido filtrado por formantes (como una multitud lejana), con volumen y timbre que varían al azar */
+function crowdBus(nb,dest,bands){
+  const bus=AC.createGain();bus.gain.value=0;const parts=[];
+  for(const [f,q,g0] of bands){
+    const s=AC.createBufferSource();s.buffer=nb;s.loop=true;s.playbackRate.value=rnd(.8,1.2);
+    const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f;bp.Q.value=q;
+    const w=AC.createGain();w.gain.value=g0;s.connect(bp);bp.connect(w);w.connect(bus);
+    s.start(0,Math.random()*3);parts.push({bp,w,f,g0});
   }
-  const dry=AC.createGain();dry.gain.value=.12;mix.connect(fa);mix.connect(fb);mix.connect(dry);
-  const ga=AC.createGain(),gb=AC.createGain();ga.gain.value=1;gb.gain.value=.7;fa.connect(ga);fb.connect(gb);
-  ga.connect(bus);gb.connect(bus);dry.connect(bus);bus.connect(dest);
-  return {bus,fa,fb,vs,vows,f0,f1};
+  bus.connect(dest);return {bus,parts,tgt:0};
 }
 function crowdInit(){
   if(CR||!AC)return;
   try{
-    const comp=AC.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=6;
+    const comp=AC.createDynamicsCompressor();comp.threshold.value=-20;comp.ratio.value=5;
     const m=AC.createGain();m.gain.value=1;m.connect(comp);comp.connect(AC.destination);
     const nb=noiseBuf(4);
-    // base: rumor de graderío (ruido grave) + siseo de gente
     const rum=AC.createBufferSource();rum.buffer=nb;rum.loop=true;
-    const rl=AC.createBiquadFilter();rl.type='lowpass';rl.frequency.value=380;
+    const rl=AC.createBiquadFilter();rl.type='lowpass';rl.frequency.value=320;
     const rg=AC.createGain();rg.gain.value=0;rum.connect(rl);rl.connect(rg);rg.connect(m);rum.start();
-    const sis=AC.createBufferSource();sis.buffer=nb;sis.loop=true;sis.playbackRate.value=1.3;
-    const sb=AC.createBiquadFilter();sb.type='bandpass';sb.frequency.value=3200;sb.Q.value=.6;
-    const sg=AC.createGain();sg.gain.value=0;sis.connect(sb);sb.connect(sg);sg.connect(m);sis.start();
-    const bab=crowdBus(14,95,230,['o','a','e','u'],m);     // murmullo de conversaciones
-    const che=crowdBus(18,170,330,['a','e','o'],m);        // ¡ooooh! / ¡aaaah! / ¡ole!
-    const boo=crowdBus(16,85,150,['u','o'],m);             // ¡buuuuu!
-    CR={m,rg,sg,bab,che,boo,roar:0,roarK:0,t:0};
-    setInterval(crowdVoices,220);
+    const bab=crowdBus(nb,m,[[420,1.2,3],[900,1.5,3],[1500,1.2,2],[2600,.9,.8]]);   // murmullo de grada
+    const che=crowdBus(nb,m,[[750,3.5,7],[1300,4,6],[2500,2,3],[3800,1,1.6]]);       // ¡aaah! (formante a) con aire
+    const boo=crowdBus(nb,m,[[300,5,10],[520,4,7],[820,3,3]]);                       // ¡buuuu! (formante u, grave)
+    CR={m,rg,bab,che,boo,roar:0,roarK:0};
+    setInterval(crowdVoices,180);
   }catch(e){CR=null;}
 }
-function crowdVoices(){                          // cada voz cambia al azar de volumen y tono: nunca se repite
+function clap(t,lv){                            // aplauso suelto: golpecito corto de ruido
+  const n=Math.floor(AC.sampleRate*.02),b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(n*.18));
+  const x=AC.createBufferSource();x.buffer=b;const hp=AC.createBiquadFilter();hp.type='bandpass';hp.frequency.value=rnd(1500,3200);hp.Q.value=.8;
+  const g=AC.createGain();g.gain.value=lv*rnd(.3,1);x.connect(hp);hp.connect(g);g.connect(CR.m);x.start(t);
+}
+function crowdVoices(){                          // timbre y volumen cambian al azar: no se repite
   if(!AC||!CR||AC.state!=='running')return;
   try{
     const t=AC.currentTime;
     for(const B of [CR.bab,CR.che,CR.boo]){
-      const on=B.bus.gain.value>.003||B.tgt>.003;
-      if(!on)continue;
-      const kind=B===CR.che?1:B===CR.boo?2:0;
-      const v=VOW[B.vows[(Math.random()*B.vows.length)|0]];
-      B.fa.frequency.setTargetAtTime(v[0]*rnd(.92,1.08),t,.15);B.fb.frequency.setTargetAtTime(v[1]*rnd(.92,1.08),t,.15);
-      for(const x of B.vs){
-        const act=kind===0?Math.random()<.6:Math.random()<.9;
-        x.g.gain.setTargetAtTime(act?rnd(.02,.09):0,t,.1);
-        let f=x.o.frequency.value;
-        f+=kind===1?rnd(-8,14):kind===2?rnd(-14,4):rnd(-12,12);
-        f=Math.min(B.f1*1.25,Math.max(B.f0*.8,f));
-        x.o.frequency.setTargetAtTime(f,t,.2);
+      if(B.bus.gain.value<.004&&B.tgt<.004)continue;
+      const swell=B===CR.bab?rnd(.4,1.3):rnd(.55,1.25);
+      for(const P of B.parts){
+        P.bp.frequency.setTargetAtTime(P.f*rnd(.85,1.18),t,.25);
+        P.w.gain.setTargetAtTime(P.g0*swell*rnd(.6,1.3),t,.2);
       }
     }
+    if(CR.che.tgt>.07){const k=CR.che.tgt/.18,n=Math.round(k*3);for(let i=0;i<n;i++)clap(t+rnd(0,.18),.03+.03*k);}
   }catch(e){}
 }
 function crowdUpdate(){
@@ -448,11 +438,10 @@ function crowdUpdate(){
     }
     if(CR.roar>t){if(CR.roarK>0)kc=Math.max(kc,1);else kb=Math.max(kb,1);ka=1;}
     const on=soundOn&&!over;
-    CR.rg.gain.setTargetAtTime(on?.05+.07*ka:0,t,.4);
-    CR.sg.gain.setTargetAtTime(on?.004+.012*ka:0,t,.4);
-    CR.bab.tgt=on?.5+.7*ka:0;CR.bab.bus.gain.setTargetAtTime(CR.bab.tgt,t,.4);
-    CR.che.tgt=kc*kc*2.6;CR.che.bus.gain.setTargetAtTime(CR.che.tgt,t,.3);
-    CR.boo.tgt=kb*kb*2.6;CR.boo.bus.gain.setTargetAtTime(CR.boo.tgt,t,.3);
+    CR.rg.gain.setTargetAtTime(on?.1+.12*ka:0,t,.4);
+    CR.bab.tgt=on?.035+.09*ka:0;CR.bab.bus.gain.setTargetAtTime(CR.bab.tgt,t,.4);
+    CR.che.tgt=kc*kc*.18;CR.che.bus.gain.setTargetAtTime(CR.che.tgt,t,.3);
+    CR.boo.tgt=kb*kb*.18;CR.boo.bus.gain.setTargetAtTime(CR.boo.tgt,t,.3);
   }catch(e){}
 }
 function crowdGoal(s){                       // el estadio estalla (o se queja) durante unos segundos + voz de "¡Gooool!"
@@ -900,7 +889,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='21';
+const VER='22';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
