@@ -995,7 +995,7 @@ function draw(ts){
       ctx.stroke();
     }
   }
-  ctx.setTransform(2,0,0,2,0,0);
+  ctx.setTransform(2,0,0,2,-2*VM,-2*VM);   // mismo recorte que el campo: el aviso queda centrado
   if(msg){
     ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,CY-120,W,240);
     ctx.textAlign='center';ctx.textBaseline='middle';
@@ -1424,7 +1424,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='50';
+const VER='51';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
