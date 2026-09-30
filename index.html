@@ -1473,7 +1473,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='65';
+const VER='66';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1604,6 +1604,7 @@ $('tgrid').addEventListener('click',e=>{const b=e.target.closest('button[data-i]
 $('tmtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(b){tmSel=+b.dataset.p;markTeams();}});
 /* ---------- estado que llega del servidor ---------- */
 function applyState(s){
+  if(s.vd!==undefined&&s.vd>=0){if(s.vd===net.me){clearAI();stopNet();newGame();showWelcome();}else oppLeft((s.nm&&s.nm[s.vd])||names[s.vd]);return;}   // partida nula por abandono
   const pp=phase,pt=turn,pml=movesLeft;
   if(s.p!==pp||s.tu!==pt)rem=null;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
@@ -1702,6 +1703,7 @@ function openSocket(){
     else if(m.t==='aim'){rem={...m,t:Date.now()};}
     else if(m.t==='q'){if(n.pt){const v=Math.round(performance.now()-n.pt);n.pt=0;n.rtt=v;(n.rs=n.rs||[]).push(v);if(n.rs.length>12)n.rs.shift();}}
     else if(m.t==='chat')chatRecv(m);
+    else if(m.t==='left')oppLeft(m.n);
     else if(m.t==='err')fail(m.e||'No se ha podido entrar en la sala.');
   };
   ws.onclose=()=>{if(net!==n||n.ws!==ws)return;n.ws=null;if(!n.closed)lost();};
@@ -1753,18 +1755,27 @@ function joinGame(raw){
   netView('join','Conectando…');
   connectRoom(code);
 }
+function leaveNet(){                       // abandonar una partida online en curso: avisa al rival, que se desconecta y la partida queda nula
+  const n=net;
+  if(n&&!n.local&&n.started&&n.ws&&n.ws.readyState===1&&!over){try{n.ws.send(JSON.stringify({t:'leave'}));}catch(e){}}
+}
+function oppLeft(nm){                      // el rival ha abandonado: se desconecta esta partida y queda nula
+  clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();
+  $('chat').hidden=true;$('net').hidden=false;
+  netView('choose',(nm||'Tu rival')+' ha abandonado la partida. Te has desconectado y la partida queda nula.');
+}
 function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=(net||locOn)?'Abandonar partida':'Jugar';}
 $('online').addEventListener('click',e=>{
   const b=$('online');
   if(!net&&!locOn){openNet();return;}
   if(!b.dataset.ask){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
-  clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();showWelcome();
+  leaveNet();clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();showWelcome();
 });
 $('ncreate').addEventListener('click',createGame);
 $('njoin').addEventListener('click',()=>{netView('join','Escribe el código que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
 $('ngo').addEventListener('click',()=>joinGame($('ninput').value));
 $('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput').value);});
-$('ndisc').addEventListener('click',()=>{stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
+$('ndisc').addEventListener('click',()=>{leaveNet();stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
 $('nclose').addEventListener('click',closeNet);
 $('nback').addEventListener('click',netBack);
 $('nvsai').addEventListener('click',()=>netView('ai','Elige la dificultad de la IA.'));

@@ -13,6 +13,7 @@ export class Room {
     this.thinking = false;
     this.matchId = 0;          // partido de torneo (0 = partida libre)
     this.reported = false;
+    this.left = -1;            // asiento que ha abandonado la partida (la partida queda nula)
     this.timer = null;
     this.last = 0;
     this.acc = 0;
@@ -25,6 +26,7 @@ export class Room {
         this.seats.forEach((s, i) => { Object.assign(s, d.seats[i]); s.ws = null; });
         this.matchId = d.matchId || 0;
         this.reported = !!d.reported;
+        this.left = Number.isInteger(d.left) ? d.left : -1;
         if (d.snap) this.g.restore(d.snap);
       }
     });
@@ -36,6 +38,7 @@ export class Room {
         seats: this.seats.map(s => ({ tok: s.tok, pid: s.pid, name: s.name, team: s.team, bot: s.bot })),
         matchId: this.matchId,
         reported: this.reported,
+        left: this.left,
         snap: this.g.snapshot(null)
       });
     } catch (e) { /* el guardado es un extra */ }
@@ -153,18 +156,36 @@ export class Room {
       case 'team':
         if (Number.isInteger(m.i) && m.i >= -1 && m.i < 64) { s.team = m.i; this.save(); this.broadcast(true); }
         return;
+      case 'leave': this.leave(seat); return;
       case 'shot':
+        if (this.left >= 0) return;
         if (this.g.shot(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); this.botCheck(); }
         else this.send(ws, this.snap());
         return;
       case 'place':
+        if (this.left >= 0) return;
         if (this.g.placeCoin(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); this.save(); this.botCheck(); }
         else this.send(ws, this.snap());
         return;
       case 'new':
-        if (this.g.over && !this.matchId) { this.g.newGame(); this.reported = false; this.lastAct = Date.now(); this.broadcast(true); this.save(); }
+        if (this.g.over && !this.matchId && this.left < 0) { this.g.newGame(); this.reported = false; this.lastAct = Date.now(); this.broadcast(true); this.save(); }
         return;
     }
+  }
+
+  leave(seat) {                                   // un jugador abandona a mitad de partida: se desconecta al rival y la partida queda nula (sin resultado ni estadísticas)
+    const o = this.seats[1 - seat];
+    if (this.left >= 0 || this.g.over || !o || !o.tok) return;
+    this.stop();
+    this.reported = true;
+    const msg = JSON.stringify({ t: 'left', n: this.seats[seat].name || '' });
+    if (o.ws) { try { o.ws.send(msg); } catch (e) { /* cerrada */ } }
+    this.pushTo(1 - seat, 'game', 'Fútbol Monedas', (this.seats[seat].name || 'Tu rival') + ' ha abandonado la partida. Queda nula.', 'abandono');
+    if (this.matchId) { this.g.newGame(); this.reported = false; }   // partido de torneo: vuelve a 0-0 para poder jugarse de nuevo (el creador también puede dar el pase directo)
+    else this.left = seat;
+    this.lastAct = Date.now();
+    this.save();
+    this.broadcast(true);
   }
 
   snap() {
@@ -172,6 +193,7 @@ export class Room {
     o.up = this.seats.map(s => !!s.ws || s.bot);
     o.nm = this.seats.map(s => s.name || '');
     o.tn = this.matchId ? 1 : 0;
+    if (this.left >= 0) o.vd = this.left;
     return o;
   }
   send(ws, o) { try { ws.send(JSON.stringify(o)); } catch (e) { /* cerrada */ } }
