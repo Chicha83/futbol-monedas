@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 .goal-to{display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;line-height:1.2;padding-inline:4px}
 .goal-to strong{font:800 22px/1 var(--display);color:var(--ink)}
 .paper{border-radius:6px;overflow:hidden;box-shadow:0 1px 0 var(--line),0 12px 30px rgba(10,20,35,.22);background:#fff;line-height:0}
-canvas{display:block;width:100%;height:auto;aspect-ratio:720/1020;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+canvas{display:block;width:100%;height:auto;aspect-ratio:660/960;max-width:100%;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .status{min-height:2.9em;margin:0;color:var(--ink)}
 .meters{display:grid;gap:6px}
 .meter{display:grid;grid-template-columns:4.6em 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
@@ -173,7 +173,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <button type="button" id="st3" data-state="todo"><i>3</i>Potencia</button>
       </div>
 
-      <div class="paper" id="pp"><canvas id="cv" width="1440" height="2040" aria-label="Campo de fútbol con tres monedas"></canvas><button type="button" class="chatbtn" id="chatbtn" aria-label="Chat con el rival" hidden>💬<i id="chatdot" hidden></i></button><div class="chattoast" id="chattoast" hidden></div></div>
+      <div class="paper" id="pp"><canvas id="cv" width="1320" height="1920" aria-label="Campo de fútbol con tres monedas"></canvas><button type="button" class="chatbtn" id="chatbtn" aria-label="Chat con el rival" hidden>💬<i id="chatdot" hidden></i></button><div class="chattoast" id="chattoast" hidden></div></div>
 
       <p class="status" id="status" aria-live="polite"></p>
 
@@ -348,7 +348,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 (()=>{
 "use strict";
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
-const W=720,H=1020,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
+const W=720,H=1020,VM=30,VW=W-2*30,VH=H-2*30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
@@ -647,7 +647,7 @@ function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();
 function snapPlace(p){if(pm.m==='line'){p.y=pm.y;p.x=clamp(p.x,SAX0,SAX1);}return p;}
 function placeOK(p,c,mode){
   const m=mode===undefined?pm.m:mode;let ok;
-  if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
+  if(m==='any')ok=p.x>=VM+c.r&&p.x<=W-VM-c.r&&p.y>=VM+c.r&&p.y<=H-VM-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
   else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
@@ -885,7 +885,7 @@ function predict(c,ux,uy,e,p){
   return pts;
 }
 function draw(ts){
-  ctx.setTransform(2*VIEW,0,0,2*VIEW,VIEW<0?2*W:0,VIEW<0?2*H:0);   // el invitado ve el campo girado 180°: su moneda siempre abajo
+  ctx.setTransform(2*VIEW,0,0,2*VIEW,VIEW<0?2*(W-VM):-2*VM,VIEW<0?2*(H-VM):-2*VM);   // el invitado ve el campo girado 180°: su moneda siempre abajo
   ctx.drawImage(pitch,0,0,W,H);
   const cur=coins[turn];
   const aiming=phase==='aim'&&!over&&mine(),f=fFromE(sel.e);
@@ -936,7 +936,7 @@ function draw(ts){
 }
 
 /* ---------- entrada ---------- */
-function posS(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+function posS(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*VW+VM,y:(e.clientY-r.top)/r.height*VH+VM};}
 function pos(e){const q=posS(e);return VIEW<0?{x:W-q.x,y:H-q.y}:q;}   // coordenadas del campo (con la vista girada del invitado)
 function setDir(p){
   const c=coins[turn],dx=p.x-c.x,dy=p.y-c.y,d=Math.hypot(dx,dy);
@@ -1061,7 +1061,7 @@ const GOAL_MS=8300;
 const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=15,OMEGA=.012;   // copia de las constantes para la IA
 function createGame(opts){
 const goalWait=(opts&&opts.goalMs)||(()=>GOAL_MS);
-const W=720,H=1020,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
+const W=720,H=1020,VM=30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
@@ -1103,7 +1103,7 @@ function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();
 function snapPlace(p){if(pm.m==='line'){p.y=pm.y;p.x=clamp(p.x,SAX0,SAX1);}return p;}
 function placeOK(p,c,mode){
   const m=mode===undefined?pm.m:mode;let ok;
-  if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
+  if(m==='any')ok=p.x>=VM+c.r&&p.x<=W-VM-c.r&&p.y>=VM+c.r&&p.y<=H-VM-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
   else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
@@ -1351,7 +1351,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='32';
+const VER='33';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1838,7 +1838,7 @@ if(!restoreSession())wBoot();
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
-function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/720,h/1020));cv.style.width=Math.floor(720*k)+'px';cv.style.height=Math.floor(1020*k)+'px';}
+function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/660,h/960));cv.style.width=Math.floor(660*k)+'px';cv.style.height=Math.floor(960*k)+'px';}
 fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));if(window.ResizeObserver)new ResizeObserver(fit).observe(pp);})();
 </script>
 </body>

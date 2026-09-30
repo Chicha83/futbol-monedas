@@ -4,7 +4,7 @@ const GOAL_MS=8300;
 const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=15,OMEGA=.012;   // copia de las constantes para la IA
 export function createGame(opts){
 const goalWait=(opts&&opts.goalMs)||(()=>GOAL_MS);
-const W=720,H=1020,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
+const W=720,H=1020,VM=30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
@@ -46,7 +46,7 @@ function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();
 function snapPlace(p){if(pm.m==='line'){p.y=pm.y;p.x=clamp(p.x,SAX0,SAX1);}return p;}
 function placeOK(p,c,mode){
   const m=mode===undefined?pm.m:mode;let ok;
-  if(m==='any')ok=p.x>=c.r&&p.x<=W-c.r&&p.y>=c.r&&p.y<=H-c.r;
+  if(m==='any')ok=p.x>=VM+c.r&&p.x<=W-VM-c.r&&p.y>=VM+c.r&&p.y<=H-VM-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
   else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
