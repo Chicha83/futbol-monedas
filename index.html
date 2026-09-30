@@ -55,6 +55,26 @@ button:disabled{opacity:.45;cursor:default}
 button:focus-visible,canvas:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 @media (max-width:440px){.chip{padding:8px 9px;gap:4px}.chip .who{font-size:11px;letter-spacing:.02em;gap:6px}.chip b{font-size:30px}.goal-to{font-size:11px}}
 [hidden]{display:none!important}
+.wel{position:fixed;inset:0;z-index:9;background:var(--bg);overflow:auto;padding:16px calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;justify-content:center}
+.wel-card{width:min(100%,420px);display:grid;gap:12px;align-content:start}
+.wel h1{font:800 34px/1;white-space:nowrap var(--display);letter-spacing:.03em;text-transform:uppercase;margin:4px 0 0}
+.wel h1 span{color:var(--red)}
+.wel p{margin:0;font-size:14px}
+.wbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px}
+.wstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.wstats div{background:var(--bg);border-radius:8px;padding:6px 2px}
+.wstats b{display:block;font:800 26px/1 var(--display)}
+.wstats small{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.wrow1{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13.5px}
+.wrow1 .mid{color:var(--muted)}
+.wacrow.me{font-weight:800;color:var(--red)}
+.whow{display:grid;gap:4px;font-size:13.5px}
+.whow b{font-weight:800}
+.wtabs{display:flex;gap:8px}.wtabs button{flex:1}.wtabs button.sel{border-color:var(--red);font-weight:800}
+.wform{display:grid;gap:8px}
+#wmsg{color:var(--red);font-size:13.5px;min-height:1.3em}
+.wbig{display:grid;gap:8px}
+.wbig button{padding:12px 14px;font-size:15px}
 .tut{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:16px;background:rgba(10,16,24,.62)}
 .tut-card{width:min(100%,380px);max-height:100%;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}
 .tut-art{border-radius:8px;overflow:hidden;background:#fff;line-height:0;border:1px solid var(--line)}
@@ -161,6 +181,49 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
   </div>
 </main>
 
+<div class="wel" id="wel" role="dialog" aria-modal="true" aria-labelledby="wt" hidden>
+  <div class="wel-card">
+    <h1 id="wt">Fútbol <span>Monedas</span></h1>
+    <div id="wload" class="wbox"><p>Conectando con el servidor…</p></div>
+    <div id="wlogin" class="wbox" hidden>
+      <p id="wlx">Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.</p>
+      <div class="wtabs"><button type="button" id="wtlogin" class="sel">Entrar</button><button type="button" id="wtnew">Crear usuario</button></div>
+      <div class="wform">
+        <input id="wname" class="txt" maxlength="14" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Nombre de usuario" aria-label="Nombre de usuario">
+        <input id="wpin" class="txt" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="current-password" placeholder="PIN de 4 números" aria-label="PIN de 4 números">
+        <input id="wpin2" class="txt" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" placeholder="Repite el PIN" aria-label="Repite el PIN" hidden>
+        <button type="button" id="wgo" class="primary">Entrar</button>
+      </div>
+      <div id="wmsg" role="status"></div>
+      <button type="button" id="woff" hidden>Jugar sin conexión (2 jugadores en este móvil)</button>
+    </div>
+    <div id="whome" hidden>
+      <div class="wbig">
+        <p id="whello" style="font:800 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.03em"></p>
+        <button type="button" id="wai" class="primary">Jugar contra la IA</button>
+        <button type="button" id="won">Partida online con un amigo</button>
+        <button type="button" id="wtour">Torneos (4 u 8 jugadores)</button>
+        <button type="button" id="wloc">Dos jugadores en este móvil</button>
+      </div>
+      <div class="wbox" style="margin-top:12px"><h3 class="acs" style="margin:0">Tu marcador</h3>
+        <div class="wstats" id="wstats"></div>
+        <div class="wrow1" id="wline"></div>
+      </div>
+      <div class="wbox" style="margin-top:12px"><h3 class="acs" style="margin:0">Tus últimos 5 resultados</h3><div id="wlast"></div></div>
+      <div class="wbox" style="margin-top:12px"><h3 class="acs" style="margin:0">Ranking</h3><div id="wrank"><p>Cargando…</p></div></div>
+      <div class="wbox" style="margin-top:12px"><h3 class="acs" style="margin:0">Cómo se golpea</h3>
+        <div class="whow">
+          <span><b>1 · Dirección.</b> Arrastra sobre tu moneda para apuntar.</span>
+          <span><b>2 · Contacto.</b> Arrastra a izquierda o derecha: eliges con qué parte del canto golpea la traba y hacia dónde curva.</span>
+          <span><b>3 · Potencia.</b> Arrastra hacia abajo y suelta: la traba golpea, sin retención.</span>
+          <span><b>Meta:</b> tu moneda debe golpear el balón y meterlo en la portería rival. Si tocas antes a la moneda contraria, es falta.</span>
+        </div>
+        <div class="net-row"><button type="button" id="whowbtn">Ver el tutorial paso a paso</button></div>
+      </div>
+      <div class="net-row" style="margin-top:12px"><button type="button" id="wlogout">Cerrar sesión</button></div>
+    </div>
+  </div>
+</div>
 <div class="tut" id="tut" role="dialog" aria-modal="true" aria-labelledby="tt" hidden>
   <div class="tut-card">
     <div class="tut-art" id="tart"></div>
@@ -193,7 +256,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
       <button type="button" id="nvsai" class="primary">Jugar contra la IA</button>
       <button type="button" id="ncreate">Crear partida online</button>
       <button type="button" id="njoin">Unirme a una partida</button>
-      <button type="button" id="nprof">Mi perfil</button>
+      <button type="button" id="nprof">Inicio y mi perfil</button>
       <button type="button" id="ntour">Torneos</button>
     </div>
     <div class="net-row" id="nai" hidden>
@@ -1256,7 +1319,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='28';
+const VER='29';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1478,7 +1541,7 @@ $('nclose').addEventListener('click',closeNet);
 $('nvsai').addEventListener('click',()=>netView('ai','Elige la dificultad de la IA.'));
 for(const k of [1,2,3])$('nai'+k).addEventListener('click',()=>startAI(k));
 $('nai0').addEventListener('click',()=>netView('choose','Juega contra la IA, o contra un amigo desde otro móvil.'));
-$('nprof').addEventListener('click',()=>{$('net').hidden=true;openAcct();});
+$('nprof').addEventListener('click',()=>{$('net').hidden=true;showWelcome();});
 $('ntour').addEventListener('click',()=>{$('net').hidden=true;openTour();});
 /* ---------- cuenta (nombre + PIN de 4 cifras) ---------- */
 let tSize=8;
@@ -1525,6 +1588,89 @@ $('aclogin').addEventListener('click',()=>acctGo('login'));
 $('acnew').addEventListener('click',()=>acctGo('new'));
 $('aclogout').addEventListener('click',async()=>{try{if(acct)await api('/api/logout',{sid:acct.sid});}catch(e){}acct=null;saveAcct();renderAcct();});
 $('acclose').addEventListener('click',()=>{$('acct').hidden=true;});
+
+/* ---------- pantalla de bienvenida: acceso con usuario y PIN, marcador, últimos resultados y ranking ---------- */
+let wMode='login';
+function wShow(id){for(const k of ['wload','wlogin','whome'])$(k).hidden=k!==id;}
+function wMsg(t){$('wmsg').textContent=t||'';}
+function wSetMode(m){
+  wMode=m;
+  $('wtlogin').classList.toggle('sel',m==='login');$('wtnew').classList.toggle('sel',m==='new');
+  $('wpin2').hidden=m!=='new';$('wgo').textContent=m==='new'?'Crear usuario':'Entrar';
+  $('wpin').autocomplete=m==='new'?'new-password':'current-password';
+  $('wlx').textContent=m==='new'?'Elige un nombre (de 3 a 14 caracteres) y un PIN de 4 números. Escribe el PIN dos veces para confirmarlo: con él te reconoceremos en cualquier móvil.':'Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.';
+  wMsg('');
+}
+function showWelcome(){
+  $('wel').hidden=false;
+  if(acct){wHome();}else{wShow('wlogin');wSetMode('login');$('woff').hidden=true;}
+}
+async function wBoot(){
+  $('wel').hidden=false;
+  if(!acct){wShow('wlogin');wSetMode('login');return;}
+  wShow('wload');
+  await acctRefresh();
+  if(acct)wHome();else{wShow('wlogin');wSetMode('login');wMsg('Tu sesión ha caducado: entra otra vez con tu nombre y tu PIN.');}
+}
+function wHome(){
+  wShow('whome');
+  const p=acct.profile||{name:acct.name,played:0,won:0,lost:0,gf:0,ga:0,history:[]};
+  $('whello').textContent='Hola, '+p.name;
+  const st=$('wstats');st.textContent='';
+  const pc=p.played?Math.round(100*p.won/p.played)+'%':'–';
+  for(const [v,l] of [[p.played,'Jugados'],[p.won,'Ganados'],[p.lost,'Perdidos'],[pc,'Victorias']]){const d=el('div');d.appendChild(el('b','',String(v)));d.appendChild(el('small','',l));st.appendChild(d);}
+  const ln=$('wline');ln.textContent='';
+  const h=p.history||[];
+  let streak=0;for(const r of h){if(r.gf>r.ga)streak++;else break;}
+  ln.appendChild(el('span','','Goles '+p.gf+' a favor · '+p.ga+' en contra'));
+  ln.appendChild(el('span','mid',p.pos?('Puesto '+p.pos+' de '+p.total):(p.played?'':'Aún sin clasificar')));
+  if(streak>1)ln.appendChild(el('span','wn','Racha: '+streak+' victorias'));
+  const lw=$('wlast');lw.textContent='';
+  if(!h.length)lw.appendChild(el('p','','Todavía no has jugado con tu usuario. Juega una partida online o un torneo y aparecerá aquí.'));
+  for(const r of h.slice(0,5)){
+    const win=r.gf>r.ga;
+    let when='';try{when=new Date(r.ts).toLocaleDateString('es-ES',{day:'numeric',month:'short'});}catch(e){}
+    lw.appendChild(el('div','acrow '+(win?'win':'loss'),(win?'Victoria':'Derrota')+' contra '+r.opp+' · '+r.gf+'-'+r.ga+(r.torneo?' · torneo':'')+(when?' · '+when:'')));
+  }
+  wRank(p);
+}
+async function wRank(p){
+  const box=$('wrank');
+  try{
+    const r=await fetch(API+'/api/ranking').then(x=>x.json());
+    box.textContent='';
+    if(!r.ranking||!r.ranking.length){box.appendChild(el('p','','Todavía no hay partidas en el ranking. ¡Sé el primero!'));return;}
+    r.ranking.slice(0,5).forEach((x,i)=>box.appendChild(el('div','acrow wacrow'+(x.name===p.name?' me':''),(i+1)+'. '+x.name+' · '+x.won+' ganadas de '+x.played)));
+  }catch(e){box.textContent='';box.appendChild(el('p','','No se ha podido cargar el ranking.'));}
+}
+async function wSubmit(){
+  const name=$('wname').value.trim(),pin=$('wpin').value,pin2=$('wpin2').value;
+  if(name.length<3){wMsg('Escribe tu nombre de usuario (mínimo 3 caracteres).');return;}
+  if(!/^\d{4}$/.test(pin)){wMsg('El PIN son 4 números.');return;}
+  if(wMode==='new'&&pin!==pin2){wMsg('Los dos PIN no coinciden. Escríbelos de nuevo.');$('wpin2').value='';$('wpin2').focus();return;}
+  wMsg('…');$('wgo').disabled=true;
+  try{
+    const r=await api(wMode==='new'?'/api/register':'/api/login',wMode==='new'?{name,pin,pin2}:{name,pin});
+    acct={sid:r.sid,name:r.profile.name,profile:r.profile};saveAcct();
+    $('wpin').value=$('wpin2').value='';wMsg('');wHome();
+  }catch(e){
+    wMsg(e.message);
+    if(!e.status)$('woff').hidden=false;
+  }
+  $('wgo').disabled=false;
+}
+for(const k of ['wpin','wpin2'])$(k).addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,4);});
+for(const k of ['wname','wpin','wpin2'])$(k).addEventListener('keydown',e=>{if(e.key==='Enter')wSubmit();});
+$('wgo').addEventListener('click',wSubmit);
+$('wtlogin').addEventListener('click',()=>wSetMode('login'));
+$('wtnew').addEventListener('click',()=>wSetMode('new'));
+$('woff').addEventListener('click',()=>{$('wel').hidden=true;});
+$('wloc').addEventListener('click',()=>{$('wel').hidden=true;});
+$('wai').addEventListener('click',()=>{$('wel').hidden=true;openNet();netView('ai','Elige la dificultad de la IA.');});
+$('won').addEventListener('click',()=>{$('wel').hidden=true;openNet();});
+$('wtour').addEventListener('click',openTour);
+$('whowbtn').addEventListener('click',openTut);
+$('wlogout').addEventListener('click',async()=>{try{if(acct)await api('/api/logout',{sid:acct.sid});}catch(e){}acct=null;saveAcct();showWelcome();});
 /* ---------- torneos ---------- */
 let tourCode='',tourTimer=0;
 try{tourCode=localStorage.getItem(TOURK)||'';}catch(e){}
@@ -1612,7 +1758,7 @@ $('tjoin').addEventListener('click',async()=>{
   try{const t=await api('/api/t/join',{sid:acct.sid,code});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
   catch(e){tourMsg(e.message);}
 });
-$('tgo').addEventListener('click',()=>{closeTour();openAcct();});
+$('tgo').addEventListener('click',()=>{closeTour();showWelcome();});
 $('tback').addEventListener('click',()=>{tourCode='';try{localStorage.removeItem(TOURK);}catch(e){}renderTour(null);});
 $('tclose').addEventListener('click',closeTour);
 
@@ -1621,7 +1767,7 @@ team=loadTeams();labelChips();
 newGame();
 requestAnimationFrame(frame);
 {const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
-if(!restoreSession())openTut();
+if(!restoreSession())wBoot();
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');

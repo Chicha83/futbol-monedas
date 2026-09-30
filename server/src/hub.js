@@ -99,8 +99,14 @@ export class Hub {
   profile(u) {
     const last = this.q(`SELECT m.p0,m.p1,m.s0,m.s1,m.ts,m.tm,a.name AS n0,b.name AS n1 FROM matches m
       JOIN players a ON a.id=m.p0 JOIN players b ON b.id=m.p1 WHERE m.p0=? OR m.p1=? ORDER BY m.id DESC LIMIT 10`, u.id, u.id);
+    let pos = null;
+    const total = this.one('SELECT COUNT(*) AS n FROM players WHERE played>0').n;
+    if (u.played > 0) {
+      pos = 1 + this.one(`SELECT COUNT(*) AS n FROM players WHERE played>0 AND (won>? OR (won=? AND (gf-ga)>?) OR (won=? AND (gf-ga)=? AND played<?))`,
+        u.won, u.won, u.gf - u.ga, u.won, u.gf - u.ga, u.played).n;
+    }
     return {
-      id: u.id, name: u.name, team: u.team, played: u.played, won: u.won, lost: u.lost, gf: u.gf, ga: u.ga,
+      id: u.id, name: u.name, team: u.team, played: u.played, won: u.won, lost: u.lost, gf: u.gf, ga: u.ga, pos, total,
       history: last.map(r => {
         const me0 = r.p0 === u.id;
         return { opp: me0 ? r.n1 : r.n0, gf: me0 ? r.s0 : r.s1, ga: me0 ? r.s1 : r.s0, ts: r.ts, torneo: !!r.tm };
@@ -121,6 +127,7 @@ export class Hub {
     const name = cleanName(b.name), pin = String(b.pin || '');
     if (!nameOk(name)) bad('El nombre debe tener de 3 a 14 caracteres (letras, números, espacio, guion o punto).');
     if (!/^\d{4}$/.test(pin)) bad('El PIN son 4 números.');
+    if (b.pin2 !== undefined && String(b.pin2) !== pin) bad('Los dos PIN no coinciden.');
     if (this.one('SELECT id FROM players WHERE lname=?', name.toLowerCase())) bad('Ese nombre ya está cogido. Si eres tú, pulsa «Entrar».', 409);
     const salt = rndHex(8), sid = rndHex(24);
     this.q('INSERT INTO players(name,lname,salt,pin,created) VALUES(?,?,?,?,?)', name, name.toLowerCase(), salt, await hashPin(pin, salt), Date.now());
