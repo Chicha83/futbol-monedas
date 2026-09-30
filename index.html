@@ -236,6 +236,15 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         </div>
         <div class="net-row"><button type="button" id="whowbtn">Ver el tutorial paso a paso</button></div>
       </div>
+      <div class="wbox" style="margin-top:12px" id="wpush"><h3 class="acs" style="margin:0">Avisos en el móvil</h3>
+        <p id="wpx">Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.</p>
+        <div class="net-row"><button type="button" id="wpbtn" class="primary">Activar avisos</button><button type="button" id="wptest" hidden>Probar aviso</button></div>
+        <div id="wpprefs" hidden style="display:grid;gap:6px">
+          <label class="chk"><input type="checkbox" id="wpg" checked> Partidas: tu turno y amigo que se une</label>
+          <label class="chk"><input type="checkbox" id="wpc" checked> Mensajes del chat</label>
+          <label class="chk"><input type="checkbox" id="wpt" checked> Torneos: partido listo</label>
+        </div>
+      </div>
       <div class="net-row" style="margin-top:12px"><button type="button" id="wlogout">Cerrar sesión</button></div>
     </div>
   </div>
@@ -1361,7 +1370,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='35';
+const VER='36';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1492,6 +1501,7 @@ function applyState(s){
   ui();
 }
 /* ---------- conexión con el servidor ---------- */
+document.addEventListener('visibilitychange',()=>{if(net&&!net.local)netSend({t:'vis',h:document.hidden});});
 /* ---------- chat con el rival (solo partidas online) ---------- */
 const QUICK=['¡Buen golpe!','¡Suerte!','¡Vamos!','¡Qué mala suerte!','Buen partido'];
 let toastT=0;
@@ -1554,7 +1564,7 @@ function openSocket(){
     n.lastRx=Date.now();
     let m;try{m=JSON.parse(e.data);}catch(_){return;}
     if(m.t==='hi'){
-      n.me=m.me;n.tok=m.tok;n.retries=0;VIEW=n.me===1?-1:1;saveSession();
+      n.me=m.me;n.tok=m.tok;n.retries=0;VIEW=n.me===1?-1:1;saveSession();netSend({t:'vis',h:document.hidden});
       if(n.down){n.down=false;clearTimeout(n.dt);if(n.downShown){n.downShown=false;$('net').hidden=true;}}
       if(!n.started){netView('create','Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.');$('ncode').textContent=n.code;}
     }else if(m.t==='s')applyState(m);
@@ -1711,7 +1721,7 @@ function wHome(){
     let when='';try{when=new Date(r.ts).toLocaleDateString('es-ES',{day:'numeric',month:'short'});}catch(e){}
     lw.appendChild(el('div','acrow '+(win?'win':'loss'),(win?'Victoria':'Derrota')+' contra '+r.opp+' · '+r.gf+'-'+r.ga+(r.torneo?' · torneo':'')+(when?' · '+when:'')));
   }
-  wRank(p);
+  wRank(p);pushRefresh();
 }
 async function wRank(p){
   const box=$('wrank');
@@ -1749,7 +1759,7 @@ $('wai').addEventListener('click',()=>{$('wel').hidden=true;openNet();netView('a
 $('won').addEventListener('click',()=>{$('wel').hidden=true;openNet();});
 $('wtour').addEventListener('click',openTour);
 $('whowbtn').addEventListener('click',openTut);
-$('wlogout').addEventListener('click',async()=>{try{if(acct)await api('/api/logout',{sid:acct.sid});}catch(e){}acct=null;saveAcct();showWelcome();});
+$('wlogout').addEventListener('click',async()=>{try{if(acct){try{const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();if(sub){await api('/api/push/unsub',{sid:acct.sid,endpoint:sub.endpoint});await sub.unsubscribe();}}catch(e){}await api('/api/logout',{sid:acct.sid});}}catch(e){}acct=null;saveAcct();showWelcome();});
 /* ---------- app instalable (PWA) ---------- */
 let instEv=null;
 const isStandalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}catch(e){return false;}};
@@ -1763,6 +1773,51 @@ $('winst').addEventListener('click',async()=>{
 });
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 instSync();
+/* ---------- avisos push ---------- */
+const pushOK=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+const unb64u=v=>Uint8Array.from(atob(v.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(v.length/4)*4,'=')),c=>c.charCodeAt(0));
+async function pushReg(){try{return await navigator.serviceWorker.ready;}catch(e){return null;}}
+function pushPrefs(){return {game:$('wpg').checked,chat:$('wpc').checked,tour:$('wpt').checked};}
+async function pushRefresh(){
+  const btn=$('wpbtn'),x=$('wpx');
+  $('wpush').hidden=false;
+  if(!pushOK()){
+    $('wpush').hidden=!(isIOS()&&!isStandalone());
+    if(!$('wpush').hidden){x.textContent='En el iPhone los avisos solo funcionan con el juego instalado en la pantalla de inicio (Safari → Compartir → «Añadir a pantalla de inicio»).';btn.hidden=true;$('wptest').hidden=true;$('wpprefs').hidden=true;}
+    return;
+  }
+  btn.hidden=false;
+  if(Notification.permission==='denied'){x.textContent='Has bloqueado las notificaciones de esta web. Actívalas en los ajustes de Chrome (icono del candado junto a la dirección → Permisos → Notificaciones).';btn.hidden=true;$('wptest').hidden=true;$('wpprefs').hidden=true;return;}
+  let on=false,prefs=null;
+  try{
+    const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();
+    if(sub&&acct){const r=await api('/api/push/state',{sid:acct.sid,endpoint:sub.endpoint});on=r.on;prefs=r.prefs;}
+  }catch(e){}
+  btn.textContent=on?'Desactivar avisos':'Activar avisos';btn.classList.toggle('primary',!on);
+  $('wptest').hidden=!on;$('wpprefs').hidden=!on;
+  if(prefs){$('wpg').checked=prefs.game;$('wpc').checked=prefs.chat;$('wpt').checked=prefs.tour;}
+  x.textContent=on?'Avisos activados en este móvil.':'Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.';
+}
+async function pushToggle(){
+  const x=$('wpx');x.textContent='…';
+  try{
+    const reg=await pushReg();if(!reg)throw new Error('No se puede usar el modo de avisos en este navegador.');
+    const cur=await reg.pushManager.getSubscription();
+    if(cur){try{await api('/api/push/unsub',{sid:acct.sid,endpoint:cur.endpoint});}catch(e){}await cur.unsubscribe();}
+    else{
+      const perm=await Notification.requestPermission();
+      if(perm!=='granted'){await pushRefresh();return;}
+      const k=await fetch(API+'/api/push/key').then(r=>r.json());
+      const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:unb64u(k.key)});
+      await api('/api/push/sub',{sid:acct.sid,sub:sub.toJSON(),prefs:pushPrefs()});
+    }
+  }catch(e){x.textContent='No se han podido activar los avisos: '+e.message;return;}
+  pushRefresh();
+}
+async function pushSavePrefs(){try{const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();if(sub)await api('/api/push/prefs',{sid:acct.sid,endpoint:sub.endpoint,prefs:pushPrefs()});}catch(e){}}
+$('wpbtn').addEventListener('click',pushToggle);
+for(const k of ['wpg','wpc','wpt'])$(k).addEventListener('change',pushSavePrefs);
+$('wptest').addEventListener('click',async()=>{const x=$('wpx');x.textContent='Enviando…';try{const r=await api('/api/push/test',{sid:acct.sid});x.textContent=r.sent?'Aviso enviado: debería llegarte en unos segundos.':'No se ha podido enviar el aviso. Prueba a desactivar y volver a activar.';}catch(e){x.textContent=e.message;}});
 /* ---------- torneos ---------- */
 let tourCode='',tourTimer=0;
 try{tourCode=localStorage.getItem(TOURK)||'';}catch(e){}

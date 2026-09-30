@@ -97,6 +97,7 @@ export class Room {
     if (!s.tok) { s.tok = crypto.randomUUID().replace(/-/g, ''); fresh = true; }
     if (s.ws && s.ws !== ws) { try { s.ws.close(4002, 'replaced'); } catch (e) { /* nada */ } }
     s.ws = ws;
+    s.hidden = false;
     if (typeof m.sid === 'string' && m.sid && !this.matchId) {       // usuario registrado (partida libre): nombre y estadísticas
       try {
         const r = await this.env.HUB.get(this.env.HUB.idFromName('main')).fetch('https://hub/internal/who', { method: 'POST', body: JSON.stringify({ sid: m.sid }) });
@@ -107,6 +108,7 @@ export class Room {
     if (Number.isInteger(m.team) && m.team >= -1 && m.team < 64) s.team = m.team;
     ws.send(JSON.stringify({ t: 'hi', me: seat, tok: s.tok, room: m.room }));
     if (fresh || m.team !== undefined) await this.save();
+    if (fresh && !this.matchId && this.seats[1 - seat].tok) this.pushTo(1 - seat, 'game', 'Fútbol Monedas', (s.name || 'Tu rival') + ' se ha unido a la partida.', 'union');
     this.lastAct = Date.now();
     if (!this.g.idleWait && !this.g.over) this.run();            // la sala se ha recuperado a mitad de jugada
     if (!this.idleT) {
@@ -122,6 +124,7 @@ export class Room {
   onMsg(seat, m, ws) {
     const s = this.seats[seat];
     switch (m.t) {
+      case 'vis': s.hidden = !!m.h; return;           // el móvil avisa si la app está en segundo plano
       case 'p': try { ws.send('{"t":"q"}'); } catch (e) { /* nada */ } return;
       case 'hi': this.send(ws, this.snap()); return;
       case 'chat': {                                   // mensaje al rival (no se guarda)
@@ -132,6 +135,7 @@ export class Room {
         s.lastChat = now;
         const o = this.seats[1 - seat];
         if (o && o.ws) this.send(o.ws, { t: 'chat', f: seat, x });
+        if (o) this.pushTo(1 - seat, 'chat', s.name || 'Tu rival', x, 'chat');
         return;
       }
       case 'team':
@@ -185,7 +189,26 @@ export class Room {
     if (this.g.idleWait || this.g.over) { this.stop(); this.broadcast(); this.save(); this.botCheck(); }
   }
 
-  botCheck() {                               // si le toca mover a un bot (partido de torneo contra la IA), piensa y juega
+  away(i) { const s = this.seats[i]; return !!s && !s.bot && (!s.ws || s.hidden); }
+  pushTo(i, kind, title, body, tag) {             // aviso al móvil del jugador i (solo si tiene usuario y no está mirando el juego)
+    const s = this.seats[i];
+    if (!s || s.bot || !(s.pid > 0) || !this.away(i)) return;
+    const now = Date.now(), k = 'p_' + kind;
+    if (now - (s[k] || 0) < 4000) return;
+    s[k] = now;
+    try {
+      this.env.HUB.get(this.env.HUB.idFromName('main')).fetch('https://hub/internal/push', { method: 'POST', body: JSON.stringify({ pid: s.pid, kind, title, body, tag }) }).catch(() => {});
+    } catch (e) { /* sin aviso */ }
+  }
+  notifyTurn() {                                  // le toca a un jugador que no está mirando: aviso
+    if (this.g.over || !this.g.idleWait) return;
+    const key = this.g.turn + '|' + this.g.phase + '|' + this.g.score + '|' + this.g.movesLeft;
+    if (key === this.turnKey) return;
+    this.turnKey = key;
+    if (this.g.phase === 'aim' || this.g.phase === 'place') this.pushTo(this.g.turn, 'game', '¡Te toca!', 'Es tu turno en la partida.', 'turno');
+  }
+  botCheck() {
+    this.notifyTurn();                               // si le toca mover a un bot (partido de torneo contra la IA), piensa y juega
     if (this.thinking || this.g.over || !this.g.idleWait) return;
     const seat = this.g.turn, s = this.seats[seat];
     if (!s || !s.bot || !this.seats.some(x => !x.bot && x.ws)) return;

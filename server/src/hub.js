@@ -1,3 +1,4 @@
+import { newVapid, sendPush, endpointOk } from './push.js';
 // Base de datos del juego (un único Hub): usuarios con PIN de 4 cifras, estadísticas, ranking y torneos.
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const BOTS = ['IA Lobo', 'IA Halcón', 'IA Tigre', 'IA Toro', 'IA Zorro', 'IA Águila', 'IA Oso', 'IA Pantera'];
@@ -49,7 +50,13 @@ export class Hub {
         id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER, rnd INTEGER, idx INTEGER, p0 INTEGER DEFAULT 0, p1 INTEGER DEFAULT 0,
         winner INTEGER DEFAULT 0, s0 INTEGER DEFAULT 0, s1 INTEGER DEFAULT 0, state TEXT, room TEXT, tok0 TEXT, tok1 TEXT)`);
       this.sql.exec('CREATE INDEX IF NOT EXISTS tm_tid ON tmatches(tid)');
+      this.sql.exec(`CREATE TABLE IF NOT EXISTS push(endpoint TEXT PRIMARY KEY, pid INTEGER, p256dh TEXT, auth TEXT,
+        game INTEGER DEFAULT 1, chat INTEGER DEFAULT 1, tour INTEGER DEFAULT 1, ts INTEGER)`);
+      this.sql.exec('CREATE INDEX IF NOT EXISTS push_pid ON push(pid)');
+      this.vapid = await state.storage.get('vapid');                 // claves VAPID: se crean una sola vez y nunca salen del servidor (salvo la pública)
+      if (!this.vapid) { this.vapid = await newVapid(); await state.storage.put('vapid', this.vapid); }
     });
+    this.outbox = [];
   }
 
   q(query, ...a) { return this.sql.exec(query, ...a).toArray(); }
@@ -61,6 +68,7 @@ export class Hub {
     if (req.method === 'POST') { try { body = await req.json(); } catch (e) { body = {}; } }
     try {
       const out = await this.route(url.pathname, body, url.searchParams);
+      await this.flush();
       return Response.json(out);
     } catch (e) {
       if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
@@ -84,6 +92,13 @@ export class Hub {
       case '/api/t/start': return this.tStart(b);
       case '/api/t/match': return this.tMatch(b);
       case '/api/t/walkover': return this.tWalkover(b);
+      case '/api/push/key': return { key: this.vapid.pub };
+      case '/api/push/sub': return this.pSub(b);
+      case '/api/push/unsub': { const u = this.auth(b.sid); this.q('DELETE FROM push WHERE endpoint=? AND pid=?', String(b.endpoint || ''), u.id); return { ok: 1 }; }
+      case '/api/push/prefs': return this.pPrefs(b);
+      case '/api/push/state': return this.pState(b);
+      case '/api/push/test': { const u = this.auth(b.sid); const n = await this.notify(u.id, 'game', { title: 'Fútbol Monedas', body: 'Las notificaciones funcionan. ¡A jugar!', tag: 'prueba' }); return { sent: n }; }
+      case '/internal/push': this.outbox.push([Number(b.pid) | 0, String(b.kind), { title: String(b.title || 'Fútbol Monedas').slice(0, 60), body: String(b.body || '').slice(0, 120), tag: String(b.tag || ''), url: './' }]); return { ok: 1 };
       case '/internal/who': { const u = this.one('SELECT p.id,p.name FROM sessions s JOIN players p ON p.id=s.pid WHERE s.sid=?', String(b.sid || '')); return u ? { pid: u.id, name: u.name } : {}; }
       case '/internal/result': return this.result(b);
     }
@@ -95,6 +110,46 @@ export class Hub {
     const u = sid ? this.one('SELECT p.* FROM sessions s JOIN players p ON p.id=s.pid WHERE s.sid=?', String(sid)) : null;
     if (!u) bad('Sesión caducada: vuelve a entrar con tu nombre y tu PIN.', 401);
     return u;
+  }
+  // ---------- avisos push ----------
+  pSub(b) {
+    const u = this.auth(b.sid), s = b.sub || {};
+    if (!endpointOk(s.endpoint) || !s.keys || typeof s.keys.p256dh !== 'string' || typeof s.keys.auth !== 'string') bad('Este móvil no admite avisos.');
+    const f = x => (x === false || x === 0 ? 0 : 1), p = b.prefs || {};
+    this.q('INSERT OR REPLACE INTO push(endpoint,pid,p256dh,auth,game,chat,tour,ts) VALUES(?,?,?,?,?,?,?,?)',
+      s.endpoint, u.id, s.keys.p256dh.slice(0, 120), s.keys.auth.slice(0, 40), f(p.game), f(p.chat), f(p.tour), Date.now());
+    const n = this.one('SELECT COUNT(*) AS n FROM push WHERE pid=?', u.id).n;
+    if (n > 6) this.q('DELETE FROM push WHERE pid=? AND endpoint IN (SELECT endpoint FROM push WHERE pid=? ORDER BY ts LIMIT ?)', u.id, u.id, n - 6);
+    return { ok: 1 };
+  }
+  pPrefs(b) {
+    const u = this.auth(b.sid), p = b.prefs || {}, f = x => (x === false || x === 0 ? 0 : 1);
+    this.q('UPDATE push SET game=?, chat=?, tour=? WHERE endpoint=? AND pid=?', f(p.game), f(p.chat), f(p.tour), String(b.endpoint || ''), u.id);
+    return { ok: 1 };
+  }
+  pState(b) {
+    const u = this.auth(b.sid), r = this.one('SELECT game,chat,tour FROM push WHERE endpoint=? AND pid=?', String(b.endpoint || ''), u.id);
+    return r ? { on: true, prefs: { game: !!r.game, chat: !!r.chat, tour: !!r.tour } } : { on: false };
+  }
+  async notify(pid, kind, payload) {
+    if (!(pid > 0) || !['game', 'chat', 'tour'].includes(kind)) return 0;
+    let sent = 0;
+    console.log('aviso', kind, pid);
+    for (const r of this.q(`SELECT * FROM push WHERE pid=? AND ${kind}=1`, pid)) {
+      try {
+        const st = await sendPush(this.vapid, { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } }, payload);
+        if (st === 404 || st === 410) this.q('DELETE FROM push WHERE endpoint=?', r.endpoint);
+        else if (st >= 200 && st < 300) sent++;
+      } catch (e) { /* sin red o servicio caído: el aviso se pierde */ }
+    }
+    return sent;
+  }
+  async flush() {
+    const o = this.outbox; this.outbox = [];
+    await Promise.all(o.map(([pid, kind, payload]) => this.notify(pid, kind, payload)));
+  }
+  readyPush(m, tname) {                          // un partido de torneo ya se puede jugar: avisa a los jugadores reales
+    for (const pid of [m.p0, m.p1]) if (pid > 0) this.outbox.push([pid, 'tour', { title: 'Torneo' + (tname ? ' «' + tname + '»' : ''), body: 'Tu siguiente partido ya está listo. ¡A jugar!', tag: 'torneo-' + m.tid, url: './' }]);
   }
   profile(u) {
     const last = this.q(`SELECT m.p0,m.p1,m.s0,m.s1,m.ts,m.tm,a.name AS n0,b.name AS n1 FROM matches m
@@ -230,6 +285,7 @@ export class Hub {
       }
     }
     this.q('UPDATE tournaments SET state=?, size=? WHERE id=?', 'running', size, t.id);
+    for (const m of this.q("SELECT * FROM tmatches WHERE tid=? AND state='ready'", t.id)) this.readyPush(m, t.name);
     for (const m of this.q("SELECT * FROM tmatches WHERE tid=? AND state='bye'", t.id)) {
       const w = m.p0 || m.p1;
       this.q("UPDATE tmatches SET winner=?, state='done' WHERE id=?", w, m.id);
@@ -244,7 +300,7 @@ export class Hub {
     const col = (idx & 1) ? 'p1' : 'p0';
     this.q(`UPDATE tmatches SET ${col}=? WHERE id=?`, winnerPid, next.id);
     const m = this.one('SELECT * FROM tmatches WHERE id=?', next.id);
-    if (m.p0 && m.p1) this.q("UPDATE tmatches SET state='ready' WHERE id=?", m.id);
+    if (m.p0 && m.p1) { this.q("UPDATE tmatches SET state='ready' WHERE id=?", m.id); this.readyPush(m, t.name); }
   }
   setWinner(m, seat, s0, s1) {
     const t = this.one('SELECT * FROM tournaments WHERE id=?', m.tid);
