@@ -1397,7 +1397,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='40';
+const VER='41';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1429,7 +1429,21 @@ function startAI(level){
   const mt=myTeam();let at;do{at=Math.floor(Math.random()*TEAMS.length);}while(at===mt);
   net={me:0,local:true,g,level,ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false};
   VIEW=1;team=[mt,at];names=[acct?acct.name:'','IA '+AILEV[level-1]];
-  labelChips();newGame();$('net').hidden=true;
+  labelChips();newGame();$('net').hidden=true;menuSync();
+}
+const AIKEY='fmon-ai';
+function saveAI(){try{const n=net;if(!n||!n.local)return;localStorage.setItem(AIKEY,JSON.stringify({level:n.level,snap:n.g.snapshot(null),team,names,t:Date.now()}));}catch(e){}}
+function clearAI(){try{localStorage.removeItem(AIKEY);}catch(e){}}
+function restoreAI(){
+  let o=null;try{o=JSON.parse(localStorage.getItem(AIKEY)||'null');}catch(e){}
+  if(!o||!o.snap||!o.level||Date.now()-o.t>7*24*3600*1000||o.snap.ov){clearAI();return false;}
+  try{
+    stopNet();
+    const g=Engine.createGame({goalMs:()=>(soundOn&&CR&&CR.golB)?8300:1800});
+    g.restore(o.snap);
+    net={me:0,local:true,g,level:o.level,ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false,sk:g.key};
+    VIEW=1;team=o.team;names=o.names;labelChips();$('net').hidden=true;menuSync();return true;
+  }catch(e){clearAI();stopNet();return false;}
 }
 function localMsg(m){
   const g=net.g;
@@ -1452,6 +1466,8 @@ function localStep(){
       });
     },800+Math.random()*700);
   }
+  if(g.over){if(n.sk!=='over'){n.sk='over';clearAI();}}
+  else if(g.idleWait&&g.key!==n.sk){n.sk=g.key;saveAI();}
   const s=g.snapshot(team);s.up=n.up;s.nm=names;s.tn=0;
   applyState(s);refreshAim();
 }
@@ -1572,13 +1588,13 @@ function netView(mode,text){
 function stopNet(){
   const n=net;net=null;VIEW=1;names=['',''];clearSession();team=loadTeams();
   if(n){n.closed=true;clearTimeout(n.rc);clearTimeout(n.dt);try{if(n.ws){n.ws.onclose=null;n.ws.close();}}catch(e){}}
-  try{if(wl)wl.release();}catch(e){}wl=null;labelChips();chatSync();
+  try{if(wl)wl.release();}catch(e){}wl=null;labelChips();chatSync();menuSync();
 }
 function connectRoom(code,tok,resume){
   stopNet();
   net={me:0,ws:null,tok:tok||'',code,pend:0,lastRx:Date.now(),down:false,up:[false,false],started:!!resume,tn:0,retries:0,closed:false};
   VIEW=1;team=[-1,-1];names=['',''];labelChips();newGame();
-  openSocket();keepAwake();chatSync();
+  openSocket();keepAwake();chatSync();menuSync();
 }
 function openSocket(){
   const n=net;if(!n||n.closed)return;
@@ -1647,7 +1663,13 @@ function joinGame(raw){
   netView('join','Conectando…');
   connectRoom(code);
 }
-$('online').addEventListener('click',openNet);
+function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=net?'Abandonar partida':'Jugar';}
+$('online').addEventListener('click',e=>{
+  const b=$('online');
+  if(!net){openNet();return;}
+  if(!b.dataset.ask){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
+  clearAI();stopNet();newGame();showWelcome();
+});
 $('ncreate').addEventListener('click',createGame);
 $('njoin').addEventListener('click',()=>{netView('join','Escribe el código que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
 $('ngo').addEventListener('click',()=>joinGame($('ninput').value));
@@ -1798,7 +1820,21 @@ $('winst').addEventListener('click',async()=>{
   if(instEv){instEv.prompt();try{await instEv.userChoice;}catch(e){}instEv=null;instSync();return;}
   const t=$('winstx');t.hidden=!t.hidden;t.textContent='En el iPhone: pulsa el botón Compartir de Safari y elige «Añadir a pantalla de inicio».';
 });
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;}).catch(()=>{});
+let swReg=null,updAsk=false;
+/* actualizaciones: comprueba si hay versión nueva; si estás en la pantalla de bienvenida recarga sola, y si no avisa con un botón */
+async function checkUpdate(){
+  try{
+    if(swReg)swReg.update().catch(()=>{});
+    const t=await fetch('index.html?v='+Date.now(),{cache:'no-store'}).then(r=>r.text());
+    const m=t.match(/const VER='(\d+)'/);
+    if(!m||+m[1]<=+VER)return;
+    if(!net&&!$('wel').hidden){location.reload();return;}
+    if(!updAsk){updAsk=true;const d=document.createElement('div');d.id='upd';d.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#12335a;color:#fff;border:1px solid #4da3ff;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font:600 14px system-ui';const sp=document.createElement('span');sp.style.flex='1';sp.textContent='Hay una versión nueva del juego';const bt=document.createElement('button');bt.type='button';bt.textContent='Actualizar';bt.style.cssText='padding:8px 14px;border-radius:8px;border:0;background:#4da3ff;color:#06203d;font-weight:800';bt.onclick=()=>location.reload();d.append(sp,bt);document.body.appendChild(d);}
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
+setInterval(checkUpdate,10*60*1000);setTimeout(checkUpdate,4000);
 instSync();
 /* ---------- avisos push ---------- */
 const pushOK=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
@@ -1940,7 +1976,7 @@ team=loadTeams();labelChips();
 newGame();
 requestAnimationFrame(frame);
 {const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
-if(!restoreSession())wBoot();
+if(!restoreSession()&&!restoreAI())wBoot();
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
