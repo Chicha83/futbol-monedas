@@ -1066,7 +1066,10 @@ $('back').addEventListener('click',()=>{
   if(step===3)sel.p=0;
   step--;drag=null;ui();
 });
-$('newgame').addEventListener('click',newGame);
+$('newgame').addEventListener('click',()=>{
+  if(net&&net.local)startFlow('ai',()=>{openNet();netView('ai','Elige la dificultad de la IA.');});
+  else startFlow('loc',()=>{newGame();});
+});
 $('snd').addEventListener('click',()=>{
   soundOn=!soundOn;ensureAudio();$('snd').setAttribute('aria-pressed',String(soundOn));$('snd').textContent='Sonido: '+(soundOn?'sí':'no');
 });
@@ -1421,7 +1424,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='44';
+const VER='45';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1515,13 +1518,16 @@ function loadTeams(){try{const a=JSON.parse(localStorage.getItem(TKEY)||'null');
 function myTeam(){try{const v=parseInt(localStorage.getItem(MYKEY),10);return okTeam(v)?v:-1;}catch(e){return -1;}}
 function saveTeams(){try{if(net)localStorage.setItem(MYKEY,String(team[net.me]));else localStorage.setItem(TKEY,JSON.stringify(team));}catch(e){}}
 let tmSel=0,tmBuilt=false;
+let flow=null;
+const solo=()=>!!(flow&&flow.kind!=='loc');
+function startFlow(kind,next){flow={kind,next};buildTeams();tmSel=0;markTeams();$('tmclose').textContent='Continuar';$('teams').hidden=false;}
 function markTeams(){
-  const cur=net?team[net.me]:team[tmSel];
+  const cur=solo()?myTeam():net?team[net.me]:team[tmSel];
   document.querySelectorAll('#tgrid button').forEach(b=>b.classList.toggle('sel',+b.dataset.i===cur));
   document.querySelectorAll('#tmtabs button').forEach(b=>b.classList.toggle('sel',+b.dataset.p===tmSel));
-  $('tmtabs').hidden=!!net;
-  $('tmt').textContent=net?'Tu equipo':'Equipos';
-  $('tmx').textContent=net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.';
+  $('tmtabs').hidden=!!net||solo();
+  $('tmt').textContent=solo()?'¿Con qué equipo quieres jugar?':net?'Tu equipo':'Equipos';
+  $('tmx').textContent=solo()?'Elige tu equipo. Después elegirás '+(flow.kind==='ai'?'el nivel de la IA.':'cómo jugar online.'):net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.';
 }
 function buildTeams(){
   if(tmBuilt)return;tmBuilt=true;
@@ -1535,15 +1541,16 @@ function buildTeams(){
     b.appendChild(c);b.appendChild(document.createTextNode(i<0?'Sin equipo':TEAMS[i][1]));g.appendChild(b);
   }
 }
-function openTeams(){buildTeams();tmSel=net?net.me:0;markTeams();$('teams').hidden=false;}
-function closeTeams(){$('teams').hidden=true;}
+function openTeams(){flow=null;$('tmclose').textContent='Listo';buildTeams();tmSel=net?net.me:0;markTeams();$('teams').hidden=false;}
+function closeTeams(){$('teams').hidden=true;flow=null;$('tmclose').textContent='Listo';}
 function pickTeam(i){
+  if(solo()){try{localStorage.setItem(MYKEY,String(i));}catch(e){}markTeams();return;}
   if(net){team[net.me]=i;net.tmT=performance.now();netSend({t:'team',i});}
   else{team[tmSel]=i;if(tmSel===0)tmSel=1;}
   saveTeams();labelChips();markTeams();
 }
 $('teamsbtn').addEventListener('click',openTeams);
-$('tmclose').addEventListener('click',closeTeams);
+$('tmclose').addEventListener('click',()=>{const f=flow;closeTeams();if(f&&f.next)f.next();});
 $('tgrid').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)pickTeam(+b.dataset.i);});
 $('tmtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(b){tmSel=+b.dataset.p;markTeams();}});
 /* ---------- estado que llega del servidor ---------- */
@@ -1827,10 +1834,10 @@ for(const k of ['wname','wpin','wpin2'])$(k).addEventListener('keydown',e=>{if(e
 $('wgo').addEventListener('click',wSubmit);
 $('wtlogin').addEventListener('click',()=>wSetMode('login'));
 $('wtnew').addEventListener('click',()=>wSetMode('new'));
-$('woff').addEventListener('click',()=>{locOn=true;$('wel').hidden=true;});
-$('wloc').addEventListener('click',()=>{locOn=true;$('wel').hidden=true;});
-$('wai').addEventListener('click',()=>{$('wel').hidden=true;openNet();netView('ai','Elige la dificultad de la IA.');});
-$('won').addEventListener('click',()=>{$('wel').hidden=true;openNet();});
+$('woff').addEventListener('click',()=>startFlow('loc',()=>{if(net){clearAI();stopNet();}locOn=true;newGame();$('wel').hidden=true;}));
+$('wloc').addEventListener('click',()=>startFlow('loc',()=>{if(net){clearAI();stopNet();}locOn=true;newGame();labelChips();$('wel').hidden=true;}));
+$('wai').addEventListener('click',()=>startFlow('ai',()=>{$('wel').hidden=true;openNet();netView('ai','Elige la dificultad de la IA.');}));
+$('won').addEventListener('click',()=>startFlow('online',()=>{$('wel').hidden=true;openNet();}));
 $('wtour').addEventListener('click',openTour);
 $('whowbtn').addEventListener('click',openTut);
 $('wlogout').addEventListener('click',async()=>{try{if(acct){try{const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();if(sub){await api('/api/push/unsub',{sid:acct.sid,endpoint:sub.endpoint});await sub.unsubscribe();}}catch(e){}await api('/api/logout',{sid:acct.sid});}}catch(e){}acct=null;saveAcct();showWelcome();});
