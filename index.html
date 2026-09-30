@@ -270,6 +270,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     </div>
   </div>
 </div>
+<button type="button" id="pconfirm" class="primary" hidden style="position:fixed;left:50%;transform:translateX(-50%);bottom:28px;z-index:5;padding:11px 22px;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.4)">Colocar aquí ✔</button>
 <div class="tut" id="menu" role="dialog" aria-modal="true" aria-label="Menú" hidden>
   <div class="tut-card">
     <h2>Menú</h2>
@@ -705,7 +706,7 @@ function newGame(){if(net&&net.local){net.g.newGame();return;}score=[0,0];over=f
 function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.p*55,f:s.f,e:s.e,spin:s.spin};ui();}
 const dn=i=>names[i]||(net&&net.me===i&&acct?acct.name:'')||(team[i]>=0?TEAMS[team[i]][1]:'Jugador '+(i+1));
 const fixN=t=>String(t).replace(/Jugador ([12])/g,(m,d)=>dn(d-1));
-function statusText(){return fixN(statusText0());}
+function statusText(){return fixN(statusText0())+((phase==='place'&&mine()&&!over)?' Cuando esté bien, pulsa «Colocar aquí».':'');}
 function statusText0(){
   if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':'Toca el campo para pedir la revancha.'):'Toca el campo para jugar otra vez.');
   if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
@@ -977,6 +978,7 @@ function draw(ts){
   }
   for(const c of coins){if(phase==='place'&&c===coins[turn])continue;drawCoin(c);}
   if(phase==='place'&&pm.m==='gkdef'){const ly=gkLim(pm.y);ctx.save();ctx.strokeStyle=PC[turn];ctx.globalAlpha=.6;ctx.lineWidth=3;ctx.setLineDash([14,10]);ctx.beginPath();ctx.moveTo(FX0,ly);ctx.lineTo(FX1,ly);ctx.stroke();ctx.restore();}
+  {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;}}
   if(phase==='place'){
     const c=coins[turn],ok=placeOK(place,c);
     ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:place.x,y:place.y});ctx.restore();
@@ -1010,6 +1012,7 @@ function draw(ts){
 
 /* ---------- entrada ---------- */
 function posS(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*VW+VM,y:(e.clientY-r.top)/r.height*VH+VM};}
+function posP(e){const q=pos(e);return e.pointerType==='mouse'?q:{x:q.x,y:q.y-60*VIEW};}   // con el dedo, la moneda se coloca un poco por encima para verla
 function pos(e){const q=posS(e);return VIEW<0?{x:W-q.x,y:H-q.y}:q;}   // coordenadas del campo (con la vista girada del invitado)
 function setDir(p){
   const c=coins[turn],dx=p.x-c.x,dy=p.y-c.y,d=Math.hypot(dx,dy);
@@ -1025,24 +1028,18 @@ cv.addEventListener('pointerdown',e=>{
   ensureAudio();
   if(over){if(!net)newGame();else if(!net.tn)netSend({t:'new'});return;}
   if(net&&(turn!==net.me||isPending()))return;
-  if(phase==='place'){const p=snapPlace(pos(e));place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
+  if(phase==='place'){const p=snapPlace(posP(e));place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
   if(phase!=='aim')return;
   const r=posS(e);drag={x0:r.x,y0:r.y,e0:sel.e};applyDrag(e);
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   e.preventDefault();
 });
-cv.addEventListener('pointermove',e=>{if(!drag)return;if(phase==='place'){const p=snapPlace(pos(e));place.x=p.x;place.y=p.y;}else applyDrag(e);});
+cv.addEventListener('pointermove',e=>{if(!drag)return;if(phase==='place'){const p=snapPlace(posP(e));place.x=p.x;place.y=p.y;}else applyDrag(e);});
 function release(e){
   if(!drag)return;
   drag=null;
-  if(phase==='place'){
-    const c=coins[turn];
-    if(e.type==='pointerup'&&placeOK(place,c)){
-      if(net){netSend({t:'place',x:place.x,y:place.y});net.pend=performance.now();}
-      else{c.x=place.x;c.y=place.y;c.vx=c.vy=c.spin=0;donePlace();}
-    }
-    return;
-  }
+  if(phase==='place')return;   // se coloca al pulsar «Colocar aquí», no al soltar el dedo
+
   if(e.type!=='pointerup'){if(step===3)sel.p=0;return;}
   if(step===1){if(sel.ok)step=2;}
   else if(step===2){step=3;}
@@ -1054,6 +1051,13 @@ function release(e){
   ui();
 }
 cv.addEventListener('pointerup',release);
+$('pconfirm').addEventListener('click',()=>{
+  if(phase!=='place'||!mine()||over||(net&&isPending()))return;
+  const c=coins[turn];if(!placeOK(place,c))return;
+  if(net){netSend({t:'place',x:place.x,y:place.y});net.pend=performance.now();}
+  else{c.x=place.x;c.y=place.y;c.vx=c.vy=c.spin=0;donePlace();}
+  $('pconfirm').hidden=true;
+});
 cv.addEventListener('pointercancel',release);
 function goStep(n){
   if(phase!=='aim'||n===step||(n>1&&!sel.ok))return;
@@ -1427,7 +1431,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='53';
+const VER='54';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
