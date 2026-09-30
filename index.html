@@ -992,7 +992,7 @@ function draw(ts){
     else{const ly=gkLim(pm.y);if(pm.y<CY)ctx.fillRect(FX0,FY0,FX1-FX0,ly-FY0);else ctx.fillRect(FX0,ly,FX1-FX0,FY1-ly);ctx.beginPath();ctx.moveTo(FX0,ly);ctx.lineTo(FX1,ly);ctx.stroke();}
     ctx.restore();
   }
-  {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;const r=document.querySelector('.steps').getBoundingClientRect(),k=[r.left,r.top,r.width,r.height].map(Math.round).join();if(pb.dataset.k!==k){pb.dataset.k=k;pb.style.left=r.left+'px';pb.style.top=r.top+'px';pb.style.width=r.width+'px';pb.style.height=r.height+'px';}}}   // el botón va sobre la fila de pasos (vacía mientras se coloca), nunca sobre los medidores de abajo
+  {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;const r=document.querySelector('.steps').getBoundingClientRect(),k=[r.left,r.bottom,r.width].map(Math.round).join();if(pb.dataset.k!==k){pb.dataset.k=k;pb.style.left=r.left+'px';pb.style.top=(r.bottom+6)+'px';pb.style.width=r.width+'px';pb.style.height='46px';}}}   // el botón va justo debajo de la fila de pasos, en el hueco antes del campo; nunca sobre los medidores de abajo
   if(phase==='place'){
     const c=coins[turn],ok=placeOK(place,c);
     ctx.save();ctx.globalAlpha=.85;drawCoin({...c,x:place.x,y:place.y});ctx.restore();
@@ -1453,7 +1453,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='60';
+const VER='61';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -2069,8 +2069,22 @@ $('wresume').addEventListener('click',()=>{$('wel').hidden=true;});
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
-function fit(){const w=pp.clientWidth-4,h=pp.clientHeight-8;const k=Math.max(0.2,Math.min(w/660,h/960));cv.style.width=Math.floor(660*k)+'px';cv.style.height=Math.floor(960*k)+'px';}
-fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));if(window.ResizeObserver)new ResizeObserver(fit).observe(pp);})();
+/* El campo se dimensiona a partir de la altura REAL de la ventana menos lo que ocupan la cabecera y los medidores, sin depender del propio campo:
+   así las barras de abajo (Potencia, Efecto, Contacto) siempre caben y se ven, pase lo que pase con la barra del navegador o el tamaño de la ventana. */
+let fitK='';
+function fit(){
+  const wrap=document.querySelector('.wrap'),m=document.querySelector('.meters');
+  const wb=wrap.getBoundingClientRect(),padB=parseFloat(getComputedStyle(wrap).paddingBottom)||8;
+  const top=pp.getBoundingClientRect().top;
+  const avail=Math.max(160,Math.floor(wb.bottom-padB-m.offsetHeight-8-top));
+  pp.style.flex='none';pp.style.height=avail+'px';
+  const w=pp.clientWidth-4,h=avail-8;const k=Math.max(0.2,Math.min(w/660,h/960));
+  cv.style.width=Math.floor(660*k)+'px';cv.style.height=Math.floor(960*k)+'px';
+}
+function fitCheck(){const k=innerWidth+'x'+innerHeight+'|'+Math.round(document.querySelector('.steps').getBoundingClientRect().bottom)+'|'+document.querySelector('.meters').offsetHeight;if(k!==fitK){fitK=k;fit();}}
+fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,200));if(window.visualViewport)visualViewport.addEventListener('resize',fit);
+if(window.ResizeObserver)new ResizeObserver(fit).observe(document.querySelector('.wrap'));
+setInterval(fitCheck,400);fitCheck();})();
 </script>
 </body>
 </html>

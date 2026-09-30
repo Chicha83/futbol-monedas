@@ -26,6 +26,11 @@ async def main():
                         if(q.left<m.right&&q.right>m.left&&q.top<m.bottom&&q.bottom>m.top)out.push('tapa los medidores: #'+e.id);}
                       return out;}""")
                     for x in r: bad.append('%dx%d %s: %s'%(vp[0],vp[1],name,x))
+                # la ventana cambia de tamaño (barra del navegador, notificaciones...) y vuelve: las barras deben seguir a la vista
+                for h in (vp[1]-140,vp[1]):
+                    await pg.set_viewport_size({'width':vp[0],'height':max(h,420)}); await pg.wait_for_timeout(700)
+                    r=await pg.evaluate("()=>{const m=document.querySelector('.meters').getBoundingClientRect();return m.bottom>innerHeight+1||m.height<10?'medidores fuera tras cambiar el tamaño':''}")
+                    if r: bad.append('%dx%d -> %d: %s'%(vp[0],vp[1],h,r))
             await b.close()
     finally:
         import os; os.remove(ROOT+'/_t.html')
