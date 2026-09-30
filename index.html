@@ -325,6 +325,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     <p id="rmx" style="min-height:0"></p>
     <div class="net-row">
       <button type="button" id="rmre" class="primary">Revancha</button>
+      <button type="button" id="rmtour" class="primary" hidden>Ver el torneo</button>
       <button type="button" id="rmexit">Salir al menú principal</button>
     </div>
   </div>
@@ -1501,7 +1502,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='70';
+const VER='71';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1650,8 +1651,6 @@ function applyState(s){
   net.tn=s.tn||0;
   labelChips();
   if(!net.started&&net.up&&net.up[0]&&net.up[1]){net.started=true;$('net').hidden=true;$('tour').hidden=true;}
-  if(over&&net.tn&&!net.tShown){net.tShown=true;setTimeout(()=>{if(net&&net.tn)openTour();},3500);}
-  if(!over)net.tShown=false;
   ui();
 }
 /* ---------- conexión con el servidor ---------- */
@@ -1796,25 +1795,27 @@ function oppLeft(nm){                      // el rival ha abandonado: se descone
 function toMainMenu(){                     // salir de la partida (o de la revancha) a la pantalla principal
   leaveNet();clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();$('rm').hidden=true;showWelcome();
 }
-function rmSync(){                         // cartel de fin de partida: Revancha o salir al menú (contra la IA y en el amistoso online; no en torneos)
+function rmSync(){                         // cartel de fin de partida: Revancha o salir al menú (contra la IA y en el amistoso online); en los torneos, ver el torneo o salir al menú
   const box=$('rm');if(!box)return;
-  const want=!!(net&&over&&!net.tn);
+  const want=!!(net&&over);
   if(!want){clearTimeout(rmTm);rmTm=0;rmOn=false;if(!box.hidden)box.hidden=true;return;}
   if(!rmOn){if(!rmTm)rmTm=setTimeout(()=>{rmTm=0;rmOn=true;rmSync();},1600);return;}
   const me=net.me,o=1-me,rv=net.rv||[false,false],gone=net.gn>=0&&net.gn!==me,w=score[0]>score[1]?0:1;
   const pn=i=>names[i]||(net.local?(i===0?(acct?acct.name:'Tú'):'IA'):(me===i?(acct?acct.name:'Tú'):'Rival'));
   $('rmt').textContent=w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
-  $('rmx').textContent=score[0]+' - '+score[1]+(gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
-  $('rmre').hidden=gone;$('rmre').disabled=!!rv[me];
+  const tn=!!net.tn;
+  $('rmx').textContent=score[0]+' - '+score[1]+(tn?' · Partido de torneo terminado.':gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
+  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;
   box.hidden=false;
 }
 $('rmre').addEventListener('click',()=>{if(!net)return;if(!net.local){net.rv=(net.rv||[false,false]).slice();net.rv[net.me]=true;}netSend({t:'new'});rmSync();});
 $('rmexit').addEventListener('click',toMainMenu);
-function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=(net||locOn)?'Abandonar partida':'Jugar';}
+$('rmtour').addEventListener('click',()=>{if(net&&net.tn)openTour();});
+function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=(net&&over)?'Salir al menú principal':(net||locOn)?'Abandonar partida':'Jugar';}
 $('online').addEventListener('click',e=>{
   const b=$('online');
   if(!net&&!locOn){openNet();return;}
-  if(!b.dataset.ask){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
+  if(!b.dataset.ask&&!(net&&over)){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
   toMainMenu();
 });
 $('ncreate').addEventListener('click',createGame);
