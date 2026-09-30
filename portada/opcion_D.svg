@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><rect width="1080" height="1920" fill="#FBFBF8"/><filter id="g"><feTurbulence baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .3  0 0 0 0 .3  0 0 0 0 .3  0 0 0 .05 0"/></filter><rect width="1080" height="1920" filter="url(#g)"/>
+<g fill="none" stroke="#D62839" stroke-width="6" stroke-linejoin="round">
+<rect x="150" y="130" width="780" height="910"/><line x1="150" y1="585.0" x2="930" y2="585.0"/><circle cx="540.0" cy="585.0" r="109.20000000000002"/>
+<rect x="321.59999999999997" y="130" width="436.80000000000007" height="154.70000000000002"/><rect x="438.6" y="130" width="202.8" height="59.15"/>
+<rect x="321.59999999999997" y="885.3" width="436.80000000000007" height="154.70000000000002"/><rect x="438.6" y="980.85" width="202.8" height="59.15"/>
+<path d="M430.79999999999995 284.70000000000005 a109.20000000000002 109.20000000000002 0 0 0 218.40000000000003 0"/><path d="M430.79999999999995 885.3 a109.20000000000002 109.20000000000002 0 0 1 218.40000000000003 0"/>
+<path d="M150 160 a30 30 0 0 0 30 -30"/><path d="M930 160 a30 30 0 0 1 -30 -30"/><path d="M150 1010 a30 30 0 0 1 30 30"/><path d="M930 1010 a30 30 0 0 0 -30 30"/></g>
+<rect x="407.4" y="86" width="265.20000000000005" height="44" fill="none" stroke="#D62839" stroke-width="6"/><rect x="407.4" y="1040" width="265.20000000000005" height="44" fill="none" stroke="#D62839" stroke-width="6"/>
+<g stroke="#D62839" stroke-width="3" opacity=".55"><line x1="380" y1="86" x2="380" y2="130"/><line x1="404" y1="86" x2="404" y2="130"/><line x1="428" y1="86" x2="428" y2="130"/><line x1="452" y1="86" x2="452" y2="130"/><line x1="476" y1="86" x2="476" y2="130"/><line x1="500" y1="86" x2="500" y2="130"/><line x1="524" y1="86" x2="524" y2="130"/><line x1="548" y1="86" x2="548" y2="130"/><line x1="572" y1="86" x2="572" y2="130"/><line x1="596" y1="86" x2="596" y2="130"/><line x1="620" y1="86" x2="620" y2="130"/><line x1="644" y1="86" x2="644" y2="130"/><line x1="668" y1="86" x2="668" y2="130"/><line x1="692" y1="86" x2="692" y2="130"/><line x1="380" y1="86" x2="700" y2="86"/><line x1="380" y1="100" x2="700" y2="100"/><line x1="380" y1="114" x2="700" y2="114"/><line x1="380" y1="128" x2="700" y2="128"/></g>
+<path d="M300 1590 C 360 1300 760 1150 540 330" fill="none" stroke="#141B24" stroke-width="10" stroke-dasharray="4 28" stroke-linecap="round"/>
+<g transform="translate(540 300)"><ellipse cx="5.4" cy="8.1" rx="54" ry="54" fill="rgba(20,27,36,.25)"/>
+<circle r="54" fill="#C98354" stroke="#6E3B1B" stroke-width="3.2399999999999998"/><circle r="42.120000000000005" fill="none" stroke="#6E3B1B" stroke-width="2.16" opacity=".5"/>
+<text y="11.88" text-anchor="middle" font-size="33.48" fill="#4A2810" font-family="'DejaVu Sans Condensed','DejaVu Sans',Arial,sans-serif" font-weight="800">5c</text></g>
+<g transform="rotate(-7 540 1300)"><text x="540" y="1250" text-anchor="middle" font-size="160" fill="#141B24" font-family="'DejaVu Sans Condensed','DejaVu Sans',Arial,sans-serif" font-weight="800" letter-spacing="3">FÚTBOL</text><text x="540" y="1402.0" text-anchor="middle" font-size="160" fill="#D62839" font-family="'DejaVu Sans Condensed','DejaVu Sans',Arial,sans-serif" font-weight="800" letter-spacing="3">MONEDAS</text></g>
+<g transform="translate(300 1590)">
+<ellipse cx="13.5" cy="18.900000000000002" rx="135" ry="135" fill="rgba(20,27,36,.22)"/>
+<circle r="135" fill="#D8B255" stroke="#8E6C1E" stroke-width="5.4"/>
+<clipPath id="ca"><circle r="125.55000000000001"/></clipPath>
+<g clip-path="url(#ca)" transform="rotate(0)"><rect x="-135" y="-135" width="270" height="270" fill="#2A5BD7"/>
+<rect x="-135.0" y="-135" width="27.0" height="270" fill="rgba(255,255,255,.88)"/><rect x="-81.0" y="-135" width="27.0" height="270" fill="rgba(255,255,255,.88)"/><rect x="-27.0" y="-135" width="27.0" height="270" fill="rgba(255,255,255,.88)"/><rect x="27.0" y="-135" width="27.0" height="270" fill="rgba(255,255,255,.88)"/><rect x="81.0" y="-135" width="27.0" height="270" fill="rgba(255,255,255,.88)"/><rect x="135.0" y="-135" width="27.0" height="270" fill="rgba(255,255,255,.88)"/>
+<circle r="48.6" fill="#F2F5F9" stroke="#141B24" stroke-width="4.05"/></g>
+<circle r="125.55000000000001" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="4.05"/>
+</g><g transform="translate(40 1700) rotate(-35)"><rect x="0" y="-20" width="430" height="40" rx="8" fill="rgba(20,27,36,.2)" transform="translate(6 10)"/>
+<rect x="0" y="-18" width="430" height="36" rx="8" fill="#DDBB86" stroke="#8A6236" stroke-width="3"/>
+<rect x="180.6" y="-18" width="12" height="36" fill="rgba(110,70,30,.65)"/>
+<path d="M200.6 -18 q30 18 0 36" fill="none" stroke="#8A6236" stroke-width="3" opacity=".6"/>
+<path d="M14 -6 H172.0" stroke="#B48F5A" stroke-width="3" opacity=".6"/></g>
+<g transform="translate(860 1560)">
+<ellipse cx="9.0" cy="12.600000000000001" rx="90" ry="90" fill="rgba(20,27,36,.22)"/>
+<circle r="90" fill="#D8B255" stroke="#8E6C1E" stroke-width="3.6"/>
+<clipPath id="cb"><circle r="83.7"/></clipPath>
+<g clip-path="url(#cb)" transform="rotate(0)"><rect x="-90" y="-90" width="180" height="180" fill="#12855C"/>
+<rect x="-90.0" y="-90" width="18.0" height="180" fill="rgba(255,255,255,.88)"/><rect x="-54.0" y="-90" width="18.0" height="180" fill="rgba(255,255,255,.88)"/><rect x="-18.0" y="-90" width="18.0" height="180" fill="rgba(255,255,255,.88)"/><rect x="18.0" y="-90" width="18.0" height="180" fill="rgba(255,255,255,.88)"/><rect x="54.0" y="-90" width="18.0" height="180" fill="rgba(255,255,255,.88)"/><rect x="90.0" y="-90" width="18.0" height="180" fill="rgba(255,255,255,.88)"/>
+<circle r="32.4" fill="#F2F5F9" stroke="#141B24" stroke-width="2.6999999999999997"/></g>
+<circle r="83.7" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2.6999999999999997"/>
+</g>
+<text x="540" y="1860" text-anchor="middle" font-size="44" fill="#546171" font-family="'DejaVu Sans Condensed','DejaVu Sans',Arial,sans-serif" font-weight="800" letter-spacing="8">TOCA PARA EMPEZAR</text></svg>
