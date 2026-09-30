@@ -124,6 +124,16 @@ export class Room {
     switch (m.t) {
       case 'p': try { ws.send('{"t":"q"}'); } catch (e) { /* nada */ } return;
       case 'hi': this.send(ws, this.snap()); return;
+      case 'chat': {                                   // mensaje al rival (no se guarda)
+        const now = Date.now();
+        if (now - (s.lastChat || 0) < 700) return;
+        const x = typeof m.x === 'string' ? m.x.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 100) : '';
+        if (!x) return;
+        s.lastChat = now;
+        const o = this.seats[1 - seat];
+        if (o && o.ws) this.send(o.ws, { t: 'chat', f: seat, x });
+        return;
+      }
       case 'team':
         if (Number.isInteger(m.i) && m.i >= -1 && m.i < 64) { s.team = m.i; this.save(); this.broadcast(true); }
         return;

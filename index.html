@@ -55,6 +55,18 @@ button:disabled{opacity:.45;cursor:default}
 button:focus-visible,canvas:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 @media (max-width:440px){.chip{padding:8px 9px;gap:4px}.chip .who{font-size:11px;letter-spacing:.02em;gap:6px}.chip b{font-size:30px}.goal-to{font-size:11px}}
 [hidden]{display:none!important}
+.paper{position:relative}
+.chatbtn{position:absolute;right:4px;bottom:4px;width:46px;height:46px;border-radius:50%;padding:0;font-size:22px;line-height:1;box-shadow:0 2px 8px rgba(10,20,35,.3);z-index:2}
+.chatbtn i{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--red);border:2px solid var(--surface)}
+.chattoast{position:absolute;left:8px;right:60px;bottom:8px;z-index:2;background:rgba(20,27,36,.9);color:#fff;border-radius:10px;padding:8px 10px;font-size:14px;line-height:1.25;pointer-events:none}
+.chatlist{display:grid;gap:6px;max-height:36vh;overflow:auto;align-content:start;min-height:4em}
+.cmsg{max-width:85%;padding:6px 10px;border-radius:12px;font-size:14px;line-height:1.3;overflow-wrap:anywhere;background:var(--bg)}
+.cmsg.me{justify-self:end;background:var(--red);color:#fff}
+.cmsg small{display:block;font-size:11px;opacity:.7}
+.cquick{display:flex;flex-wrap:wrap;gap:6px}
+.cquick button{padding:5px 9px;font-size:13px}
+.crow{display:flex;gap:8px}
+.crow input{text-align:left;font:600 16px var(--body);letter-spacing:0;text-transform:none}
 .menu-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:2px 8px;cursor:pointer;font-family:var(--body)}
 .menu-btn span{font-size:11px;color:var(--muted)}
 .wel{position:fixed;inset:0;z-index:9;background:var(--bg);overflow:auto;padding:16px calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;justify-content:center}
@@ -161,7 +173,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <button type="button" id="st3" data-state="todo"><i>3</i>Potencia</button>
       </div>
 
-      <div class="paper" id="pp"><canvas id="cv" width="1440" height="2040" aria-label="Campo de fútbol con tres monedas"></canvas></div>
+      <div class="paper" id="pp"><canvas id="cv" width="1440" height="2040" aria-label="Campo de fútbol con tres monedas"></canvas><button type="button" class="chatbtn" id="chatbtn" aria-label="Chat con el rival" hidden>💬<i id="chatdot" hidden></i></button><div class="chattoast" id="chattoast" hidden></div></div>
 
       <p class="status" id="status" aria-live="polite"></p>
 
@@ -230,6 +242,15 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <button type="button" id="snd" aria-pressed="true">Sonido: sí</button>
       </div>
     <div class="tut-btns"><span class="sp"></span><button type="button" id="menuclose">Volver al partido</button></div>
+  </div>
+</div>
+<div class="tut" id="chat" role="dialog" aria-modal="true" aria-label="Chat con el rival" hidden>
+  <div class="tut-card">
+    <h2>Chat</h2>
+    <div class="chatlist" id="chatlist"></div>
+    <div class="cquick" id="cquick"></div>
+    <div class="crow"><input id="cinput" maxlength="100" autocomplete="off" placeholder="Escribe un mensaje" aria-label="Mensaje"><button type="button" id="csend" class="primary">Enviar</button></div>
+    <div class="tut-btns"><span class="sp"></span><button type="button" id="cclose">Cerrar</button></div>
   </div>
 </div>
 <div class="tut" id="tut" role="dialog" aria-modal="true" aria-labelledby="tt" hidden>
@@ -1031,7 +1052,7 @@ $('tnext').addEventListener('click',()=>{ensureAudio();ti<TUT.length-1?showTut(t
 $('tprev').addEventListener('click',()=>showTut(ti-1));
 $('tskip').addEventListener('click',closeTut);
 $('howto').addEventListener('click',openTut);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('menu').hidden)$('menu').hidden=true;else if(!$('acct').hidden)$('acct').hidden=true;else if(!$('tour').hidden)closeTour();else if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('chat').hidden)$('chat').hidden=true;else if(!$('menu').hidden)$('menu').hidden=true;else if(!$('acct').hidden)$('acct').hidden=true;else if(!$('tour').hidden)closeTour();else if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /*ENGINE_START*/
 const Engine=(()=>{
 // Lógica de la partida (copiada del juego del cliente, sin dibujo ni sonido). Se ejecuta en el servidor.
@@ -1330,7 +1351,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='31';
+const VER='32';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1461,6 +1482,40 @@ function applyState(s){
   ui();
 }
 /* ---------- conexión con el servidor ---------- */
+/* ---------- chat con el rival (solo partidas online) ---------- */
+const QUICK=['¡Buen golpe!','¡Suerte!','¡Vamos!','¡Qué mala suerte!','Buen partido'];
+let toastT=0;
+function chatOn(){return !!(net&&!net.local&&net.ws);}
+function chatSync(){const on=!!(net&&!net.local);$('chatbtn').hidden=!on;if(!on){$('chat').hidden=true;$('chattoast').hidden=true;}}
+function chatDraw(){
+  const l=$('chatlist');l.textContent='';
+  const arr=(net&&net.chat)||[];
+  if(!arr.length)l.appendChild(el('p','','Di algo a tu rival: no se guarda al terminar la partida.'));
+  for(const c of arr){const d=el('div','cmsg'+(c.me?' me':''));if(!c.me)d.appendChild(el('small','',(net&&names[c.f])||'Rival'));d.appendChild(document.createTextNode(c.x));l.appendChild(d);}
+  l.scrollTop=l.scrollHeight;
+}
+function chatOpen(){if(!net||net.local)return;$('chat').hidden=false;$('chatdot').hidden=true;net.unread=0;chatDraw();$('cinput').focus();}
+function chatSend(text){
+  const x=String(text||'').trim().slice(0,100);
+  if(!x||!net||net.local||!net.ws||net.ws.readyState!==1)return;
+  if(Date.now()-(net.lastChat||0)<800)return;net.lastChat=Date.now();
+  netSend({t:'chat',x});
+  (net.chat=net.chat||[]).push({me:true,x});if(net.chat.length>40)net.chat.shift();
+  $('cinput').value='';chatDraw();
+}
+function chatRecv(m){
+  if(!net||typeof m.x!=='string')return;
+  (net.chat=net.chat||[]).push({me:false,f:m.f,x:m.x.slice(0,100)});if(net.chat.length>40)net.chat.shift();
+  if(!$('chat').hidden){chatDraw();return;}
+  net.unread=(net.unread||0)+1;$('chatdot').hidden=false;
+  const t=$('chattoast');t.textContent=((names[m.f])||'Rival')+': '+m.x.slice(0,100);t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4500);
+  try{if(navigator.vibrate)navigator.vibrate(40);}catch(e){}
+}
+$('chatbtn').addEventListener('click',chatOpen);
+$('cclose').addEventListener('click',()=>{$('chat').hidden=true;});
+$('csend').addEventListener('click',()=>chatSend($('cinput').value));
+$('cinput').addEventListener('keydown',e=>{if(e.key==='Enter')chatSend($('cinput').value);});
+for(const q of QUICK){const b=el('button','',q);b.type='button';b.addEventListener('click',()=>chatSend(q));$('cquick').appendChild(b);}
 function netView(mode,text){
   $('nx').textContent=text;
   $('nchoose').hidden=mode!=='choose';$('nai').hidden=mode!=='ai';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
@@ -1468,13 +1523,13 @@ function netView(mode,text){
 function stopNet(){
   const n=net;net=null;VIEW=1;names=['',''];clearSession();team=loadTeams();
   if(n){n.closed=true;clearTimeout(n.rc);clearTimeout(n.dt);try{if(n.ws){n.ws.onclose=null;n.ws.close();}}catch(e){}}
-  try{if(wl)wl.release();}catch(e){}wl=null;labelChips();
+  try{if(wl)wl.release();}catch(e){}wl=null;labelChips();chatSync();
 }
 function connectRoom(code,tok,resume){
   stopNet();
   net={me:0,ws:null,tok:tok||'',code,pend:0,lastRx:Date.now(),down:false,up:[false,false],started:!!resume,tn:0,retries:0,closed:false};
   VIEW=1;team=[-1,-1];names=['',''];labelChips();newGame();
-  openSocket();keepAwake();
+  openSocket();keepAwake();chatSync();
 }
 function openSocket(){
   const n=net;if(!n||n.closed)return;
@@ -1491,6 +1546,7 @@ function openSocket(){
       if(n.down){n.down=false;clearTimeout(n.dt);if(n.downShown){n.downShown=false;$('net').hidden=true;}}
       if(!n.started){netView('create','Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.');$('ncode').textContent=n.code;}
     }else if(m.t==='s')applyState(m);
+    else if(m.t==='chat')chatRecv(m);
     else if(m.t==='err')fail(m.e||'No se ha podido entrar en la sala.');
   };
   ws.onclose=()=>{if(net!==n||n.ws!==ws)return;n.ws=null;if(!n.closed)lost();};
@@ -1556,7 +1612,7 @@ $('nprof').addEventListener('click',()=>{$('net').hidden=true;showWelcome();});
 $('ntour').addEventListener('click',()=>{$('net').hidden=true;openTour();});
 /* ---------- cuenta (nombre + PIN de 4 cifras) ---------- */
 let tSize=8;
-const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
 async function acctRefresh(){
   if(!acct)return;
   try{const r=await api('/api/me',{sid:acct.sid});acct.name=r.profile.name;acct.profile=r.profile;saveAcct();}
