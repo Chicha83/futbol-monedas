@@ -281,6 +281,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
         <button type="button" id="teamsbtn">Equipos</button>
         <button type="button" id="snd" aria-pressed="true">Sonido: sí</button>
       </div>
+    <div id="mtour" hidden style="display:grid;gap:4px"></div>
     <small id="rtt" hidden style="opacity:.7"></small>
     <div class="tut-btns"><span class="sp"></span><button type="button" id="menuclose">Volver al partido</button></div>
   </div>
@@ -330,14 +331,12 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
 </div>
 <div class="tut" id="net" role="dialog" aria-modal="true" aria-labelledby="nt" hidden>
   <div class="tut-card">
-    <h2 id="nt">Jugar</h2>
+    <h2 id="nt">Amistoso online</h2>
     <p id="nx"></p>
     <div class="net-row" id="nchoose">
-      <button type="button" id="nvsai" class="primary">Jugar contra la IA</button>
-      <button type="button" id="ncreate">Crear amistoso online</button>
+      <button type="button" id="ncreate" class="primary">Crear amistoso online</button>
       <button type="button" id="njoin">Unirme a un amistoso</button>
       <button type="button" id="nprof">Inicio y mi perfil</button>
-      <button type="button" id="ntour">Torneos</button>
     </div>
     <div class="net-row" id="nai" hidden>
       <button type="button" id="nai1">Fácil</button><button type="button" id="nai2" class="primary">Normal</button><button type="button" id="nai3">Difícil</button>
@@ -1096,7 +1095,7 @@ function goStep(n){
   step=n;drag=null;ui();
 }
 for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
-$('menubtn').addEventListener('click',()=>{menuSync();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt){const a=(net.rs||[net.rtt]).slice().sort((x,y)=>x-y);r.textContent='Conexión: '+a[Math.floor(a.length/2)]+' ms (máx. '+a[a.length-1]+') · Fluidez: '+fpsNow+' fps';}}}$('menu').hidden=false;});
+$('menubtn').addEventListener('click',()=>{menuSync();menuTour();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt){const a=(net.rs||[net.rtt]).slice().sort((x,y)=>x-y);r.textContent='Conexión: '+a[Math.floor(a.length/2)]+' ms (máx. '+a[a.length-1]+') · Fluidez: '+fpsNow+' fps';}}}$('menu').hidden=false;});
 $('menuclose').addEventListener('click',()=>{$('menu').hidden=true;});
 $('menu').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.id!=='snd'&&b.id!=='menuclose')$('menu').hidden=true;});
 $('back').addEventListener('click',()=>{
@@ -1485,7 +1484,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='67';
+const VER='68';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1682,7 +1681,7 @@ function netView(mode,text){
   $('nchoose').hidden=mode!=='choose';$('nai').hidden=mode!=='ai';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
 }
 function netBack(){
-  const txt='Juega contra la IA, o contra un amigo desde otro móvil.';
+  const txt='Crea un amistoso online o únete con el código que te dé tu amigo.';
   if(!$('nai').hidden||!$('njoinform').hidden){netView('choose',txt);return true;}
   if(!$('ncode').hidden){if(net&&!net.started)stopNet();netView('choose',txt);return true;}
   return false;
@@ -1754,7 +1753,7 @@ setInterval(()=>{                          // vigilante: si el servidor deja de 
 function openNet(){
   $('net').hidden=false;
   if(net)netView('conn',net.local?'Estás jugando contra la IA ('+AILEV[net.level-1]+').':net.started?'Estás en un amistoso online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
-  else netView('choose',(acct?'Hola, '+acct.name+'. ':'')+'Juega contra la IA, o contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.');
+  else netView('choose',(acct?'Hola, '+acct.name+'. ':'')+'Un amistoso online se juega contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.');
 }
 function closeNet(){if(net&&!net.started)stopNet();$('net').hidden=true;if(!net&&!locOn&&$('wel').hidden)showWelcome();}
 function createGame(){
@@ -1808,11 +1807,9 @@ $('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput
 $('ndisc').addEventListener('click',()=>{leaveNet();stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
 $('nclose').addEventListener('click',closeNet);
 $('nback').addEventListener('click',netBack);
-$('nvsai').addEventListener('click',()=>netView('ai','Elige la dificultad de la IA.'));
 for(const k of [1,2,3])$('nai'+k).addEventListener('click',()=>startAI(k));
-$('nai0').addEventListener('click',()=>netView('choose','Juega contra la IA, o contra un amigo desde otro móvil.'));
+$('nai0').addEventListener('click',closeNet);
 $('nprof').addEventListener('click',()=>{$('net').hidden=true;showWelcome();});
-$('ntour').addEventListener('click',()=>{$('net').hidden=true;openTour();});
 /* ---------- cuenta (nombre + PIN de 4 cifras) ---------- */
 let tSize=8;
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
@@ -2079,11 +2076,35 @@ async function tourAct(path,extra){
   try{const t=await api(path,{sid:acct.sid,code:tourCode,...(extra||{})});tourMsg('');if(t&&t.code)renderTour(t);else await tourLoad();}
   catch(e){tourMsg(e.message);}
 }
+const tmName=(n,ti)=>n?n+(ti>=0&&TEAMS[ti]?' · '+TEAMS[ti][1]:''):'Por decidir';
+function menuTour(){                       // en los torneos, el menú enseña el cuadro con equipos y resultados (en los amistosos no)
+  const box=$('mtour');if(!box)return;
+  box.hidden=true;box.textContent='';
+  if(!(net&&net.tn&&tourCode&&acct))return;
+  api('/api/t/get',{code:tourCode,sid:acct.sid}).then(t=>{
+    if(!net||!net.tn)return;
+    box.textContent='';
+    box.appendChild(el('h3','acs',t.name));
+    (t.rounds||[]).forEach(r=>{
+      box.appendChild(el('p','tmeta',roundName(r.length)));
+      r.forEach(m=>{
+        let t0=m.t0,t1=m.t1;
+        if(m.state==='ready'&&acct&&(m.p0===acct.name||m.p1===acct.name)){t0=team[0];t1=team[1];}   // tu partido en juego: los equipos de ahora
+        const row=el('div','acrow');
+        const a=el('span',m.w===0?'wn':'',tmName(m.p0,t0));
+        const bb=el('span',m.w===1?'wn':'',m.state==='bye'?'(pasa directo)':tmName(m.p1,t1));
+        const mid=el('span','mid',m.state==='done'&&m.p1?(m.s0+' - '+m.s1):m.state==='ready'?'vs':'·');
+        row.append(a,mid,bb);box.appendChild(row);
+      });
+    });
+    box.hidden=false;
+  }).catch(()=>{});
+}
 async function playMine(){
   tourMsg('Preparando tu partido…');
   try{
     const m=await api('/api/t/match',{sid:acct.sid,code:tourCode});
-    tourMsg('');closeTour();
+    tourMsg('');closeTour();$('wel').hidden=true;$('net').hidden=true;
     connectRoom(m.room,m.tok,true);
   }catch(e){tourMsg(e.message);}
 }

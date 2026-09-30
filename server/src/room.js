@@ -282,7 +282,7 @@ export class Room {
     try {
       await this.env.HUB.get(this.env.HUB.idFromName('main')).fetch('https://hub/internal/result', {
         method: 'POST',
-        body: JSON.stringify({ matchId: this.matchId, p0: a.pid, p1: b.pid, s0: sc[0], s1: sc[1] })
+        body: JSON.stringify({ matchId: this.matchId, p0: a.pid, p1: b.pid, s0: sc[0], s1: sc[1], t0: a.team, t1: b.team })
       });
     } catch (e) { this.reported = false; }
     this.save();
