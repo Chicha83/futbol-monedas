@@ -1424,7 +1424,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='49';
+const VER='50';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1779,6 +1779,7 @@ function wSetMode(m){
   wMsg('');
 }
 function showWelcome(){
+  if(updReady){location.reload();return;}
   $('wel').hidden=false;
   if(acct){wHome();}else{wShow('wlogin');wSetMode('login');$('woff').hidden=true;}
 }
@@ -1861,7 +1862,7 @@ $('winst').addEventListener('click',async()=>{
   const t=$('winstx');t.hidden=!t.hidden;t.textContent='En el iPhone: pulsa el botón Compartir de Safari y elige «Añadir a pantalla de inicio».';
 });
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;}).catch(()=>{});
-let swReg=null,updAsk=false;
+let swReg=null,updReady=false;
 /* actualizaciones: comprueba si hay versión nueva; si estás en la pantalla de bienvenida recarga sola, y si no avisa con un botón */
 async function checkUpdate(){
   try{
@@ -1869,8 +1870,7 @@ async function checkUpdate(){
     const t=await fetch('index.html?v='+Date.now(),{cache:'no-store'}).then(r=>r.text());
     const m=t.match(/const VER='(\d+)'/);
     if(!m||+m[1]<=+VER)return;
-    if(!net&&!$('wel').hidden){location.reload();return;}
-    if(!updAsk){updAsk=true;const d=document.createElement('div');d.id='upd';d.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#12335a;color:#fff;border:1px solid #4da3ff;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;font:600 14px system-ui';const sp=document.createElement('span');sp.style.flex='1';sp.textContent='Hay una versión nueva del juego';const bt=document.createElement('button');bt.type='button';bt.textContent='Actualizar';bt.style.cssText='padding:8px 14px;border-radius:8px;border:0;background:#4da3ff;color:#06203d;font-weight:800';bt.onclick=()=>location.reload();d.append(sp,bt);document.body.appendChild(d);}
+    updReady=true;if(!$('wel').hidden)location.reload();   // en partida no se molesta: se actualiza al volver a la pantalla principal
   }catch(e){}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate();});
