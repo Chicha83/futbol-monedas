@@ -1058,7 +1058,7 @@ function goStep(n){
   step=n;drag=null;ui();
 }
 for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
-$('menubtn').addEventListener('click',()=>{$('menu').hidden=false;});
+$('menubtn').addEventListener('click',()=>{menuSync();$('menu').hidden=false;});
 $('menuclose').addEventListener('click',()=>{$('menu').hidden=true;});
 $('menu').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.id!=='snd'&&b.id!=='menuclose')$('menu').hidden=true;});
 $('back').addEventListener('click',()=>{
@@ -1424,7 +1424,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='45';
+const VER='46';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1694,12 +1694,12 @@ function joinGame(raw){
   netView('join','Conectando…');
   connectRoom(code);
 }
-function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=net?'Abandonar partida':'Jugar';}
+function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=(net||locOn)?'Abandonar partida':'Jugar';}
 $('online').addEventListener('click',e=>{
   const b=$('online');
-  if(!net){openNet();return;}
+  if(!net&&!locOn){openNet();return;}
   if(!b.dataset.ask){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
-  clearAI();stopNet();newGame();showWelcome();
+  clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();showWelcome();
 });
 $('ncreate').addEventListener('click',createGame);
 $('njoin').addEventListener('click',()=>{netView('join','Escribe el código que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
