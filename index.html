@@ -1502,7 +1502,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='71';
+const VER='72';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1802,10 +1802,10 @@ function rmSync(){                         // cartel de fin de partida: Revancha
   if(!rmOn){if(!rmTm)rmTm=setTimeout(()=>{rmTm=0;rmOn=true;rmSync();},1600);return;}
   const me=net.me,o=1-me,rv=net.rv||[false,false],gone=net.gn>=0&&net.gn!==me,w=score[0]>score[1]?0:1;
   const pn=i=>names[i]||(net.local?(i===0?(acct?acct.name:'Tú'):'IA'):(me===i?(acct?acct.name:'Tú'):'Rival'));
-  $('rmt').textContent=w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
-  const tn=!!net.tn;
-  $('rmx').textContent=score[0]+' - '+score[1]+(tn?' · Partido de torneo terminado.':gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
-  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;
+  const tn=!!net.tn,elim=tn&&w!==me;
+  $('rmt').textContent=elim?'Has sido eliminado':w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
+  $('rmx').textContent=score[0]+' - '+score[1]+(tn?(elim?' · Has perdido el partido y quedas fuera del torneo.':' · Partido de torneo ganado. Mira el torneo para ver lo que sigue.'):gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
+  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;$('rmexit').textContent=elim?'Volver al menú principal':'Salir al menú principal';
   box.hidden=false;
 }
 $('rmre').addEventListener('click',()=>{if(!net)return;if(!net.local){net.rv=(net.rv||[false,false]).slice();net.rv[net.me]=true;}netSend({t:'new'});rmSync();});
