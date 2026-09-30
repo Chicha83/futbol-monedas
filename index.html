@@ -58,7 +58,8 @@ button:focus-visible,canvas:focus-visible{outline:3px solid var(--p1);outline-of
 .paper{position:relative}
 .chatbtn{position:absolute;right:4px;bottom:4px;width:46px;height:46px;border-radius:50%;padding:0;font-size:22px;line-height:1;box-shadow:0 2px 8px rgba(10,20,35,.3);z-index:2}
 .chatbtn i{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--red);border:2px solid var(--surface)}
-.chattoast{position:absolute;left:8px;right:60px;bottom:8px;z-index:2;background:rgba(20,27,36,.9);color:#fff;border-radius:10px;padding:8px 10px;font-size:14px;line-height:1.25;pointer-events:none}
+.chattoast{position:absolute;left:8px;right:60px;bottom:8px;z-index:2;background:rgba(20,27,36,.92);color:#fff;border-radius:10px;padding:8px 10px;font-size:14px;line-height:1.25;pointer-events:none;display:grid;gap:3px}
+.chattoast .tl{overflow-wrap:anywhere}.chattoast .tl b{opacity:.75}.chattoast .tl.me{opacity:.7}
 .chatlist{display:grid;gap:6px;max-height:36vh;overflow:auto;align-content:start;min-height:4em}
 .cmsg{max-width:85%;padding:6px 10px;border-radius:12px;font-size:14px;line-height:1.3;overflow-wrap:anywhere;background:var(--bg)}
 .cmsg.me{justify-self:end;background:var(--red);color:#fff}
@@ -1351,7 +1352,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='33';
+const VER='34';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1508,7 +1509,9 @@ function chatRecv(m){
   (net.chat=net.chat||[]).push({me:false,f:m.f,x:m.x.slice(0,100)});if(net.chat.length>40)net.chat.shift();
   if(!$('chat').hidden){chatDraw();return;}
   net.unread=(net.unread||0)+1;$('chatdot').hidden=false;
-  const t=$('chattoast');t.textContent=((names[m.f])||'Rival')+': '+m.x.slice(0,100);t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},4500);
+  const t=$('chattoast');t.textContent='';
+  for(const c of net.chat.slice(-5)){const d=el('div','tl'+(c.me?' me':''));d.appendChild(el('b','',c.me?'Tú: ':((names[c.f])||'Rival')+': '));d.appendChild(document.createTextNode(c.x));t.appendChild(d);}
+  t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},7000);
   try{if(navigator.vibrate)navigator.vibrate(40);}catch(e){}
 }
 $('chatbtn').addEventListener('click',chatOpen);
