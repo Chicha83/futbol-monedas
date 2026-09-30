@@ -816,7 +816,29 @@ function goal(s){
 function update(){
   if(net&&net.local){localStep();return;}
   if(net){guestUpdate();return;}
-  hostUpdate();
+  hostUpdate();locSave();
+}
+const LOCKEY='fmon-loc';let locKey='';
+function locSave(){
+  try{
+    if(!$('wel').hidden)return;
+    if(over){if(locKey!=='over'){locKey='over';localStorage.removeItem(LOCKEY);}return;}
+    if(phase!=='aim'&&phase!=='place')return;
+    const k=phase+'|'+turn+'|'+movesLeft+'|'+score+'|'+(pm.m||'');
+    if(k===locKey)return;locKey=k;
+    localStorage.setItem(LOCKEY,JSON.stringify({c:coins.map(c=>[c.x,c.y]),phase,turn,movesLeft,dbl,score,foulBen,chain,pm,lastTouch,t:Date.now()}));
+  }catch(e){}
+}
+function locRestore(){
+  try{
+    const o=JSON.parse(localStorage.getItem(LOCKEY)||'null');
+    if(!o||!o.c||Date.now()-o.t>7*24*3600*1000){localStorage.removeItem(LOCKEY);return false;}
+    reset(o.turn);
+    o.c.forEach((a,i)=>{coins[i].x=a[0];coins[i].y=a[1];});
+    turn=o.turn;movesLeft=o.movesLeft;dbl=o.dbl;score=o.score;foulBen=o.foulBen||0;chain=o.chain||null;pm=o.pm||{m:null};lastTouch=o.lastTouch;over=false;
+    if(o.phase==='place')beginPlace();else beginAim();
+    locKey='';return true;
+  }catch(e){return false;}
 }
 function guestUpdate(){
   if(fx){fx.t++;if(fx.t>10)fx=null;}
@@ -1397,7 +1419,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='41';
+const VER='42';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1976,7 +1998,7 @@ team=loadTeams();labelChips();
 newGame();
 requestAnimationFrame(frame);
 {const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
-if(!restoreSession()&&!restoreAI())wBoot();
+if(!restoreSession()&&!restoreAI()){if(locRestore())$('wel').hidden=true;else wBoot();}
 })();
 
 (function(){const pp=document.getElementById('pp'),cv=document.getElementById('cv');
