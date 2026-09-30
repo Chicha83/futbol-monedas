@@ -84,6 +84,18 @@ input:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 #tmx{min-height:0}
 .tgh{grid-column:1/-1;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 2px 0}
 #tmtabs button.sel{border-color:var(--red)}
+input.txt{font:600 16px var(--body);letter-spacing:0;text-transform:none;text-align:left}
+.tmeta,.tchamp,#tmsg,#acmsg,#acx,#ttx{min-height:0!important;font-size:13.5px}
+#tmsg,#acmsg{color:var(--muted)}
+.tchamp{font-weight:800;font-size:16px}
+.acs{margin:8px 0 2px;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.acrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.acrow.win{color:#0E7A4F}.acrow.loss{color:#B4232F}
+.acrow .wn{font-weight:800}.acrow .mid{color:var(--muted)}
+button.mini{padding:2px 7px;font-size:11.5px}
+.tmine{display:grid;gap:8px;padding:10px;border:2px solid var(--red);border-radius:10px}
+.tcode{font:800 26px/1 var(--display);letter-spacing:.18em;text-align:center;padding:8px 0;border-radius:8px;background:var(--bg);user-select:all}
+.tview{display:grid;gap:10px}
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
 .wrap{height:100vh;height:100dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex}
 .stage{width:100%;max-width:640px;display:flex}
@@ -178,10 +190,12 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
     <div class="net-row" id="nchoose">
       <button type="button" id="ncreate" class="primary">Crear partida</button>
       <button type="button" id="njoin">Unirme a una partida</button>
+      <button type="button" id="nprof">Mi perfil</button>
+      <button type="button" id="ntour">Torneos</button>
     </div>
     <div class="net-code" id="ncode" hidden></div>
     <div class="net-row" id="njoinform" hidden>
-      <input id="ninput" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="CÓDIGO" aria-label="Código de la partida">
+      <input id="ninput" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="CÓDIGO" aria-label="Código de la partida">
       <button type="button" id="ngo" class="primary">Entrar</button>
     </div>
     <div class="net-row" id="nconn" hidden>
@@ -191,7 +205,44 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
   </div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<div class="tut" id="acct" role="dialog" aria-modal="true" aria-labelledby="act" hidden>
+  <div class="tut-card">
+    <h2 id="act">Mi perfil</h2>
+    <p id="acx"></p>
+    <div id="acform" style="display:grid;gap:8px">
+      <input id="acname" class="txt" maxlength="14" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Tu nombre" aria-label="Tu nombre">
+      <input id="acpin" class="txt" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="current-password" placeholder="PIN de 4 números" aria-label="PIN de 4 números">
+      <div class="net-row"><button type="button" id="aclogin" class="primary">Entrar</button><button type="button" id="acnew">Crear usuario</button></div>
+    </div>
+    <p id="acmsg"></p>
+    <div id="acsession" hidden><div class="net-row"><button type="button" id="aclogout">Cerrar sesión</button></div></div>
+    <div id="acbox"></div>
+    <div id="acrank"></div>
+    <div class="tut-btns"><span class="sp"></span><button type="button" id="acclose">Cerrar</button></div>
+  </div>
+</div>
+<div class="tut" id="tour" role="dialog" aria-modal="true" aria-labelledby="ttl" hidden>
+  <div class="tut-card">
+    <h2 id="ttl">Torneos</h2>
+    <p id="ttx"></p>
+    <div id="thome" style="display:grid;gap:8px">
+      <input id="tname" class="txt" maxlength="30" autocomplete="off" placeholder="Nombre del torneo (opcional)" aria-label="Nombre del torneo">
+      <button type="button" id="tcreate" class="primary">Crear torneo</button>
+      <input id="tjcode" class="txt" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Código de un torneo" aria-label="Código del torneo">
+      <button type="button" id="tjoin">Unirme con código</button>
+    </div>
+    <button type="button" id="tgo" class="primary" hidden>Crear mi usuario</button>
+    <div id="tview" class="tview" hidden>
+      <strong id="ttitle"></strong>
+      <div class="tcode" id="tcode"></div>
+      <div id="tbody"></div>
+      <div class="net-row"><button type="button" id="tback">Otro torneo</button></div>
+    </div>
+    <p id="tmsg"></p>
+    <div class="tut-btns"><span class="sp"></span><button type="button" id="tclose">Cerrar</button></div>
+  </div>
+</div>
+
 <script>
 (()=>{
 "use strict";
@@ -506,10 +557,10 @@ function callFoul(reason){
   msg={t:'¡FALTA!',s:turn,foul:true,reason,sub:'Doble turno para el Jugador '+(foulBen+1)};
   ui();tick(5,300);
 }
-function newGame(){score=[0,0];over=false;reset(0);hostSync(true);}
+function newGame(){score=[0,0];over=false;reset(0);}
 function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.p*55,f:s.f,e:s.e,spin:s.spin};ui();}
 function statusText(){
-  if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net&&net.role==='guest'?'Tu rival puede empezar otra partida.':'Toca el campo para jugar otra vez.');
+  if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':'Toca el campo para pedir la revancha.'):'Toca el campo para jugar otra vez.');
   if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
   if(phase==='foul'&&msg&&msg.restart)return msg.t.charAt(0)+msg.t.slice(1).toLowerCase()+': saca el Jugador '+(foulBen+1)+'.';
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
@@ -542,7 +593,7 @@ function ui(){
     b.disabled=!(act&&(i===1||sel.ok));
   }
   $('back').disabled=!(act&&step>1);
-  $('newgame').disabled=!!(net&&net.role==='guest');
+  $('newgame').disabled=!!net;
 }
 function setContact(v){$('ct').style.transform='scaleX('+v+')';$('ctv').textContent=Math.round(v*100)+' %';}
 function setEffect(e){
@@ -620,9 +671,8 @@ function goal(s){
   msgT=over?0:110;ui();tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);crowdGoal(s);
 }
 function update(){
-  if(net&&net.role==='guest'){guestUpdate();return;}
-  hostUpdate();hostSync();
-  if(net&&net.role==='host'&&++saveN%30===0)saveSession();
+  if(net){guestUpdate();return;}
+  hostUpdate();
 }
 function guestUpdate(){
   if(fx){fx.t++;if(fx.t>10)fx=null;}
@@ -774,7 +824,7 @@ function draw(ts){
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(msg.t.length>9?'800 52px':'800 100px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.t,W/2,CY-42);
     ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px':'800 52px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?msg.sub:score[0]+'  -  '+score[1],W/2,CY+30);
-    if(over){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net&&net.role==='guest'?'Tu rival puede empezar otra partida':'Toca el campo para jugar otra vez',W/2,CY+88);}
+    if(over){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net?(net.tn?'Partido de torneo terminado':'Toca el campo para pedir la revancha'):'Toca el campo para jugar otra vez',W/2,CY+88);}
   }
 }
 
@@ -793,7 +843,7 @@ function applyDrag(e){
 }
 cv.addEventListener('pointerdown',e=>{
   ensureAudio();
-  if(over){if(!net||net.role==='host')newGame();return;}
+  if(over){if(!net)newGame();else if(!net.tn)netSend({t:'new'});return;}
   if(net&&(turn!==net.me||isPending()))return;
   if(phase==='place'){const p=snapPlace(pos(e));place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
   if(phase!=='aim')return;
@@ -808,7 +858,7 @@ function release(e){
   if(phase==='place'){
     const c=coins[turn];
     if(e.type==='pointerup'&&placeOK(place,c)){
-      if(net&&net.role==='guest'){netSend({t:'place',x:place.x,y:place.y});net.pend=performance.now();}
+      if(net){netSend({t:'place',x:place.x,y:place.y});net.pend=performance.now();}
       else{c.x=place.x;c.y=place.y;c.vx=c.vy=c.spin=0;donePlace();}
     }
     return;
@@ -818,7 +868,7 @@ function release(e){
   else if(step===2){step=3;}
   else if(sel.p>.06){
     const shot={ux:sel.ux,uy:sel.uy,p:sel.p,f:fFromE(sel.e),e:sel.e,spin:sel.e*flipOf(sel.uy)*OMEGA};
-    if(net&&net.role==='guest'){netSend({t:'shot',...shot});net.pend=performance.now();sel.p=0;}
+    if(net){netSend({t:'shot',...shot});net.pend=performance.now();sel.p=0;}
     else startStrike(shot);
   }else sel.p=0;
   ui();
@@ -892,34 +942,39 @@ $('tnext').addEventListener('click',()=>{ensureAudio();ti<TUT.length-1?showTut(t
 $('tprev').addEventListener('click',()=>showTut(ti-1));
 $('tskip').addEventListener('click',closeTut);
 $('howto').addEventListener('click',openTut);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
-/* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
-let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='26';
-const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
-/* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
-const SESS='fmon-sess';
-function saveSession(){try{if(!net||!net.code)return;const o={role:net.role,code:net.code,t:Date.now()};if(net.role==='host')o.snap=snapshot();localStorage.setItem(SESS,JSON.stringify(o));}catch(e){}}
-function clearSession(){try{localStorage.removeItem(SESS);}catch(e){}}
-function restoreSession(){
-  let o=null;try{o=JSON.parse(localStorage.getItem(SESS)||'null');}catch(e){}
-  if(!o||!o.code||!window.Peer||Date.now()-o.t>2*3600*1000)return false;
-  if(o.role==='host'&&o.snap){
-    net={role:'host',me:0,conn:null,pend:0,code:o.code,down:true};VIEW=1;labelChips();newGame();applyState(o.snap);
-    net.pend=0;hostPeer(o.code,false);showDown();keepAwake();return true;
-  }
-  if(o.role==='guest'){
-    net={role:'guest',me:1,conn:null,pend:0,code:o.code,lastRx:0};VIEW=-1;labelChips();newGame();guestReconnect();keepAwake();return true;
-  }
-  return false;
-}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('acct').hidden)$('acct').hidden=true;else if(!$('tour').hidden)closeTour();else if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
+/* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
+const VER='27';
+const DEFAULT_SERVER='wss://futbol-monedas.SUBDOMINIO.workers.dev';
+const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
+const API=SERVER.replace(/^ws/,'http');
+const SESS='fmon-sess',ACCT='fmon-acct',TOURK='fmon-tour';
 const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode=()=>Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join('');
 const rd=(v,n)=>{const k=Math.pow(10,n);return Math.round(v*k)/k;};
-function netSend(m){try{if(net&&net.conn&&net.conn.open)net.conn.send(m);}catch(e){}}
+let names=['',''],acct=null,wl=null;
+try{acct=JSON.parse(localStorage.getItem(ACCT)||'null');}catch(e){}
+function saveAcct(){try{if(acct)localStorage.setItem(ACCT,JSON.stringify(acct));else localStorage.removeItem(ACCT);}catch(e){}}
+async function api(path,body){
+  let r;
+  try{r=await fetch(API+path,{method:'POST',body:JSON.stringify(body||{})});}catch(e){throw new Error('No se puede conectar con el servidor. Comprueba tu conexión.');}
+  let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok){const err=new Error(j.error||'Error del servidor');err.status=r.status;throw err;}
+  return j;
+}
+function netSend(m){try{if(net&&net.ws&&net.ws.readyState===1)net.ws.send(JSON.stringify(m));}catch(e){}}
 function labelChips(){
-  const nm=i=>team[i]>=0?TEAMS[team[i]][1]:(net?(net.me===i?'Tú':'Rival'):'Jugador '+(i+1));
+  const nm=i=>(net&&names[i])?names[i]:team[i]>=0?TEAMS[team[i]][1]:(net?(net.me===i?'Tú':'Rival'):'Jugador '+(i+1));
   $('n0').textContent=nm(0);$('n1').textContent=nm(1);
+  for(let i=0;i<2;i++)$('chip'+i).style.opacity=(net&&net.up&&net.up[i]===false)?'.45':'';
+}
+/* ---------- sesión de la partida (se guarda en el móvil para retomarla al volver) ---------- */
+function saveSession(){try{if(!net||!net.code)return;localStorage.setItem(SESS,JSON.stringify({code:net.code,tok:net.tok,t:Date.now()}));}catch(e){}}
+function clearSession(){try{localStorage.removeItem(SESS);}catch(e){}}
+function restoreSession(){
+  let o=null;try{o=JSON.parse(localStorage.getItem(SESS)||'null');}catch(e){}
+  if(!o||!o.code||!o.tok||Date.now()-o.t>6*3600*1000)return false;
+  connectRoom(o.code,o.tok,true);return true;
 }
 /* ---------- selector de equipos ---------- */
 const TKEY='fmon-teams2',MYKEY='fmon-my2';
@@ -927,7 +982,6 @@ const okTeam=v=>Number.isInteger(v)&&v>=-1&&v<TEAMS.length;
 function loadTeams(){try{const a=JSON.parse(localStorage.getItem(TKEY)||'null');if(Array.isArray(a)&&a.length===2)return a.map(v=>okTeam(v)?v:-1);}catch(e){}return[-1,-1];}
 function myTeam(){try{const v=parseInt(localStorage.getItem(MYKEY),10);return okTeam(v)?v:-1;}catch(e){return -1;}}
 function saveTeams(){try{if(net)localStorage.setItem(MYKEY,String(team[net.me]));else localStorage.setItem(TKEY,JSON.stringify(team));}catch(e){}}
-function sendMyTeam(){if(net&&net.role==='guest')netSend({t:'team',i:team[1]});}
 let tmSel=0,tmBuilt=false;
 function markTeams(){
   const cur=net?team[net.me]:team[tmSel];
@@ -952,27 +1006,15 @@ function buildTeams(){
 function openTeams(){buildTeams();tmSel=net?net.me:0;markTeams();$('teams').hidden=false;}
 function closeTeams(){$('teams').hidden=true;}
 function pickTeam(i){
-  if(net){
-    if(net.role==='host'){team[0]=i;hostSync(true);}
-    else{team[1]=i;net.tmT=performance.now();netSend({t:'team',i});}
-  }else{team[tmSel]=i;if(tmSel===0)tmSel=1;}
+  if(net){team[net.me]=i;net.tmT=performance.now();netSend({t:'team',i});}
+  else{team[tmSel]=i;if(tmSel===0)tmSel=1;}
   saveTeams();labelChips();markTeams();
 }
 $('teamsbtn').addEventListener('click',openTeams);
 $('tmclose').addEventListener('click',closeTeams);
 $('tgrid').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)pickTeam(+b.dataset.i);});
 $('tmtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(b){tmSel=+b.dataset.p;markTeams();}});
-function snapshot(){
-  return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
-    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score,ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx,tc:touched,lt:lastTouch,tm:team,bh:[bhN,rd(bhV,2)]};
-}
-function hostSync(force){
-  if(!net||net.role!=='host'||!net.conn||!net.conn.open)return;
-  syncN++;
-  const key=phase+'|'+turn+'|'+movesLeft+'|'+score+'|'+over+'|'+(msg?msg.t:'');
-  const moving=phase==='strike'||phase==='roll'||!!fx;
-  if(force||key!==syncKey||(moving&&syncN%3===0)||syncN%60===0){syncKey=key;netSend(snapshot());}
-}
+/* ---------- estado que llega del servidor ---------- */
 function applyState(s){
   const pp=phase,pt=turn,pml=movesLeft;
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
@@ -983,180 +1025,241 @@ function applyState(s){
   if(pp==='strike'&&phase==='roll')tick(6,1200);
   if(phase==='foul'&&pp!=='foul')tick(5,300);
   if(phase==='goal'&&pp!=='goal'){tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);crowdGoal(msg?msg.s:0);}
-  if(s.tm){const own=team[1];team=s.tm.slice();if(net&&net.role==='guest'&&performance.now()-(net.tmT||0)<1500)team[1]=own;labelChips();}
+  if(s.tm){const own=team[net.me];team=s.tm.slice();if(performance.now()-(net.tmT||0)<1500)team[net.me]=own;}
+  if(s.nm)names=s.nm;
+  if(s.up)net.up=s.up;
+  net.tn=s.tn||0;
+  labelChips();
+  if(!net.started&&net.up&&net.up[0]&&net.up[1]){net.started=true;$('net').hidden=true;$('tour').hidden=true;}
+  if(over&&net.tn&&!net.tShown){net.tShown=true;setTimeout(()=>{if(net&&net.tn)openTour();},3500);}
+  if(!over)net.tShown=false;
   ui();
 }
-const num=v=>typeof v==='number'&&isFinite(v);
-function onHostData(m){
-  if(!m||typeof m!=='object')return;
-  if(m.t==='hi'){hostSync(true);return;}
-  if(m.t==='team'){if(okTeam(m.i))team[1]=m.i;labelChips();hostSync(true);return;}
-  if(m.t==='shot'){
-    if(phase==='aim'&&turn===net.me^1&&!over&&num(m.ux)&&num(m.uy)&&num(m.p)&&num(m.f)&&num(m.e)&&num(m.spin)&&m.p>0&&m.p<=1&&m.f>=.1&&m.f<=.9&&Math.abs(Math.hypot(m.ux,m.uy)-1)<.01)
-      startStrike({ux:m.ux,uy:m.uy,p:m.p,f:m.f,e:clamp(m.e,-1,1),spin:m.spin});
-    hostSync(true);return;
-  }
-  if(m.t==='place'){
-    if(phase==='place'&&turn===net.me^1&&num(m.x)&&num(m.y)){
-      const c=coins[turn];
-      if(placeOK({x:m.x,y:m.y},c)){c.x=m.x;c.y=m.y;c.vx=c.vy=c.spin=0;donePlace();}
-    }
-    hostSync(true);
-  }
-}
+/* ---------- conexión con el servidor ---------- */
 function netView(mode,text){
   $('nx').textContent=text;
   $('nchoose').hidden=mode!=='choose';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
 }
 function stopNet(){
-  const n=net;net=null;VIEW=1;clearSession();team=loadTeams();
-  if(n&&n.rc)clearTimeout(n.rc);if(n&&n.hostRetry)clearTimeout(n.hostRetry);
-  try{if(wl)wl.release();}catch(e){}wl=null;
-  try{if(n&&n.conn)n.conn.close();}catch(e){}
-  try{if(peer)peer.destroy();}catch(e){}
-  peer=null;labelChips();
+  const n=net;net=null;VIEW=1;names=['',''];clearSession();team=loadTeams();
+  if(n){n.closed=true;clearTimeout(n.rc);clearTimeout(n.dt);try{if(n.ws){n.ws.onclose=null;n.ws.close();}}catch(e){}}
+  try{if(wl)wl.release();}catch(e){}wl=null;labelChips();
 }
+function connectRoom(code,tok,resume){
+  stopNet();
+  net={me:0,ws:null,tok:tok||'',code,pend:0,lastRx:Date.now(),down:false,up:[false,false],started:!!resume,tn:0,retries:0,closed:false};
+  VIEW=1;team=[-1,-1];names=['',''];labelChips();newGame();
+  openSocket();keepAwake();
+}
+function openSocket(){
+  const n=net;if(!n||n.closed)return;
+  let ws;
+  try{ws=new WebSocket(SERVER+'/ws/'+n.code);}catch(e){lost();return;}
+  n.ws=ws;
+  ws.onopen=()=>{if(net!==n||n.ws!==ws)return;n.lastRx=Date.now();ws.send(JSON.stringify({t:'hello',room:n.code,tok:n.tok,sid:acct?acct.sid:undefined,team:myTeam()}));};
+  ws.onmessage=e=>{
+    if(net!==n||n.ws!==ws)return;
+    n.lastRx=Date.now();
+    let m;try{m=JSON.parse(e.data);}catch(_){return;}
+    if(m.t==='hi'){
+      n.me=m.me;n.tok=m.tok;n.retries=0;VIEW=n.me===1?-1:1;saveSession();
+      if(n.down){n.down=false;clearTimeout(n.dt);if(n.downShown){n.downShown=false;$('net').hidden=true;}}
+      if(!n.started){netView('create','Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.');$('ncode').textContent=n.code;}
+    }else if(m.t==='s')applyState(m);
+    else if(m.t==='err')fail(m.e||'No se ha podido entrar en la sala.');
+  };
+  ws.onclose=()=>{if(net!==n||n.ws!==ws)return;n.ws=null;if(!n.closed)lost();};
+  ws.onerror=()=>{};
+}
+function lost(){
+  const n=net;if(!n||n.closed||n.rc)return;
+  n.down=true;
+  if(!n.dt)n.dt=setTimeout(()=>{n.dt=0;if(net===n&&n.down&&n.started){n.downShown=true;$('net').hidden=false;netView('conn','Se ha perdido la conexión con el servidor (quizá cambiaste de app). Reconectando… la partida sigue guardada.');}},1500);
+  n.retries++;
+  n.rc=setTimeout(()=>{n.rc=0;if(net===n)openSocket();},Math.min(3000,300*n.retries));
+}
+function reopen(){
+  const n=net;if(!n||n.closed)return;
+  clearTimeout(n.rc);n.rc=0;
+  try{if(n.ws){n.ws.onclose=null;n.ws.close();}}catch(e){}
+  n.ws=null;n.retries=0;lost();
+}
+function fail(text){stopNet();newGame();$('net').hidden=false;$('tour').hidden=true;netView('choose',text);}
+async function keepAwake(){try{if(navigator.wakeLock&&net&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;});}}catch(e){}}
+function onResume(){
+  const n=net;if(!n||n.closed)return;
+  keepAwake();
+  if(!n.ws||n.ws.readyState!==1){reopen();return;}
+  const t0=Date.now();netSend({t:'p'});
+  setTimeout(()=>{if(net===n&&n.lastRx<t0)reopen();},2000);
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)onResume();});
+addEventListener('pageshow',onResume);addEventListener('focus',onResume);addEventListener('online',onResume);
+setInterval(()=>{                          // vigilante: si el servidor deja de contestar, se reconecta
+  const n=net;if(!n||n.closed||document.hidden)return;
+  if(n.ws&&n.ws.readyState===1){if(Date.now()-n.lastRx>20000)reopen();else netSend({t:'p'});}
+  else if(!n.rc)reopen();
+},8000);
 function openNet(){
   $('net').hidden=false;
-  if(net)netView('conn','Estás jugando online con un amigo. Si sales un momento de la app, la conexión se recupera sola al volver.');
-  else netView('choose','Juega contra un amigo, cada uno en su móvil. Uno crea la partida y el otro se une con el código.');
+  if(net)netView('conn',net.started?'Estás jugando online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
+  else netView('choose',(acct?'Hola, '+acct.name+'. ':'')+'Juega contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.');
 }
-function closeNet(){if(!net&&peer)stopNet();$('net').hidden=true;}
-let wl=null;
-async function keepAwake(){try{if(navigator.wakeLock&&net&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;});}}catch(e){}}
-function showDown(){$('net').hidden=false;netView('conn',net&&net.role==='guest'?'Se ha perdido la conexión (quizá cambiaste de app o de pantalla). Reconectando…':'Tu rival se ha desconectado (quizá ha cambiado de app). Esperando a que vuelva… Su partida se recupera sola.');}
-function hideDown(){if(net)net.down=false;$('net').hidden=true;}
-function giveUp(t){stopNet();newGame();$('net').hidden=false;netView('choose',t);}
-function lost(){
-  if(!net)return;
-  if(net.role==='guest'){guestReconnect();return;}
-  if(net.down)return;
-  net.down=true;showDown();
-}
-function wireHost(conn){
-  conn.on('data',m=>{onHostData(m);});
-  conn.on('close',()=>{if(net&&net.conn===conn)lost();});
-  conn.on('error',()=>{if(net&&net.conn===conn)lost();});
-}
-function attachGuest(conn){
-  net.conn=conn;net.down=false;net.lastRx=Date.now();
-  conn.on('data',m=>{net.lastRx=Date.now();if(m&&m.t==='s')applyState(m);});
-  conn.on('close',()=>{if(net&&net.conn===conn)lost();});
-  conn.on('error',()=>{if(net&&net.conn===conn)lost();});
-}
-function guestReconnect(){
-  if(!net||net.role!=='guest'||net.rc)return;
-  net.down=true;showDown();
-  const t0=Date.now();
-  const attempt=()=>{
-    if(!net||net.role!=='guest')return;
-    if(Date.now()-t0>900000){giveUp('No se ha podido recuperar la conexión con tu rival. Puedes volver a unirte con el mismo código.');return;}
-    try{if(peer)peer.destroy();}catch(e){}
-    let done=false;
-    const retry=()=>{if(done||!net)return;done=true;net.rc=setTimeout(attempt,2000);};
-    const to=setTimeout(retry,7000);
-    peer=new Peer(undefined,PEERCFG);
-    peer.on('open',()=>{
-      const conn=peer.connect('fmon-'+net.code,{reliable:true});
-      conn.on('open',()=>{if(done||!net)return;done=true;clearTimeout(to);net.rc=0;attachGuest(conn);hideDown();keepAwake();netSend({t:'hi'});sendMyTeam();});
-      conn.on('error',()=>{clearTimeout(to);retry();});
-    });
-    peer.on('error',()=>{clearTimeout(to);retry();});
-  };
-  net.rc=setTimeout(attempt,300);
-}
-function guestForce(){                  // descarta una conexión que pueda estar muerta y vuelve a conectar
-  if(!net||net.role!=='guest')return;
-  const old=net.conn;net.conn=null;try{if(old)old.close();}catch(e){}
-  guestReconnect();
-}
-function onResume(){
-  if(!net)return;
-  keepAwake();
-  if(net.role==='host'){
-    try{if(!peer||peer.destroyed)hostRevive(net.code);else if(peer.disconnected)peer.reconnect();}catch(e){}
-    hostSync(true);return;
-  }
-  if(net.down||!net.conn||!net.conn.open||Date.now()-net.lastRx>2500)guestForce();
-  else{netSend({t:'hi'});sendMyTeam();}
-}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){saveSession();return;}onResume();});
-addEventListener('pageshow',onResume);addEventListener('focus',onResume);addEventListener('online',onResume);
-addEventListener('pagehide',saveSession);
-setInterval(()=>{                          // vigilante: si el anfitrión deja de enviar estado, el invitado reconecta
-  if(net&&net.role==='guest'&&!net.down&&!document.hidden&&Date.now()-net.lastRx>7000)guestForce();
-  if(net&&net.role==='host'&&!document.hidden&&peer&&peer.disconnected){try{peer.reconnect();}catch(e){}}
-},3000);
-function hostPeer(code,first){
-  try{if(peer)peer.destroy();}catch(e){}
-  const p=peer=new Peer('fmon-'+code,PEERCFG);
-  p.on('open',()=>{
-    if(first){$('ncode').textContent=code;$('nx').textContent='Dile este código a tu amigo y espera a que se una. Tú serás el Jugador 1 y él, el Jugador 2. Mantén esta pestaña abierta durante la partida.';}
-    else if(net)net.hostRetry=0;
-  });
-  p.on('disconnected',()=>{try{if(peer===p&&!p.destroyed)p.reconnect();}catch(e){}});
-  p.on('close',()=>{if(peer===p&&net&&net.role==='host')hostRevive(code);});
-  p.on('connection',conn=>{
-    conn.on('open',()=>{
-      if(net&&net.role==='host'){            // el invitado vuelve tras cambiar de app: se retoma la partida
-        const old=net.conn;net.conn=conn;try{if(old)old.close();}catch(e){}
-        wireHost(conn);hideDown();hostSync(true);return;
-      }
-      if(net)return;
-      net={role:'host',me:0,conn,pend:0,code};VIEW=1;team=[myTeam(),-1];
-      wireHost(conn);keepAwake();saveSession();
-      $('net').hidden=true;labelChips();newGame();
-    });
-  });
-  p.on('error',err=>{
-    if(err.type==='unavailable-id'){
-      if(first){createGame();return;}
-      if(net)net.hostRetry=setTimeout(()=>hostRevive(code),2500);return;   // el servidor aún recuerda el código: se reintenta
-    }
-    if(net){if(net.role==='host'&&(err.type==='network'||err.type==='server-error'||err.type==='socket-error'||err.type==='socket-closed'))net.hostRetry=setTimeout(()=>{try{if(peer===p&&p.disconnected)p.reconnect();}catch(e){}},3000);return;}
-    stopNet();netView('choose','No se ha podido crear la partida ('+err.type+'). Inténtalo de nuevo.');
-  });
-}
-function hostRevive(code){
-  if(!net||net.role!=='host')return;
-  clearTimeout(net.hostRetry);net.hostRetry=0;
-  hostPeer(code,false);
-}
+function closeNet(){if(net&&!net.started)stopNet();$('net').hidden=true;}
 function createGame(){
-  if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
-  stopNet();
   const code=newCode();
-  netView('create','Creando la partida…');$('ncode').textContent='·····';
-  hostPeer(code,true);
+  netView('create','Creando la sala…');$('ncode').textContent='·····';
+  connectRoom(code);
 }
 function joinGame(raw){
-  const code=String(raw||'').trim().toUpperCase();
-  if(code.length!==5){$('nx').textContent='El código tiene 5 caracteres.';return;}
-  if(!window.Peer){netView('choose','No se ha podido cargar la conexión online. Comprueba tu conexión a internet y recarga la página.');return;}
-  stopNet();
+  const code=String(raw||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code.length<4||code.length>8){$('nx').textContent='Escribe el código que te ha dado tu amigo.';return;}
   netView('join','Conectando…');
-  const fail=t=>{clearTimeout(timer);stopNet();netView('join',t);};
-  const timer=setTimeout(()=>fail('No se encuentra esa partida. Revisa el código.'),12000);
-  peer=new Peer(undefined,PEERCFG);
-  peer.on('open',()=>{
-    const conn=peer.connect('fmon-'+code,{reliable:true});
-    conn.on('open',()=>{
-      clearTimeout(timer);
-      net={role:'guest',me:1,conn,pend:0,code,lastRx:Date.now()};VIEW=-1;
-      attachGuest(conn);keepAwake();saveSession();
-      team=[-1,myTeam()];$('net').hidden=true;labelChips();newGame();netSend({t:'hi'});sendMyTeam();
-    });
-    conn.on('error',()=>fail('No se ha podido conectar. Revisa el código.'));
-  });
-  peer.on('error',err=>fail(err.type==='peer-unavailable'?'No se encuentra esa partida. Revisa el código.':'No se ha podido conectar ('+err.type+').'));
+  connectRoom(code);
 }
 $('online').addEventListener('click',openNet);
 $('ncreate').addEventListener('click',createGame);
-$('njoin').addEventListener('click',()=>{netView('join','Escribe el código de 5 caracteres que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
+$('njoin').addEventListener('click',()=>{netView('join','Escribe el código que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
 $('ngo').addEventListener('click',()=>joinGame($('ninput').value));
 $('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput').value);});
 $('ndisc').addEventListener('click',()=>{stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
 $('nclose').addEventListener('click',closeNet);
+$('nprof').addEventListener('click',()=>{$('net').hidden=true;openAcct();});
+$('ntour').addEventListener('click',()=>{$('net').hidden=true;openTour();});
+/* ---------- cuenta (nombre + PIN de 4 cifras) ---------- */
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
+async function acctRefresh(){
+  if(!acct)return;
+  try{const r=await api('/api/me',{sid:acct.sid});acct.name=r.profile.name;acct.profile=r.profile;saveAcct();}
+  catch(e){if(e.status===401){acct=null;saveAcct();}}
+}
+function renderAcct(msgText){
+  const box=$('acbox');box.textContent='';
+  $('acmsg').textContent=msgText||'';
+  const inForm=!acct;
+  $('acform').hidden=!inForm;
+  $('acsession').hidden=inForm;
+  if(inForm){$('act').textContent='Mi perfil';$('acx').textContent='Escribe tu nombre y un PIN de 4 números. Sirve para recordarte en cualquier móvil, guardar tus partidos y jugar torneos.';return;}
+  const p=acct.profile||{name:acct.name,played:0,won:0,lost:0,gf:0,ga:0,history:[]};
+  $('act').textContent=p.name;
+  $('acx').textContent=p.played?('Partidos '+p.played+' · Ganados '+p.won+' · Perdidos '+p.lost+' · Goles '+p.gf+'-'+p.ga):'Aún no has jugado ninguna partida con tu usuario. Entra en una partida online con tu sesión iniciada y se anotará aquí.';
+  if(p.history&&p.history.length){
+    box.appendChild(el('h3','acs','Últimos partidos'));
+    for(const h of p.history)box.appendChild(el('div','acrow '+(h.gf>h.ga?'win':'loss'),(h.gf>h.ga?'Victoria':'Derrota')+' contra '+h.opp+' · '+h.gf+'-'+h.ga+(h.torneo?' · torneo':'')));
+  }
+}
+async function openAcct(){
+  $('acct').hidden=false;renderAcct();
+  if(acct){await acctRefresh();renderAcct();}
+  try{
+    const r=await fetch(API+'/api/ranking').then(x=>x.json());
+    const rk=$('acrank');rk.textContent='';
+    if(r.ranking&&r.ranking.length){rk.appendChild(el('h3','acs','Ranking'));r.ranking.slice(0,10).forEach((x,i)=>rk.appendChild(el('div','acrow',(i+1)+'. '+x.name+' · '+x.won+' ganadas de '+x.played)));}
+  }catch(e){}
+}
+async function acctGo(kind){
+  const name=$('acname').value,pin=$('acpin').value;
+  $('acmsg').textContent='…';
+  try{
+    const r=await api(kind==='new'?'/api/register':'/api/login',{name,pin});
+    acct={sid:r.sid,name:r.profile.name,profile:r.profile};saveAcct();$('acpin').value='';
+    renderAcct('Listo: te recordaremos en este móvil.');
+  }catch(e){$('acmsg').textContent=e.message;}
+}
+$('aclogin').addEventListener('click',()=>acctGo('login'));
+$('acnew').addEventListener('click',()=>acctGo('new'));
+$('aclogout').addEventListener('click',async()=>{try{if(acct)await api('/api/logout',{sid:acct.sid});}catch(e){}acct=null;saveAcct();renderAcct();});
+$('acclose').addEventListener('click',()=>{$('acct').hidden=true;});
+/* ---------- torneos ---------- */
+let tourCode='',tourTimer=0;
+try{tourCode=localStorage.getItem(TOURK)||'';}catch(e){}
+const roundName=n=>n===1?'Final':n===2?'Semifinales':n===4?'Cuartos de final':n===8?'Octavos de final':n===16?'Dieciseisavos':'Primera ronda';
+function tourMsg(t){$('tmsg').textContent=t||'';}
+async function openTour(){
+  $('tour').hidden=false;tourMsg('');
+  if(!acct){renderTour(null);return;}
+  if(tourCode)await tourLoad();else renderTour(null);
+  clearInterval(tourTimer);tourTimer=setInterval(()=>{if($('tour').hidden){clearInterval(tourTimer);return;}if(tourCode)tourLoad(true);},5000);
+}
+function closeTour(){$('tour').hidden=true;clearInterval(tourTimer);}
+async function tourLoad(quiet){
+  try{const t=await api('/api/t/get',{code:tourCode,sid:acct&&acct.sid});renderTour(t);}
+  catch(e){if(!quiet){tourMsg(e.message);}if(e.status===404){tourCode='';try{localStorage.removeItem(TOURK);}catch(_){}renderTour(null);}}
+}
+function renderTour(t){
+  const home=$('thome'),view=$('tview');
+  if(!acct){home.hidden=false;view.hidden=true;$('thome').querySelectorAll('input,button').forEach(b=>b.disabled=true);$('ttx').textContent='Para jugar torneos necesitas un usuario con PIN.';$('tgo').hidden=false;return;}
+  $('tgo').hidden=true;$('thome').querySelectorAll('input,button').forEach(b=>b.disabled=false);
+  if(!t){home.hidden=false;view.hidden=true;$('ttx').textContent='Crea un torneo (hasta 64 jugadores) o únete con el código que te den. Se juega por eliminatorias y cada partido es online.';return;}
+  home.hidden=true;view.hidden=false;
+  $('ttx').textContent='';
+  $('ttitle').textContent=t.name;
+  $('tcode').textContent=t.code;
+  const box=$('tbody');box.textContent='';
+  const estado=t.state==='open'?'Inscripción abierta':t.state==='running'?'En juego':'Terminado';
+  box.appendChild(el('p','tmeta',estado+' · '+t.count+' jugador'+(t.count===1?'':'es')+' · Organiza '+t.owner));
+  if(t.state==='done')box.appendChild(el('p','tchamp','🏆 Campeón: '+t.champion));
+  if(t.state==='open'){
+    box.appendChild(el('p','tmeta','Inscritos: '+t.members.join(', ')));
+    const row=el('div','net-row');
+    if(t.isOwner){const b=el('button','primary','Empezar torneo');b.onclick=()=>tourAct('/api/t/start');row.appendChild(b);}
+    else if(t.joined){const b=el('button','','Salirme');b.onclick=async()=>{await tourAct('/api/t/leave');tourCode='';renderTour(null);};row.appendChild(b);}
+    else{const b=el('button','primary','Apuntarme');b.onclick=()=>tourAct('/api/t/join');row.appendChild(b);}
+    box.appendChild(row);
+    if(t.isOwner)box.appendChild(el('p','tmeta','Pasa el código a tus amigos (hasta 64). Empieza cuando estéis todos; si no son potencia de 2, algunos pasan la primera ronda sin jugar.'));
+  }
+  if(t.mine){
+    const c=el('div','tmine');
+    c.appendChild(el('strong','','Tu partido: contra '+t.mine.opp));
+    const b=el('button','primary','Jugar mi partido');b.onclick=playMine;c.appendChild(b);box.appendChild(c);
+  }else if(t.state==='running'&&t.joined)box.appendChild(el('p','tmeta','Ahora mismo no tienes partido pendiente: espera a que terminen los demás.'));
+  if(t.rounds&&t.rounds.length){
+    t.rounds.forEach(r=>{
+      box.appendChild(el('h3','acs',roundName(r.length)));
+      r.forEach(m=>{
+        const row=el('div','acrow');
+        const a=el('span',m.w===0?'wn':'',m.p0||'?'),bb=el('span',m.w===1?'wn':'',m.state==='bye'?'(pasa directo)':(m.p1||'?'));
+        const mid=el('span','mid',m.state==='done'&&m.state!=='bye'&&m.p1?(m.s0+' - '+m.s1):m.state==='ready'?'vs':'·');
+        row.append(a,mid,bb);
+        if(t.isOwner&&m.state==='ready'){
+          const w0=el('button','mini','Gana '+m.p0);w0.onclick=()=>tourAct('/api/t/walkover',{matchId:m.id,seat:0});
+          const w1=el('button','mini','Gana '+m.p1);w1.onclick=()=>tourAct('/api/t/walkover',{matchId:m.id,seat:1});
+          row.append(w0,w1);
+        }
+        box.appendChild(row);
+      });
+    });
+  }
+}
+async function tourAct(path,extra){
+  tourMsg('…');
+  try{const t=await api(path,{sid:acct.sid,code:tourCode,...(extra||{})});tourMsg('');if(t&&t.code)renderTour(t);else await tourLoad();}
+  catch(e){tourMsg(e.message);}
+}
+async function playMine(){
+  tourMsg('Preparando tu partido…');
+  try{
+    const m=await api('/api/t/match',{sid:acct.sid,code:tourCode});
+    tourMsg('');closeTour();
+    connectRoom(m.room,m.tok,true);
+  }catch(e){tourMsg(e.message);}
+}
+$('tcreate').addEventListener('click',async()=>{
+  tourMsg('…');
+  try{const t=await api('/api/t/create',{sid:acct.sid,name:$('tname').value});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
+  catch(e){tourMsg(e.message);}
+});
+$('tjoin').addEventListener('click',async()=>{
+  const code=$('tjcode').value.trim().toUpperCase();
+  if(!code){tourMsg('Escribe el código del torneo.');return;}
+  tourMsg('…');
+  try{const t=await api('/api/t/join',{sid:acct.sid,code});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
+  catch(e){tourMsg(e.message);}
+});
+$('tgo').addEventListener('click',()=>{closeTour();openAcct();});
+$('tback').addEventListener('click',()=>{tourCode='';try{localStorage.removeItem(TOURK);}catch(e){}renderTour(null);});
+$('tclose').addEventListener('click',closeTour);
+
 
 team=loadTeams();labelChips();
 newGame();
