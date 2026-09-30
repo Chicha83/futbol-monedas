@@ -82,6 +82,7 @@ input:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 .tgrid button.sel{border-color:var(--red)}
 .tgrid canvas{width:52px;height:52px;background:none;box-shadow:none;border-radius:0}
 #tmx{min-height:0}
+.tgh{grid-column:1/-1;font:700 12px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 2px 0}
 #tmtabs button.sel{border-color:var(--red)}
 html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
 .wrap{height:100vh;height:100dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex}
@@ -210,28 +211,75 @@ let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,
 const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
 const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
-/* ---------- equipos: 64 clubes con la representación de sus colores (no son equipaciones ni escudos oficiales) ---------- */
+/* ---------- equipos: 20 de LaLiga, 22 de Segunda y 22 de los mejores de Europa, con la representación de sus colores (no son equipaciones ni escudos oficiales) ---------- */
 // [nombre, corto, dibujo, color1, color2]   dibujo: S liso · V rayas verticales · H aros horizontales · L mitades · D banda diagonal · B banda horizontal · C banda vertical
 const TEAMS=[
-['Manchester City','Man City','S','#6CABDD','#1C2C5B'],['Arsenal','Arsenal','S','#EF0107','#FFFFFF'],['Liverpool','Liverpool','S','#C8102E','#F6EB61'],['Chelsea','Chelsea','S','#034694','#FFFFFF'],
-['Manchester United','Man United','S','#DA291C','#111111'],['Tottenham','Tottenham','S','#FFFFFF','#132257'],['Newcastle','Newcastle','V','#FFFFFF','#241F20'],['Aston Villa','Aston Villa','S','#670E36','#95BFE5'],
-['Brighton','Brighton','V','#0057B8','#FFFFFF'],['Crystal Palace','C. Palace','V','#1B458F','#C4122E'],
-['Real Madrid','R. Madrid','S','#FFFFFF','#FEBE10'],['FC Barcelona','Barça','V','#A50044','#004D98'],['Atlético de Madrid','Atlético','V','#CB3524','#FFFFFF'],['Athletic Club','Athletic','V','#EE2523','#FFFFFF'],
-['Real Sociedad','R. Sociedad','V','#0067B1','#FFFFFF'],['Villarreal','Villarreal','S','#FFE667','#005187'],['Real Betis','Betis','V','#0BB363','#FFFFFF'],['Sevilla','Sevilla','S','#FFFFFF','#D50000'],
-['Inter','Inter','V','#0A3D91','#111111'],['AC Milan','Milan','V','#FB090B','#111111'],['Juventus','Juventus','V','#FFFFFF','#111111'],['Nápoles','Nápoles','S','#12A0D7','#FFFFFF'],
-['Atalanta','Atalanta','V','#1E71B8','#111111'],['Roma','Roma','S','#8E1F2F','#F0BC42'],['Lazio','Lazio','S','#87D8F7','#FFFFFF'],['Fiorentina','Fiorentina','S','#482E92','#FFFFFF'],
-['Bayern Múnich','Bayern','S','#DC052D','#FFFFFF'],['Borussia Dortmund','Dortmund','S','#FDE100','#111111'],['Bayer Leverkusen','Leverkusen','S','#E32221','#111111'],['RB Leipzig','Leipzig','S','#FFFFFF','#DD0741'],
-['Stuttgart','Stuttgart','S','#FFFFFF','#E32219'],['Eintracht Fráncfort','Fráncfort','S','#111111','#E1000F'],['Friburgo','Friburgo','S','#E2001A','#111111'],
-['París Saint-Germain','PSG','S','#004170','#DA291C'],['Olympique de Marsella','Marsella','S','#FFFFFF','#2FAEE0'],['Mónaco','Mónaco','D','#FFFFFF','#E51B24'],['Lille','Lille','S','#E01E13','#24216A'],
-['Olympique de Lyon','Lyon','S','#FFFFFF','#1A3A8A'],['Lens','Lens','V','#E4002B','#FFDD00'],
-['Benfica','Benfica','S','#E30613','#FFFFFF'],['Sporting CP','Sporting','H','#00875A','#FFFFFF'],['Oporto','Oporto','V','#003D8C','#FFFFFF'],['Braga','Braga','S','#B5121B','#FFFFFF'],
-['PSV Eindhoven','PSV','V','#E50019','#FFFFFF'],['Feyenoord','Feyenoord','L','#E2001A','#FFFFFF'],['Ajax','Ajax','C','#FFFFFF','#D2122E'],
-['Club Brujas','Brujas','V','#0A5DA8','#111111'],['Union SG','Union SG','S','#FFD800','#1E3A8A'],['Anderlecht','Anderlecht','S','#4B2E83','#FFFFFF'],
-['Galatasaray','Galatasaray','L','#FDB913','#A90432'],['Fenerbahçe','Fenerbahçe','V','#FCE300','#00205B'],['Besiktas','Besiktas','V','#111111','#FFFFFF'],
-['Celtic','Celtic','H','#118B44','#FFFFFF'],['Rangers','Rangers','S','#1B458F','#C8102E'],
-['Olympiacos','Olympiacos','V','#E30613','#FFFFFF'],['Red Bull Salzburgo','Salzburgo','S','#FFFFFF','#DD0741'],['Shakhtar Donetsk','Shakhtar','S','#F58220','#111111'],['Copenhague','Copenhague','S','#FFFFFF','#0A2C6B'],['Young Boys','Young Boys','S','#FFD500','#111111'],
-['Flamengo','Flamengo','H','#D0021B','#111111'],['Palmeiras','Palmeiras','S','#006437','#FFFFFF'],['River Plate','River','D','#FFFFFF','#E2001A'],['Boca Juniors','Boca','B','#003B91','#FFC72C'],['Al-Hilal','Al-Hilal','S','#0B4EA2','#FFFFFF']
+['Athletic Club','Athletic','V','#EE2523','#FFFFFF'],
+['Atlético de Madrid','Atlético','V','#CB3524','#FFFFFF'],
+['Osasuna','Osasuna','S','#D91A21','#0A346F'],
+['Celta','Celta','S','#8AC3EE','#FFFFFF'],
+['Deportivo Alavés','Alavés','V','#FFFFFF','#0761AF'],
+['Elche','Elche','D','#FFFFFF','#00A650'],
+['FC Barcelona','Barça','V','#A50044','#004D98'],
+['Getafe','Getafe','S','#005999','#FFFFFF'],
+['Levante','Levante','V','#1C3F94','#C8102E'],
+['Málaga','Málaga','S','#FFFFFF','#0B5FA5'],
+['Racing de Santander','Racing','S','#00A550','#FFFFFF'],
+['Rayo Vallecano','Rayo','D','#FFFFFF','#E4002B'],
+['Deportivo de La Coruña','Depor','V','#0057B8','#FFFFFF'],
+['Espanyol','Espanyol','V','#0074C8','#FFFFFF'],
+['Real Betis','Betis','V','#0BB363','#FFFFFF'],
+['Real Madrid','R. Madrid','S','#FFFFFF','#FEBE10'],
+['Real Sociedad','R. Sociedad','V','#0067B1','#FFFFFF'],
+['Sevilla','Sevilla','S','#FFFFFF','#D50000'],
+['Valencia','Valencia','S','#FFFFFF','#F29A00'],
+['Villarreal','Villarreal','S','#FFE667','#005187'],
+['AD Ceuta','Ceuta','V','#FFFFFF','#111111'],
+['Albacete','Albacete','S','#FFFFFF','#D50000'],
+['Burgos','Burgos','D','#FFFFFF','#111111'],
+['Cádiz','Cádiz','S','#FFDD00','#0033A0'],
+['Castellón','Castellón','V','#111111','#FFFFFF'],
+['Eldense','Eldense','S','#0A3D91','#FFFFFF'],
+['Leganés','Leganés','V','#0A5DA8','#FFFFFF'],
+['Tenerife','Tenerife','S','#FFFFFF','#0A3D91'],
+['Sabadell','Sabadell','L','#0A5DA8','#FFFFFF'],
+['Celta Fortuna','Celta B','S','#B5DDF5','#0A3D91'],
+['Córdoba','Córdoba','V','#0B8A3B','#FFFFFF'],
+['FC Andorra','Andorra','L','#0A3D91','#F2C400'],
+['Girona','Girona','S','#C8102E','#FFFFFF'],
+['Granada','Granada','V','#C8102E','#FFFFFF'],
+['Real Sociedad B','R. Soc. B','V','#0067B1','#FFFFFF'],
+['Mallorca','Mallorca','S','#C8102E','#111111'],
+['Real Oviedo','Oviedo','S','#003DA5','#FFFFFF'],
+['Sporting de Gijón','Sporting','V','#FFFFFF','#C8102E'],
+['Real Valladolid','Valladolid','L','#5B2C83','#FFFFFF'],
+['Eibar','Eibar','V','#0A3D91','#8B1538'],
+['Almería','Almería','L','#C8102E','#FFFFFF'],
+['Las Palmas','Las Palmas','S','#FFDD00','#0A3D91'],
+['Manchester City','Man City','S','#6CABDD','#1C2C5B'],
+['Arsenal','Arsenal','S','#EF0107','#FFFFFF'],
+['Liverpool','Liverpool','S','#C8102E','#F6EB61'],
+['Chelsea','Chelsea','S','#034694','#FFFFFF'],
+['Manchester United','Man United','S','#DA291C','#111111'],
+['Tottenham','Tottenham','S','#FFFFFF','#132257'],
+['Newcastle','Newcastle','V','#FFFFFF','#241F20'],
+['Aston Villa','Aston Villa','S','#670E36','#95BFE5'],
+['Inter','Inter','V','#0A3D91','#111111'],
+['AC Milan','Milan','V','#FB090B','#111111'],
+['Juventus','Juventus','V','#FFFFFF','#111111'],
+['Nápoles','Nápoles','S','#12A0D7','#FFFFFF'],
+['Atalanta','Atalanta','V','#1E71B8','#111111'],
+['Roma','Roma','S','#8E1F2F','#F0BC42'],
+['Bayern Múnich','Bayern','S','#DC052D','#FFFFFF'],
+['Borussia Dortmund','Dortmund','S','#FDE100','#111111'],
+['Bayer Leverkusen','Leverkusen','S','#E32221','#111111'],
+['París Saint-Germain','PSG','S','#004170','#DA291C'],
+['Olympique de Marsella','Marsella','S','#FFFFFF','#2FAEE0'],
+['Benfica','Benfica','S','#E30613','#FFFFFF'],
+['Sporting CP','Sporting CP','H','#00875A','#FFFFFF'],
+['Oporto','Oporto','V','#003D8C','#FFFFFF'],
 ];
+const TGROUPS=[[0,'LaLiga EA Sports'],[20,'LaLiga Hypermotion (Segunda)'],[42,'Mejores clubes de Europa']];
 let team=[-1,-1];
 const lum=h=>{const n=parseInt(h.slice(1),16);return(.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255))/255;};
 function drawKit(g,x,y,rad,ti){          // pinta la equipación (colores del club) dentro de un círculo
@@ -247,23 +295,21 @@ function drawKit(g,x,y,rad,ti){          // pinta la equipación (colores del cl
   else{g.strokeStyle=b;g.lineWidth=rad*.16;g.beginPath();g.arc(0,0,rad*.84,0,Math.PI*2);g.stroke();}
   g.restore();
 }
-function coinFace(g,x,y,r,ti,accent,rot){    // moneda de 1 €: aro dorado y centro con la equipación (o plateado si no hay equipo)
+function coinFace(g,x,y,r,ti,accent,rot){    // moneda: con equipo, la equipación cubre toda la cara hasta el canto; sin equipo, aro dorado y centro plateado
+  if(ti>=0){
+    drawKit(g,x,y,r-.4,ti);
+    g.beginPath();g.arc(x,y,r-.4,0,Math.PI*2);g.strokeStyle='rgba(20,25,35,.55)';g.lineWidth=1;g.stroke();
+    if(accent){g.beginPath();g.arc(x,y,r-1.6,0,Math.PI*2);g.strokeStyle=accent;g.lineWidth=2;g.stroke();}
+    return;
+  }
   let gr=g.createRadialGradient(x-r*.4,y-r*.4,r*.2,x,y,r);
   gr.addColorStop(0,'#F1D98A');gr.addColorStop(1,'#B98F2E');
   g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fillStyle=gr;g.fill();
   g.strokeStyle='#8E6C1E';g.lineWidth=1;g.stroke();
-  if(ti>=0)drawKit(g,x,y,r*.68,ti);
-  else{
-    gr=g.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r*.66);
-    gr.addColorStop(0,'#F4F6F8');gr.addColorStop(1,'#B4BCC6');
-    g.beginPath();g.arc(x,y,r*.64,0,Math.PI*2);g.fillStyle=gr;g.fill();
-  }
-  g.beginPath();g.arc(x,y,ti>=0?r*.68:r*.64,0,Math.PI*2);g.strokeStyle=accent||'#8E6C1E';g.lineWidth=ti>=0?2.5:3;g.stroke();
-  const dark=ti>=0?lum(TEAMS[ti][3])<.5:false;
-  g.font='700 '+Math.round(r*.62)+'px Karla,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
-  g.save();g.translate(x,y);if(rot)g.rotate(Math.PI);
-  if(ti>=0){g.lineJoin='round';g.lineWidth=3.2;g.strokeStyle=dark?'rgba(0,0,0,.75)':'rgba(255,255,255,.85)';g.strokeText('1€',0,.5);}
-  g.fillStyle=ti>=0?(dark?'#FFFFFF':'#111111'):'#2C333B';g.fillText('1€',0,.5);g.restore();
+  gr=g.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r*.66);
+  gr.addColorStop(0,'#F4F6F8');gr.addColorStop(1,'#B4BCC6');
+  g.beginPath();g.arc(x,y,r*.64,0,Math.PI*2);g.fillStyle=gr;g.fill();
+  g.strokeStyle=accent||'#8E6C1E';g.lineWidth=3;g.stroke();
 }
 
 /* ---------- campo (se dibuja una sola vez) ---------- */
@@ -746,7 +792,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='17';
+const VER='18';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
@@ -773,7 +819,7 @@ function labelChips(){
   $('n0').textContent=nm(0);$('n1').textContent=nm(1);
 }
 /* ---------- selector de equipos ---------- */
-const TKEY='fmon-teams',MYKEY='fmon-my';
+const TKEY='fmon-teams2',MYKEY='fmon-my2';
 const okTeam=v=>Number.isInteger(v)&&v>=-1&&v<TEAMS.length;
 function loadTeams(){try{const a=JSON.parse(localStorage.getItem(TKEY)||'null');if(Array.isArray(a)&&a.length===2)return a.map(v=>okTeam(v)?v:-1);}catch(e){}return[-1,-1];}
 function myTeam(){try{const v=parseInt(localStorage.getItem(MYKEY),10);return okTeam(v)?v:-1;}catch(e){return -1;}}
@@ -792,6 +838,8 @@ function buildTeams(){
   if(tmBuilt)return;tmBuilt=true;
   const g=$('tgrid');
   for(let i=-1;i<TEAMS.length;i++){
+    const grp=TGROUPS.find(q=>q[0]===i);
+    if(grp){const h=document.createElement('div');h.className='tgh';h.textContent=grp[1];g.appendChild(h);}
     const b=document.createElement('button');b.type='button';b.dataset.i=i;
     const c=document.createElement('canvas');c.width=104;c.height=104;
     const x=c.getContext('2d');x.scale(2,2);coinFace(x,26,26,24,i,null,false);
