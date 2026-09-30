@@ -20,15 +20,20 @@ function reset(t){
   coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
   turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;chain=null;pm={m:null};beginAim();
 }
-function returnOut(){                       // una moneda de jugador que se ha quedado fuera de las líneas vuelve al borde del campo
+function returnOut(){                       // una moneda de jugador que se ha quedado fuera de las líneas vuelve al campo, al punto libre más cercano y sin quedar pegada a la moneda rival
   for(let i=0;i<2;i++){
     const c=coins[i];c.out=0;
     if(c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1)continue;
-    c.x=clamp(c.x,FX0+c.r,FX1-c.r);c.y=clamp(c.y,FY0+c.r,FY1-c.r);
-    for(let n=0;n<40&&!placeOK({x:c.x,y:c.y},c,null);n++){c.x+=(CX-c.x)*.04;c.y+=(CY-c.y)*.04;}
-    c.vx=c.vy=c.spin=0;tick(3,400);
+    const x0=clamp(c.x,FX0+c.r,FX1-c.r),y0=clamp(c.y,FY0+c.r,FY1-c.r),o=coins[1-i];
+    const okAt=(x,y)=>placeOK({x,y},c,null)&&Math.hypot(x-o.x,y-o.y)>=RETGAP;
+    let fx=x0,fy=y0,found=false;
+    for(let d=0;d<=420&&!found;d+=6){
+      for(let k=0;k<(d?24:1);k++){const a=k*Math.PI/12,x=x0+Math.cos(a)*d,y=y0+Math.sin(a)*d;if(okAt(x,y)){fx=x;fy=y;found=true;break;}}
+    }
+    c.x=fx;c.y=fy;c.vx=c.vy=c.spin=0;tick(3,400);
   }
 }
+const RETGAP=4*R;   // al volver al campo, la moneda queda al menos a una moneda de hueco de la rival
 const BDIST=3*2*R;   // 3 monedas de distancia (entre bordes) en saques de banda y córners
 function gkLim(gy){return gy<CY?FY0+.25*(FY1-FY0):FY1-.25*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
 function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
