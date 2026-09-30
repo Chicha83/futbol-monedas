@@ -4,7 +4,7 @@ const GOAL_MS=8300;
 const CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,R=21,RB=15,OMEGA=.012;   // copia de las constantes para la IA
 export function createGame(opts){
 const goalWait=(opts&&opts.goalMs)||(()=>GOAL_MS);
-const W=720,H=1020,VM=30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=270,GX1=450,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
+const W=720,H=1020,VM=30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=300,GX1=420,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
 const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_RANGE=288,OMEGA=.012;
@@ -145,8 +145,8 @@ function hostUpdate(){
   if(oppFoul&&phase==='roll'){oppFoul=false;callFoul('su moneda tocó a la contraria antes que el balón');return;}
   const b=coins[2];
   const inM=b.x>GX0&&b.x<GX1;
-  if(phase==='roll'&&inM&&(b.y<FY0||b.y>FY1)){goal(b.y<FY0?0:1);return;}          // el centro del balón cruza la línea de gol dentro de la boca: gol
-  if(phase==='roll'&&(b.x<FX0||b.x>FX1||(!inM&&(b.y<FY0||b.y>FY1)))){outPlay();return;}
+  if(phase==='roll'&&inM&&(b.y<FY0-RB||b.y>FY1+RB)){goal(b.y<FY0?0:1);return;}          // gol: todo el balón (toda su circunferencia) ha cruzado la línea dentro de la boca
+  if(phase==='roll'&&(b.x<FX0-RB||b.x>FX1+RB||(!inM&&(b.y<FY0-RB||b.y>FY1+RB)))){outPlay();return;}   // fuera: solo cuando toda la circunferencia ha pasado la línea
   if(phase==='roll'){
     if(coins.some(c=>c.vx||c.vy))settle=0;
     else if(++settle>12){
