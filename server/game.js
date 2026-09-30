@@ -44,6 +44,7 @@ function beginAim(){phase='aim';step=1;drag=null;sel={ux:0,uy:turn===0?-1:1,ok:f
 function initPlace(c){
   const b=coins[2];
   if(pm.m==='side')return{x:pm.s<0?FX0-32:FX1+32,y:b.y};
+  if(pm.m==='any'&&pm.s!==undefined)return{x:pm.s<0?FX0-32:FX1+32,y:pm.y<CY?FY0-32:FY1+32};   // córner: el que saca empieza en la esquina, fuera del campo
   if(pm.m==='line')return{x:CX,y:pm.y};
   if(pm.m==='gkdef')return{x:CX,y:gkLim(pm.y)};
   if(pm.m==='bdef')return{x:b.x<CX?Math.min(b.x+BDIST+c.r+RB+12,FX1-c.r):Math.max(b.x-BDIST-c.r-RB-12,FX0+c.r),y:Math.max(FY0+c.r+2,Math.min(FY1-c.r-2,b.y))};
@@ -135,7 +136,7 @@ function hostUpdate(){
   if(phase==='foul'){if(--msgT<=0){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
     if(rs&&m0.k==='b'){pm={m:'bdef'};chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
-    else if(rs&&m0.k==='c'){pm={m:'bdef'};chain={t:foulBen,m:'any',mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
+    else if(rs&&m0.k==='c'){pm={m:'bdef'};chain={t:foulBen,m:'any',s:m0.side,y:m0.gy,mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
     else if(rs&&m0.k==='g'){pm={m:'gkdef',y:m0.gy};chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
   }return;}
@@ -283,7 +284,9 @@ function planPlace(info,seat){
   const cand=[];
   if(info.mode==='line')cand.push([info.init.x,info.init.y]);
   if(info.mode==='side'){const sx=info.pm.s<0?FX0-42:FX1+42;for(const dy of [0,30,-30,60,-60])cand.push([sx,b.y+dy]);}
-  if(info.mode==='side'||info.mode==='line'){for(const [x,y] of cand)if(info.ok(x,y))return place(x,y);}
+  const corner=info.mode==='any'&&info.pm.s!==undefined;   // córner: la IA también saca desde la esquina, fuera del campo
+  if(corner)cand.push([info.init.x,info.init.y]);
+  if(info.mode==='side'||info.mode==='line'||corner){for(const [x,y] of cand)if(info.ok(x,y))return place(x,y);}
   else{
   const gx=CX,dx=gx-b.x,dy=gy-b.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d;
   if(info.defender){                               // defensa: entre el balón y mi portería
