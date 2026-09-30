@@ -238,7 +238,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
       </div>
       <div class="wbox" style="margin-top:12px" id="wpush"><h3 class="acs" style="margin:0">Avisos en el móvil</h3>
         <p id="wpx">Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.</p>
-        <div class="net-row"><button type="button" id="wpbtn" class="primary">Activar avisos</button><button type="button" id="wptest" hidden>Probar aviso</button></div>
+        <div class="net-row"><button type="button" id="wpbtn" class="primary">Activar avisos</button></div>
         <div id="wpprefs" hidden style="display:grid;gap:6px">
           <label class="chk"><input type="checkbox" id="wpg" checked> Partidas: tu turno y amigo que se une</label>
           <label class="chk"><input type="checkbox" id="wpc" checked> Mensajes del chat</label>
@@ -1370,7 +1370,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='36';
+const VER='37';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1783,18 +1783,18 @@ async function pushRefresh(){
   $('wpush').hidden=false;
   if(!pushOK()){
     $('wpush').hidden=!(isIOS()&&!isStandalone());
-    if(!$('wpush').hidden){x.textContent='En el iPhone los avisos solo funcionan con el juego instalado en la pantalla de inicio (Safari → Compartir → «Añadir a pantalla de inicio»).';btn.hidden=true;$('wptest').hidden=true;$('wpprefs').hidden=true;}
+    if(!$('wpush').hidden){x.textContent='En el iPhone los avisos solo funcionan con el juego instalado en la pantalla de inicio (Safari → Compartir → «Añadir a pantalla de inicio»).';btn.hidden=true;$('wpprefs').hidden=true;}
     return;
   }
   btn.hidden=false;
-  if(Notification.permission==='denied'){x.textContent='Has bloqueado las notificaciones de esta web. Actívalas en los ajustes de Chrome (icono del candado junto a la dirección → Permisos → Notificaciones).';btn.hidden=true;$('wptest').hidden=true;$('wpprefs').hidden=true;return;}
+  if(Notification.permission==='denied'){x.textContent='Has bloqueado las notificaciones de esta web. Actívalas en los ajustes de Chrome (icono del candado junto a la dirección → Permisos → Notificaciones).';btn.hidden=true;$('wpprefs').hidden=true;return;}
   let on=false,prefs=null;
   try{
     const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();
     if(sub&&acct){const r=await api('/api/push/state',{sid:acct.sid,endpoint:sub.endpoint});on=r.on;prefs=r.prefs;}
   }catch(e){}
   btn.textContent=on?'Desactivar avisos':'Activar avisos';btn.classList.toggle('primary',!on);
-  $('wptest').hidden=!on;$('wpprefs').hidden=!on;
+  $('wpprefs').hidden=!on;
   if(prefs){$('wpg').checked=prefs.game;$('wpc').checked=prefs.chat;$('wpt').checked=prefs.tour;}
   x.textContent=on?'Avisos activados en este móvil.':'Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.';
 }
@@ -1817,7 +1817,6 @@ async function pushToggle(){
 async function pushSavePrefs(){try{const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();if(sub)await api('/api/push/prefs',{sid:acct.sid,endpoint:sub.endpoint,prefs:pushPrefs()});}catch(e){}}
 $('wpbtn').addEventListener('click',pushToggle);
 for(const k of ['wpg','wpc','wpt'])$(k).addEventListener('change',pushSavePrefs);
-$('wptest').addEventListener('click',async()=>{const x=$('wpx');x.textContent='Enviando…';try{const r=await api('/api/push/test',{sid:acct.sid});x.textContent=r.sent?'Aviso enviado: debería llegarte en unos segundos.':'No se ha podido enviar el aviso. Prueba a desactivar y volver a activar.';}catch(e){x.textContent=e.message;}});
 /* ---------- torneos ---------- */
 let tourCode='',tourTimer=0;
 try{tourCode=localStorage.getItem(TOURK)||'';}catch(e){}

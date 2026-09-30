@@ -97,7 +97,6 @@ export class Hub {
       case '/api/push/unsub': { const u = this.auth(b.sid); this.q('DELETE FROM push WHERE endpoint=? AND pid=?', String(b.endpoint || ''), u.id); return { ok: 1 }; }
       case '/api/push/prefs': return this.pPrefs(b);
       case '/api/push/state': return this.pState(b);
-      case '/api/push/test': { const u = this.auth(b.sid); const n = await this.notify(u.id, 'game', { title: 'Fútbol Monedas', body: 'Las notificaciones funcionan. ¡A jugar!', tag: 'prueba' }); return { sent: n }; }
       case '/internal/push': this.outbox.push([Number(b.pid) | 0, String(b.kind), { title: String(b.title || 'Fútbol Monedas').slice(0, 60), body: String(b.body || '').slice(0, 120), tag: String(b.tag || ''), url: './' }]); return { ok: 1 };
       case '/internal/who': { const u = this.one('SELECT p.id,p.name FROM sessions s JOIN players p ON p.id=s.pid WHERE s.sid=?', String(b.sid || '')); return u ? { pid: u.id, name: u.name } : {}; }
       case '/internal/result': return this.result(b);
