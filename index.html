@@ -362,7 +362,7 @@ const pitch=document.createElement('canvas');pitch.width=2*W;pitch.height=2*H;
 
 /* ---------- sonido ---------- */
 let AC=null;
-function ensureAudio(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});}catch(e){}}
+function ensureAudio(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});if(AC&&!CR&&typeof crowdInit==='function')crowdInit();}catch(e){}}
 function tick(v,f){
   if(!soundOn||!AC)return;
   try{
@@ -370,6 +370,63 @@ function tick(v,f){
     o.type='triangle';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.7,t+.09);
     g.gain.setValueAtTime(a,t);g.gain.exponentialRampToValueAtTime(.0001,t+.1);
     o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+.11);
+  }catch(e){}
+}
+
+/* ---------- ambiente de estadio: murmullo, ánimos al local, pitos al visitante y gol cantado ---------- */
+let CR=null;
+function noiseBuf(sec){const n=AC.sampleRate*sec,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);let l=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;l=(l+.04*w)/1.04;d[i]=l*9+w*.15;}return b;}
+function crowdInit(){
+  if(CR||!AC)return;
+  try{
+    const nb=noiseBuf(3),m=AC.createGain();m.gain.value=1;m.connect(AC.destination);
+    const ns=()=>{const x=AC.createBufferSource();x.buffer=nb;x.loop=true;x.playbackRate.value=.9+Math.random()*.2;x.start();return x;};
+    // murmullo continuo
+    const a=AC.createGain(),alp=AC.createBiquadFilter();alp.type='lowpass';alp.frequency.value=650;a.gain.value=0;ns().connect(alp);alp.connect(a);a.connect(m);
+    // ánimo (ruido de voces agudas con oleadas)
+    const c=AC.createGain(),cbp=AC.createBiquadFilter();cbp.type='bandpass';cbp.frequency.value=1300;cbp.Q.value=.7;c.gain.value=0;ns().connect(cbp);cbp.connect(c);c.connect(m);
+    const cl=AC.createOscillator(),clg=AC.createGain();cl.frequency.value=.9;clg.gain.value=.05;cl.connect(clg);clg.connect(c.gain);cl.start();
+    // pitos (uuuu grave con vibrato)
+    const bo=AC.createGain(),blp=AC.createBiquadFilter();blp.type='lowpass';blp.frequency.value=520;blp.Q.value=2;bo.gain.value=0;blp.connect(bo);bo.connect(m);
+    const vib=AC.createOscillator(),vg=AC.createGain();vib.frequency.value=5;vg.gain.value=5;vib.connect(vg);vib.start();
+    [140,147,206,214].forEach(f=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=f;vg.connect(o.frequency);o.connect(blp);o.start();});
+    const bn=AC.createGain();bn.gain.value=.5;ns().connect(bn);bn.connect(blp);
+    CR={m,a,c,bo,cbp,alp};
+  }catch(e){CR=null;}
+}
+function crowdUpdate(){
+  if(!AC||!CR)return;
+  try{
+    const t=AC.currentTime;let ka=0,kc=0,kb=0;
+    if(soundOn&&!over&&coins&&(phase==='aim'||phase==='strike'||phase==='roll'||phase==='place'||phase==='foul')){
+      const b=coins[2],dT=b.y-FY0,dB=FY1-b.y;
+      const near=Math.min(dT,dB),ZA=380,ZB=200;
+      ka=clamp((ZA-near)/ZA,0,1);
+      const kk=clamp((ZB-near)/ZB,0,1);
+      if(dT<dB)kc=kk;else kb=kk;            // arriba ataca el local (Jugador 1): lo animan; abajo ataca el visitante: lo pitan
+    }
+    CR.a.gain.setTargetAtTime(soundOn&&!over?.035+.05*ka:0,t,.35);
+    CR.alp.frequency.setTargetAtTime(600+900*ka,t,.5);
+    CR.c.gain.setTargetAtTime(.22*kc*kc,t,.25);
+    CR.cbp.frequency.setTargetAtTime(1100+700*kc,t,.4);
+    CR.bo.gain.setTargetAtTime(.34*kb*kb,t,.25);
+  }catch(e){}
+}
+function crowdGoal(s){                       // rugido del estadio + voz de "¡Gooool!"
+  if(!soundOn)return;
+  try{
+    if(AC&&CR){
+      const t=AC.currentTime,big=s===0,x=AC.createBufferSource();x.buffer=noiseBuf(3);
+      const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1000;bp.Q.value=.5;
+      const g=AC.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(big?.75:.4,t+.25);g.gain.setValueAtTime(big?.75:.4,t+1.6);g.gain.exponentialRampToValueAtTime(.001,t+(big?4:2.6));
+      x.connect(bp);bp.connect(g);g.connect(CR.m);x.start(t);x.stop(t+4.2);
+    }
+    if(window.speechSynthesis){
+      speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance('¡Gooooooooool!');u.lang='es-ES';u.rate=.65;u.pitch=1.5;u.volume=1;
+      const v=speechSynthesis.getVoices().find(v=>/^es[-_]ES/i.test(v.lang))||speechSynthesis.getVoices().find(v=>/^es/i.test(v.lang));if(v)u.voice=v;
+      speechSynthesis.speak(u);
+    }
   }catch(e){}
 }
 
@@ -527,7 +584,7 @@ function goal(s){
   score[s]++;for(const c of coins){c.vx=0;c.vy=0;}
   concede=1-s;over=score[s]>=WIN;phase='goal';
   msg={t:over?'¡Gana el Jugador '+(s+1)+'!':'¡GOL!',s};
-  msgT=over?0:110;ui();tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);
+  msgT=over?0:110;ui();tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);crowdGoal(s);
 }
 function update(){
   if(net&&net.role==='guest'){guestUpdate();return;}
@@ -757,7 +814,7 @@ function frame(ts){
   if(!last)last=ts;
   acc+=Math.min(50,ts-last);last=ts;
   while(acc>=16.667){update();acc-=16.667;}
-  draw(ts);requestAnimationFrame(frame);
+  crowdUpdate();draw(ts);requestAnimationFrame(frame);
 }
 
 /* ---------- tutorial ---------- */
@@ -805,7 +862,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='19';
+const VER='20';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
@@ -891,7 +948,7 @@ function applyState(s){
   if(phase==='place'&&(pp!=='place'||pt!==turn)){drag=null;place=initPlace(coins[turn]);net.pend=0;}
   if(pp==='strike'&&phase==='roll')tick(6,1200);
   if(phase==='foul'&&pp!=='foul')tick(5,300);
-  if(phase==='goal'&&pp!=='goal'){tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);}
+  if(phase==='goal'&&pp!=='goal'){tick(5,660);setTimeout(()=>tick(5,880),140);setTimeout(()=>tick(5,1100),280);crowdGoal(msg?msg.s:0);}
   if(s.tm){const own=team[1];team=s.tm.slice();if(net&&net.role==='guest'&&performance.now()-(net.tmT||0)<1500)team[1]=own;labelChips();}
   ui();
 }
