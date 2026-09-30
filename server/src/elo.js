@@ -15,5 +15,5 @@ export function botTeam(level, tid, k) {          // equipo de la IA número k (
   return pool[(k - 1) % pool.length];
 }
 export const eloOf = t => (t >= 0 && t < TEAM_ELO.length ? TEAM_ELO[t] : 1900);
-export const botSkill = elo => 1 + 2 * Math.max(0, Math.min(1, (elo - 1650) / (2400 - 1650)));   // 1 = IA fácil … 3 = IA difícil, según lo bueno que sea el equipo
+export const botSkill = elo => 0.3 + 2.7 * Math.max(0, Math.min(1, (elo - 1650) / (2400 - 1650)));   // 0,3 = IA floja … 3 = IA máxima, según lo bueno que sea el equipo
 export const winProb = (e0, e1) => 1 / (1 + Math.pow(10, (e1 - e0) / 400));
