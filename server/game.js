@@ -29,7 +29,7 @@ function returnOut(){                       // una moneda de jugador que se ha q
     c.vx=c.vy=c.spin=0;tick(3,400);
   }
 }
-function gkLim(gy){return gy<CY?FY0+.75*(FY1-FY0):FY1-.75*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
+function gkLim(gy){return gy<CY?FY0+.25*(FY1-FY0):FY1-.25*(FY1-FY0);}   // límite de 3/4 de campo contado desde la portería que saca
 function donePlace(){                     // encadena colocaciones (córner y saque de puerta: primero el rival, luego el que saca)
   if(chain){const q=chain;chain=null;turn=q.t;movesLeft=q.mv;dbl=q.mv===2;pm={m:q.m,s:q.s,y:q.y};beginPlace();}
   else{pm={m:null};beginAim();}
@@ -49,7 +49,7 @@ function placeOK(p,c,mode){
   if(m==='any')ok=p.x>=VM+c.r&&p.x<=W-VM-c.r&&p.y>=VM+c.r&&p.y<=H-VM-c.r;
   else if(m==='side')ok=(pm.s<0?p.x<=FX0-4&&p.x>=c.r:p.x>=FX1+4&&p.x<=W-c.r)&&p.y>=FY0&&p.y<=FY1;
   else if(m==='line')ok=Math.abs(p.y-pm.y)<1&&p.x>=SAX0-.5&&p.x<=SAX1+.5;
-  else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y<=gkLim(pm.y):p.y>=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
+  else if(m==='gkdef')ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r)&&(pm.y<CY?p.y>=gkLim(pm.y):p.y<=gkLim(pm.y));   // saque de puerta: el rival no pasa de 3/4 del campo
   else ok=!(p.x<FX0+c.r||p.x>FX1-c.r||p.y<FY0+c.r||p.y>FY1-c.r);
   if(!ok)return false;
   for(const k of coins){if(k!==c&&Math.hypot(p.x-k.x,p.y-k.y)<c.r+k.r+3)return false;}
