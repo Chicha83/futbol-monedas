@@ -235,7 +235,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
         <p id="wresx" hidden style="margin:0 0 6px;font-size:13px;opacity:.85">Tienes un partido en curso. Seguirá jugándose: vuelve cuando quieras.</p>
         <button type="button" id="wresume" class="primary" hidden>Volver al partido</button>
         <button type="button" id="wai" class="primary">Jugar contra la IA</button>
-        <button type="button" id="won">Partida online con un amigo</button>
+        <button type="button" id="won">Amistoso online</button>
         <button type="button" id="wtour">Torneos (4 u 8 jugadores)</button>
         <button type="button" id="wloc">Dos jugadores en este móvil</button>
         <button type="button" id="winst" hidden>📲 Instalar la app en este móvil</button>
@@ -318,14 +318,24 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     <div class="tut-btns"><span class="sp"></span><button type="button" id="tmclose" class="primary">Listo</button></div>
   </div>
 </div>
+<div class="tut" id="rm" role="dialog" aria-modal="true" aria-labelledby="rmt" hidden>
+  <div class="tut-card">
+    <h2 id="rmt"></h2>
+    <p id="rmx" style="min-height:0"></p>
+    <div class="net-row">
+      <button type="button" id="rmre" class="primary">Revancha</button>
+      <button type="button" id="rmexit">Salir al menú principal</button>
+    </div>
+  </div>
+</div>
 <div class="tut" id="net" role="dialog" aria-modal="true" aria-labelledby="nt" hidden>
   <div class="tut-card">
     <h2 id="nt">Jugar</h2>
     <p id="nx"></p>
     <div class="net-row" id="nchoose">
       <button type="button" id="nvsai" class="primary">Jugar contra la IA</button>
-      <button type="button" id="ncreate">Crear partida online</button>
-      <button type="button" id="njoin">Unirme a una partida</button>
+      <button type="button" id="ncreate">Crear amistoso online</button>
+      <button type="button" id="njoin">Unirme a un amistoso</button>
       <button type="button" id="nprof">Inicio y mi perfil</button>
       <button type="button" id="ntour">Torneos</button>
     </div>
@@ -389,6 +399,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
 (()=>{
 "use strict";
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let rmTm=0,rmOn=false;   // cartel de revancha
 const W=720,H=1020,VM=30,VW=W-2*30,VH=H-2*30,CX=360,CY=510,FX0=90,FX1=630,FY0=90,FY1=930,GX0=300,GX1=420,GD=39,SAX0=300,SAX1=420,SAD=57;   // campo 1,5 veces mayor (las monedas conservan su tamaño); el margen exterior sirve para los saques de banda
 // Masas reales: 1 € = 7,5 g, 5 céntimos = 3,92 g. Se divide el empuje del balón por esa diferencia (x1,91), y otra vez por la que ya aplica la física.
 const MASS_COIN=7.5,MASS_BALL=3.92,BALL_SOFT=Math.pow(MASS_BALL/MASS_COIN,2);
@@ -717,7 +728,7 @@ const dn=i=>names[i]||(net&&net.me===i&&acct?acct.name:'')||(team[i]>=0?TEAMS[te
 const fixN=t=>String(t).replace(/Jugador ([12])/g,(m,d)=>dn(d-1));
 function statusText(){return fixN(statusText0())+((phase==='place'&&mine()&&!over)?' Cuando esté bien, pulsa «Colocar aquí».':'');}
 function statusText0(){
-  if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':'Toca el campo para pedir la revancha.'):'Toca el campo para jugar otra vez.');
+  if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':''):'Toca el campo para jugar otra vez.');
   if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
   if(phase==='foul'&&msg&&msg.restart)return msg.t.charAt(0)+msg.t.slice(1).toLowerCase()+': saca Jugador '+(foulBen+1)+'.';
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
@@ -753,6 +764,7 @@ function ui(){
   }
   $('back').disabled=!(act&&step>1);
   $('newgame').disabled=!!(net&&!net.local);
+  rmSync();
 }
 function setContact(v){$('ct').style.transform='scaleX('+v+')';$('ctv').textContent=Math.round(v*100)+' %';}
 function setEffect(e){
@@ -1025,7 +1037,7 @@ function draw(ts){
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(fixN(msg.t).length>9?'800 52px':'800 100px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(fixN(msg.t),W/2,CY-42);
     ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px':'800 52px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?fixN(msg.sub):score[0]+'  -  '+score[1],W/2,CY+30);
-    if(over){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net?(net.tn?'Partido de torneo terminado':'Toca el campo para pedir la revancha'):'Toca el campo para jugar otra vez',W/2,CY+88);}
+    if(over&&!(net&&!net.tn)){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net?'Partido de torneo terminado':'Toca el campo para jugar otra vez',W/2,CY+88);}
   }
 }
 
@@ -1045,7 +1057,7 @@ function applyDrag(e){
 }
 cv.addEventListener('pointerdown',e=>{
   ensureAudio();
-  if(over){if(!net)newGame();else if(!net.tn)netSend({t:'new'});return;}
+  if(over){if(!net)newGame();return;}
   if(net&&(turn!==net.me||isPending()))return;
   if(phase==='place'){const p=snapPlace(posP(e));place.x=p.x;place.y=p.y;drag={place:true};try{cv.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return;}
   if(phase!=='aim')return;
@@ -1473,7 +1485,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='66';
+const VER='67';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1576,7 +1588,7 @@ function markTeams(){
   document.querySelectorAll('#tmtabs button').forEach(b=>b.classList.toggle('sel',+b.dataset.p===tmSel));
   $('tmtabs').hidden=!!net||solo();
   $('tmt').textContent=solo()?'¿Con qué equipo quieres jugar?':net?'Tu equipo':'Equipos';
-  $('tmx').textContent=solo()?'Elige tu equipo. Después elegirás '+(flow.kind==='ai'?'el nivel de la IA.':'cómo jugar online.'):net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.';
+  $('tmx').textContent=solo()?'Elige tu equipo. Después elegirás '+(flow.kind==='ai'?'el nivel de la IA.':'cómo jugar el amistoso online.'):net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.';
 }
 function buildTeams(){
   if(tmBuilt)return;tmBuilt=true;
@@ -1618,6 +1630,7 @@ function applyState(s){
   if(s.tm){const own=team[net.me];team=s.tm.slice();if(performance.now()-(net.tmT||0)<1500)team[net.me]=own;}
   if(s.nm)names=s.nm;
   if(s.up)net.up=s.up;
+  net.rv=s.rv||[false,false];net.gn=s.gn===undefined?-1:s.gn;
   net.tn=s.tn||0;
   labelChips();
   if(!net.started&&net.up&&net.up[0]&&net.up[1]){net.started=true;$('net').hidden=true;$('tour').hidden=true;}
@@ -1740,7 +1753,7 @@ setInterval(()=>{                          // vigilante: si el servidor deja de 
 },3000);
 function openNet(){
   $('net').hidden=false;
-  if(net)netView('conn',net.local?'Estás jugando contra la IA ('+AILEV[net.level-1]+').':net.started?'Estás jugando online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
+  if(net)netView('conn',net.local?'Estás jugando contra la IA ('+AILEV[net.level-1]+').':net.started?'Estás en un amistoso online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
   else netView('choose',(acct?'Hola, '+acct.name+'. ':'')+'Juega contra la IA, o contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.');
 }
 function closeNet(){if(net&&!net.started)stopNet();$('net').hidden=true;if(!net&&!locOn&&$('wel').hidden)showWelcome();}
@@ -1757,19 +1770,36 @@ function joinGame(raw){
 }
 function leaveNet(){                       // abandonar una partida online en curso: avisa al rival, que se desconecta y la partida queda nula
   const n=net;
-  if(n&&!n.local&&n.started&&n.ws&&n.ws.readyState===1&&!over){try{n.ws.send(JSON.stringify({t:'leave'}));}catch(e){}}
+  if(n&&!n.local&&n.started&&n.ws&&n.ws.readyState===1){try{n.ws.send(JSON.stringify({t:'leave'}));}catch(e){}}
 }
 function oppLeft(nm){                      // el rival ha abandonado: se desconecta esta partida y queda nula
   clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();
   $('chat').hidden=true;$('net').hidden=false;
   netView('choose',(nm||'Tu rival')+' ha abandonado la partida. Te has desconectado y la partida queda nula.');
 }
+function toMainMenu(){                     // salir de la partida (o de la revancha) a la pantalla principal
+  leaveNet();clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();$('rm').hidden=true;showWelcome();
+}
+function rmSync(){                         // cartel de fin de partida: Revancha o salir al menú (contra la IA y en el amistoso online; no en torneos)
+  const box=$('rm');if(!box)return;
+  const want=!!(net&&over&&!net.tn);
+  if(!want){clearTimeout(rmTm);rmTm=0;rmOn=false;if(!box.hidden)box.hidden=true;return;}
+  if(!rmOn){if(!rmTm)rmTm=setTimeout(()=>{rmTm=0;rmOn=true;rmSync();},1600);return;}
+  const me=net.me,o=1-me,rv=net.rv||[false,false],gone=net.gn>=0&&net.gn!==me,w=score[0]>score[1]?0:1;
+  const pn=i=>names[i]||(net.local?(i===0?(acct?acct.name:'Tú'):'IA'):(me===i?(acct?acct.name:'Tú'):'Rival'));
+  $('rmt').textContent=w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
+  $('rmx').textContent=score[0]+' - '+score[1]+(gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
+  $('rmre').hidden=gone;$('rmre').disabled=!!rv[me];
+  box.hidden=false;
+}
+$('rmre').addEventListener('click',()=>{if(!net)return;if(!net.local){net.rv=(net.rv||[false,false]).slice();net.rv[net.me]=true;}netSend({t:'new'});rmSync();});
+$('rmexit').addEventListener('click',toMainMenu);
 function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=(net||locOn)?'Abandonar partida':'Jugar';}
 $('online').addEventListener('click',e=>{
   const b=$('online');
   if(!net&&!locOn){openNet();return;}
   if(!b.dataset.ask){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
-  leaveNet();clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();showWelcome();
+  toMainMenu();
 });
 $('ncreate').addEventListener('click',createGame);
 $('njoin').addEventListener('click',()=>{netView('join','Escribe el código que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});

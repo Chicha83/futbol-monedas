@@ -13,6 +13,7 @@ export class Room {
     this.thinking = false;
     this.matchId = 0;          // partido de torneo (0 = partida libre)
     this.reported = false;
+    this.gone = -1;            // asiento que ha salido al menú tras terminar la partida (ya no hay revancha)
     this.left = -1;            // asiento que ha abandonado la partida (la partida queda nula)
     this.timer = null;
     this.last = 0;
@@ -27,6 +28,7 @@ export class Room {
         this.matchId = d.matchId || 0;
         this.reported = !!d.reported;
         this.left = Number.isInteger(d.left) ? d.left : -1;
+        this.gone = Number.isInteger(d.gone) ? d.gone : -1;
         if (d.snap) this.g.restore(d.snap);
       }
     });
@@ -39,6 +41,7 @@ export class Room {
         matchId: this.matchId,
         reported: this.reported,
         left: this.left,
+        gone: this.gone,
         snap: this.g.snapshot(null)
       });
     } catch (e) { /* el guardado es un extra */ }
@@ -167,15 +170,24 @@ export class Room {
         if (this.g.placeCoin(seat, m)) { this.lastAct = Date.now(); this.run(); this.broadcast(true); this.save(); this.botCheck(); }
         else this.send(ws, this.snap());
         return;
-      case 'new':
-        if (this.g.over && !this.matchId && this.left < 0) { this.g.newGame(); this.reported = false; this.lastAct = Date.now(); this.broadcast(true); this.save(); }
+      case 'new': {                                    // revancha (amistoso online): empieza cuando la piden los dos
+        if (!this.g.over || this.matchId || this.left >= 0 || this.gone >= 0) return;
+        s.rv = true;
+        const o = this.seats[1 - seat];
+        if (o.bot || o.rv) { this.g.newGame(); this.seats.forEach(x => { x.rv = false; }); this.reported = false; this.lastAct = Date.now(); this.save(); }
+        this.broadcast(true);
         return;
+      }
     }
   }
 
   leave(seat) {                                   // un jugador abandona a mitad de partida: se desconecta al rival y la partida queda nula (sin resultado ni estadísticas)
     const o = this.seats[1 - seat];
-    if (this.left >= 0 || this.g.over || !o || !o.tok) return;
+    if (this.left >= 0 || this.gone >= 0 || !o || !o.tok) return;
+    if (this.g.over) {                               // la partida ya había terminado: no es un abandono, solo se acaba la revancha
+      if (!this.matchId) { this.gone = seat; this.seats.forEach(x => { x.rv = false; }); this.save(); this.broadcast(true); }
+      return;
+    }
     this.stop();
     this.reported = true;
     const msg = JSON.stringify({ t: 'left', n: this.seats[seat].name || '' });
@@ -194,6 +206,8 @@ export class Room {
     o.nm = this.seats.map(s => s.name || '');
     o.tn = this.matchId ? 1 : 0;
     if (this.left >= 0) o.vd = this.left;
+    if (this.gone >= 0) o.gn = this.gone;
+    o.rv = this.seats.map(x => !!x.rv);            // quién ha pedido la revancha
     return o;
   }
   send(ws, o) { try { ws.send(JSON.stringify(o)); } catch (e) { /* cerrada */ } }
