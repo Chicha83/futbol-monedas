@@ -156,7 +156,6 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 .meter output{min-width:0}
 .btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .btns button{font-size:12.5px;padding:6px 4px}
-@media (max-height:760px){.meters{display:none}}
 .status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;min-height:0}
 
 /* ---- estilo «Estadio de noche» ---- */
@@ -1444,7 +1443,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='58';
+const VER='59';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
