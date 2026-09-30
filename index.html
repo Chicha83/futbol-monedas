@@ -1319,7 +1319,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='29';
+const VER='30';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1329,7 +1329,7 @@ const newCode=()=>Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*ALPHA
 const rd=(v,n)=>{const k=Math.pow(10,n);return Math.round(v*k)/k;};
 let names=['',''],acct=null,wl=null;
 try{acct=JSON.parse(localStorage.getItem(ACCT)||'null');}catch(e){}
-function saveAcct(){try{if(acct)localStorage.setItem(ACCT,JSON.stringify(acct));else localStorage.removeItem(ACCT);}catch(e){}}
+function saveAcct(){try{if(acct)localStorage.setItem(ACCT,JSON.stringify({sid:acct.sid,name:acct.name}));else localStorage.removeItem(ACCT);}catch(e){}}
 async function api(path,body){
   let r;
   try{r=await fetch(API+path,{method:'POST',body:JSON.stringify(body||{})});}catch(e){throw new Error('No se puede conectar con el servidor. Comprueba tu conexión.');}
