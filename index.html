@@ -444,7 +444,7 @@ function crowdUpdate(){                      // el ambiente es siempre el mismo,
     CR.boo.tgt=0;CR.boo.bus.gain.setTargetAtTime(0,t,.3);
   }catch(e){}
 }
-let bhN=0,bhV=0,bhSeen=-1;
+let bhN=0,bhV=0,bhSeen=-1,goalEnd=0;
 function ballHit(v){                        // golpe de la moneda al balón: grabación real (host cuenta el golpe y el invitado lo reproduce)
   bhN++;bhV=v;playBall(v);
 }
@@ -454,10 +454,11 @@ function playBall(v){
   tick(v,2300);
 }
 function crowdGoal(){                        // mismo sonido de gol para los dos equipos
+  goalEnd=0;
   if(!soundOn)return;
   try{
     if(AC&&CR&&CR.golB){
-      const x=AC.createBufferSource(),g=AC.createGain();x.buffer=CR.golB;g.gain.value=1;x.connect(g);g.connect(CR.m);x.start();return;
+      const x=AC.createBufferSource(),g=AC.createGain();x.buffer=CR.golB;g.gain.value=1;x.connect(g);g.connect(CR.m);x.start();goalEnd=performance.now()+CR.golB.duration*1000+200;return;
     }
     if(AC&&CR)CR.roar=AC.currentTime+4;        // reserva: rugido sintético + voz
     if(window.speechSynthesis){
@@ -637,7 +638,7 @@ function guestUpdate(){
   refreshAim();
 }
 function hostUpdate(){
-  if(phase==='goal'){if(!over&&--msgT<=0)reset(concede);return;}
+  if(phase==='goal'){if(!over&&--msgT<=0&&performance.now()>=goalEnd)reset(concede);return;}   // no se reanuda hasta que acaba el audio de gol
   if(fx){fx.t++;if(fx.t>10)fx=null;}
   if(phase==='foul'){if(--msgT<=0){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
@@ -901,7 +902,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='24';
+const VER='25';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
