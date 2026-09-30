@@ -375,24 +375,65 @@ function tick(v,f){
 
 /* ---------- ambiente de estadio: murmullo, ánimos al local, pitos al visitante y gol cantado ---------- */
 let CR=null;
-function noiseBuf(sec){const n=AC.sampleRate*sec,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);let l=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;l=(l+.04*w)/1.04;d[i]=l*9+w*.15;}return b;}
+const VOW={a:[800,1250],e:[520,1800],i:[320,2200],o:[520,900],u:[330,800]};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function noiseBuf(sec){const n=AC.sampleRate*sec,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;return b;}
+function crowdBus(n,f0,f1,vows,dest){          // coro de n voces (sierra) que pasan por dos formantes compartidos: suena a gente, no a tono
+  const bus=AC.createGain();bus.gain.value=0;
+  const fa=AC.createBiquadFilter(),fb=AC.createBiquadFilter();fa.type=fb.type='bandpass';fa.Q.value=2.2;fb.Q.value=3;
+  const mix=AC.createGain();mix.gain.value=1;
+  const vs=[];
+  for(let i=0;i<n;i++){
+    const o=AC.createOscillator(),g=AC.createGain(),l=AC.createOscillator(),lg=AC.createGain();
+    o.type='sawtooth';o.frequency.value=rnd(f0,f1);g.gain.value=0;
+    l.frequency.value=rnd(3.5,6.5);lg.gain.value=rnd(2,9);l.connect(lg);lg.connect(o.frequency);l.start();
+    o.connect(g);g.connect(mix);o.start();vs.push({o,g});
+  }
+  const dry=AC.createGain();dry.gain.value=.12;mix.connect(fa);mix.connect(fb);mix.connect(dry);
+  const ga=AC.createGain(),gb=AC.createGain();ga.gain.value=1;gb.gain.value=.7;fa.connect(ga);fb.connect(gb);
+  ga.connect(bus);gb.connect(bus);dry.connect(bus);bus.connect(dest);
+  return {bus,fa,fb,vs,vows,f0,f1};
+}
 function crowdInit(){
   if(CR||!AC)return;
   try{
-    const nb=noiseBuf(3),m=AC.createGain();m.gain.value=1;m.connect(AC.destination);
-    const ns=()=>{const x=AC.createBufferSource();x.buffer=nb;x.loop=true;x.playbackRate.value=.9+Math.random()*.2;x.start();return x;};
-    // murmullo continuo
-    const a=AC.createGain(),alp=AC.createBiquadFilter();alp.type='lowpass';alp.frequency.value=650;a.gain.value=0;ns().connect(alp);alp.connect(a);a.connect(m);
-    // ánimo (ruido de voces agudas con oleadas)
-    const c=AC.createGain(),cbp=AC.createBiquadFilter();cbp.type='bandpass';cbp.frequency.value=1300;cbp.Q.value=.7;c.gain.value=0;ns().connect(cbp);cbp.connect(c);c.connect(m);
-    const cl=AC.createOscillator(),clg=AC.createGain();cl.frequency.value=.9;clg.gain.value=.05;cl.connect(clg);clg.connect(c.gain);cl.start();
-    // pitos (uuuu grave con vibrato)
-    const bo=AC.createGain(),blp=AC.createBiquadFilter();blp.type='lowpass';blp.frequency.value=520;blp.Q.value=2;bo.gain.value=0;blp.connect(bo);bo.connect(m);
-    const vib=AC.createOscillator(),vg=AC.createGain();vib.frequency.value=5;vg.gain.value=5;vib.connect(vg);vib.start();
-    [140,147,206,214].forEach(f=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=f;vg.connect(o.frequency);o.connect(blp);o.start();});
-    const bn=AC.createGain();bn.gain.value=.5;ns().connect(bn);bn.connect(blp);
-    CR={m,a,c,bo,cbp,alp};
+    const comp=AC.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=6;
+    const m=AC.createGain();m.gain.value=1;m.connect(comp);comp.connect(AC.destination);
+    const nb=noiseBuf(4);
+    // base: rumor de graderío (ruido grave) + siseo de gente
+    const rum=AC.createBufferSource();rum.buffer=nb;rum.loop=true;
+    const rl=AC.createBiquadFilter();rl.type='lowpass';rl.frequency.value=380;
+    const rg=AC.createGain();rg.gain.value=0;rum.connect(rl);rl.connect(rg);rg.connect(m);rum.start();
+    const sis=AC.createBufferSource();sis.buffer=nb;sis.loop=true;sis.playbackRate.value=1.3;
+    const sb=AC.createBiquadFilter();sb.type='bandpass';sb.frequency.value=3200;sb.Q.value=.6;
+    const sg=AC.createGain();sg.gain.value=0;sis.connect(sb);sb.connect(sg);sg.connect(m);sis.start();
+    const bab=crowdBus(14,95,230,['o','a','e','u'],m);     // murmullo de conversaciones
+    const che=crowdBus(18,170,330,['a','e','o'],m);        // ¡ooooh! / ¡aaaah! / ¡ole!
+    const boo=crowdBus(16,85,150,['u','o'],m);             // ¡buuuuu!
+    CR={m,rg,sg,bab,che,boo,roar:0,roarK:0,t:0};
+    setInterval(crowdVoices,220);
   }catch(e){CR=null;}
+}
+function crowdVoices(){                          // cada voz cambia al azar de volumen y tono: nunca se repite
+  if(!AC||!CR||AC.state!=='running')return;
+  try{
+    const t=AC.currentTime;
+    for(const B of [CR.bab,CR.che,CR.boo]){
+      const on=B.bus.gain.value>.003||B.tgt>.003;
+      if(!on)continue;
+      const kind=B===CR.che?1:B===CR.boo?2:0;
+      const v=VOW[B.vows[(Math.random()*B.vows.length)|0]];
+      B.fa.frequency.setTargetAtTime(v[0]*rnd(.92,1.08),t,.15);B.fb.frequency.setTargetAtTime(v[1]*rnd(.92,1.08),t,.15);
+      for(const x of B.vs){
+        const act=kind===0?Math.random()<.6:Math.random()<.9;
+        x.g.gain.setTargetAtTime(act?rnd(.02,.09):0,t,.1);
+        let f=x.o.frequency.value;
+        f+=kind===1?rnd(-8,14):kind===2?rnd(-14,4):rnd(-12,12);
+        f=Math.min(B.f1*1.25,Math.max(B.f0*.8,f));
+        x.o.frequency.setTargetAtTime(f,t,.2);
+      }
+    }
+  }catch(e){}
 }
 function crowdUpdate(){
   if(!AC||!CR)return;
@@ -400,27 +441,24 @@ function crowdUpdate(){
     const t=AC.currentTime;let ka=0,kc=0,kb=0;
     if(soundOn&&!over&&coins&&(phase==='aim'||phase==='strike'||phase==='roll'||phase==='place'||phase==='foul')){
       const b=coins[2],dT=b.y-FY0,dB=FY1-b.y;
-      const near=Math.min(dT,dB),ZA=380,ZB=200;
+      const near=Math.min(dT,dB),ZA=380,ZB=210;
       ka=clamp((ZA-near)/ZA,0,1);
       const kk=clamp((ZB-near)/ZB,0,1);
       if(dT<dB)kc=kk;else kb=kk;            // arriba ataca el local (Jugador 1): lo animan; abajo ataca el visitante: lo pitan
     }
-    CR.a.gain.setTargetAtTime(soundOn&&!over?.035+.05*ka:0,t,.35);
-    CR.alp.frequency.setTargetAtTime(600+900*ka,t,.5);
-    CR.c.gain.setTargetAtTime(.22*kc*kc,t,.25);
-    CR.cbp.frequency.setTargetAtTime(1100+700*kc,t,.4);
-    CR.bo.gain.setTargetAtTime(.34*kb*kb,t,.25);
+    if(CR.roar>t){if(CR.roarK>0)kc=Math.max(kc,1);else kb=Math.max(kb,1);ka=1;}
+    const on=soundOn&&!over;
+    CR.rg.gain.setTargetAtTime(on?.05+.07*ka:0,t,.4);
+    CR.sg.gain.setTargetAtTime(on?.004+.012*ka:0,t,.4);
+    CR.bab.tgt=on?.5+.7*ka:0;CR.bab.bus.gain.setTargetAtTime(CR.bab.tgt,t,.4);
+    CR.che.tgt=kc*kc*2.6;CR.che.bus.gain.setTargetAtTime(CR.che.tgt,t,.3);
+    CR.boo.tgt=kb*kb*2.6;CR.boo.bus.gain.setTargetAtTime(CR.boo.tgt,t,.3);
   }catch(e){}
 }
-function crowdGoal(s){                       // rugido del estadio + voz de "¡Gooool!"
+function crowdGoal(s){                       // el estadio estalla (o se queja) durante unos segundos + voz de "¡Gooool!"
   if(!soundOn)return;
   try{
-    if(AC&&CR){
-      const t=AC.currentTime,big=s===0,x=AC.createBufferSource();x.buffer=noiseBuf(3);
-      const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1000;bp.Q.value=.5;
-      const g=AC.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(big?.75:.4,t+.25);g.gain.setValueAtTime(big?.75:.4,t+1.6);g.gain.exponentialRampToValueAtTime(.001,t+(big?4:2.6));
-      x.connect(bp);bp.connect(g);g.connect(CR.m);x.start(t);x.stop(t+4.2);
-    }
+    if(AC&&CR){CR.roar=AC.currentTime+(s===0?4.5:3);CR.roarK=s===0?1:-1;}
     if(window.speechSynthesis){
       speechSynthesis.cancel();
       const u=new SpeechSynthesisUtterance('¡Gooooooooool!');u.lang='es-ES';u.rate=.65;u.pitch=1.5;u.volume=1;
@@ -862,7 +900,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='20';
+const VER='21';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
