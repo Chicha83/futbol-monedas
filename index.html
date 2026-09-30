@@ -55,6 +55,8 @@ button:disabled{opacity:.45;cursor:default}
 button:focus-visible,canvas:focus-visible{outline:3px solid var(--p1);outline-offset:2px}
 @media (max-width:440px){.chip{padding:8px 9px;gap:4px}.chip .who{font-size:11px;letter-spacing:.02em;gap:6px}.chip b{font-size:30px}.goal-to{font-size:11px}}
 [hidden]{display:none!important}
+.menu-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:2px 8px;cursor:pointer;font-family:var(--body)}
+.menu-btn span{font-size:11px;color:var(--muted)}
 .wel{position:fixed;inset:0;z-index:9;background:var(--bg);overflow:auto;padding:16px calc(16px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;justify-content:center}
 .wel-card{width:min(100%,420px);display:grid;gap:12px;align-content:start}
 .wel h1{font:800 34px/1;white-space:nowrap var(--display);letter-spacing:.03em;text-transform:uppercase;margin:4px 0 0}
@@ -147,7 +149,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <div class="chip" id="chip0" style="--pc:var(--p1)" data-active="true">
           <span class="who"><i class="dot"></i><span id="n0">Jugador 1</span></span><b id="s0">0</b>
         </div>
-        <div class="goal-to"><span>Gana con</span><strong>3</strong></div>
+        <button type="button" class="goal-to menu-btn" id="menubtn" aria-label="Menú"><strong>☰</strong><span>Menú · a 3</span></button>
         <div class="chip" id="chip1" style="--pc:var(--p2)" data-active="false">
           <span class="who"><i class="dot"></i><span id="n1">Jugador 2</span></span><b id="s1">0</b>
         </div>
@@ -169,14 +171,6 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
         <div class="meter"><span>Contacto</span><div class="track"><div class="fill" id="ct" style="background:var(--p2)"></div></div><output id="ctv">0 %</output></div>
       </div>
 
-      <div class="btns">
-        <button type="button" id="back" disabled>Paso anterior</button>
-        <button type="button" id="howto">Cómo se golpea</button>
-        <button type="button" id="online">Jugar</button>
-        <button type="button" id="newgame">Nueva partida</button>
-        <button type="button" id="teamsbtn">Equipos</button>
-        <button type="button" id="snd" aria-pressed="true">Sonido: sí</button>
-      </div>
     </section>
   </div>
 </main>
@@ -222,6 +216,20 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
       </div>
       <div class="net-row" style="margin-top:12px"><button type="button" id="wlogout">Cerrar sesión</button></div>
     </div>
+  </div>
+</div>
+<div class="tut" id="menu" role="dialog" aria-modal="true" aria-label="Menú" hidden>
+  <div class="tut-card">
+    <h2>Menú</h2>
+      <div class="net-row" style="display:grid">
+        <button type="button" id="back" disabled hidden>Paso anterior</button>
+        <button type="button" id="howto">Cómo se golpea</button>
+        <button type="button" id="online">Jugar</button>
+        <button type="button" id="newgame">Nueva partida</button>
+        <button type="button" id="teamsbtn">Equipos</button>
+        <button type="button" id="snd" aria-pressed="true">Sonido: sí</button>
+      </div>
+    <div class="tut-btns"><span class="sp"></span><button type="button" id="menuclose">Volver al partido</button></div>
   </div>
 </div>
 <div class="tut" id="tut" role="dialog" aria-modal="true" aria-labelledby="tt" hidden>
@@ -959,6 +967,9 @@ function goStep(n){
   step=n;drag=null;ui();
 }
 for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
+$('menubtn').addEventListener('click',()=>{$('menu').hidden=false;});
+$('menuclose').addEventListener('click',()=>{$('menu').hidden=true;});
+$('menu').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.id!=='snd'&&b.id!=='menuclose')$('menu').hidden=true;});
 $('back').addEventListener('click',()=>{
   if(phase!=='aim'||step<2)return;
   if(step===3)sel.p=0;
@@ -1020,7 +1031,7 @@ $('tnext').addEventListener('click',()=>{ensureAudio();ti<TUT.length-1?showTut(t
 $('tprev').addEventListener('click',()=>showTut(ti-1));
 $('tskip').addEventListener('click',closeTut);
 $('howto').addEventListener('click',openTut);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('acct').hidden)$('acct').hidden=true;else if(!$('tour').hidden)closeTour();else if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('menu').hidden)$('menu').hidden=true;else if(!$('acct').hidden)$('acct').hidden=true;else if(!$('tour').hidden)closeTour();else if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /*ENGINE_START*/
 const Engine=(()=>{
 // Lógica de la partida (copiada del juego del cliente, sin dibujo ni sonido). Se ejecuta en el servidor.
@@ -1319,7 +1330,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='30';
+const VER='31';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
