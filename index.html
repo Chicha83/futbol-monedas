@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Karla:wght@400;600;700&display=swap">
 <title>Fútbol Monedas</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#D62839">
+<meta name="theme-color" content="#0A1322">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -69,7 +69,7 @@ button:focus-visible,canvas:focus-visible{outline:3px solid var(--p1);outline-of
 .chattoast .tl{overflow-wrap:anywhere}.chattoast .tl b{opacity:.75}.chattoast .tl.me{opacity:.7}
 .chatlist{display:grid;gap:6px;max-height:36vh;overflow:auto;align-content:start;min-height:4em}
 .cmsg{max-width:85%;padding:6px 10px;border-radius:12px;font-size:14px;line-height:1.3;overflow-wrap:anywhere;background:var(--bg)}
-.cmsg.me{justify-self:end;background:var(--red);color:#fff}
+.cmsg.me{justify-self:end;background:var(--red);color:#0A1322}
 .cmsg small{display:block;font-size:11px;opacity:.7}
 .cquick{display:flex;flex-wrap:wrap;gap:6px}
 .cquick button{padding:5px 9px;font-size:13px}
@@ -157,6 +157,23 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 .btns button{font-size:12.5px;padding:6px 4px}
 @media (max-height:760px){.meters{display:none}}
 .status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;min-height:0}
+
+/* ---- estilo «Estadio de noche» ---- */
+:root,:root[data-theme="light"],:root[data-theme="dark"]{--bg:#0A1322;--surface:#111D33;--ink:#EAF2FF;--muted:#8FA3C2;--line:#22365A;--red:#C6FF3D;--p1:#3D8BFF;--p2:#FFB020;color-scheme:dark}
+body{background:radial-gradient(120% 60% at 50% 0%,#15305A 0%,#0A1322 60%) #0A1322}
+button.primary{color:#0A1322;font-weight:800}
+.chip{background:linear-gradient(180deg,#16284A,#0F1C36);border-radius:14px;border:1px solid #22365A}
+.chip[data-active="true"]{border-color:#C6FF3D;box-shadow:0 0 14px rgba(198,255,61,.35)}
+.menu-btn{background:#16284A;color:#EAF2FF}
+.steps button{background:#111D33;border-radius:12px}
+.steps button[data-state="now"]{border-color:#C6FF3D}
+canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6),0 0 60px rgba(60,200,120,.15)}
+.wbox{background:#111D33;border-color:#22365A}
+.wstats div{background:#0A1322}
+.wel h1{font-size:38px}
+.by{margin:-6px 0 0!important;font:700 13px var(--body);letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.acrow.win{color:#5BE39A}.acrow.loss{color:#FF7A85}
+.pills,.pills span{color:#141B24}
 </style>
 </head>
 <body>
@@ -198,6 +215,7 @@ canvas{width:auto;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px
 <div class="wel" id="wel" role="dialog" aria-modal="true" aria-labelledby="wt" hidden>
   <div class="wel-card">
     <h1 id="wt">Fútbol <span>Monedas</span></h1>
+    <p class="by">by Chicha83</p>
     <div id="wload" class="wbox"><p>Conectando con el servidor…</p></div>
     <div id="wlogin" class="wbox" hidden>
       <p id="wlx">Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.</p>
@@ -374,7 +392,7 @@ const STICK_L=120,STICK_W=18,PIVOT_D=STICK_L/2+30,TIP_LOSS=.3,EFF_RANGE=196,POW_
 const fFromE=e=>.5+e*.38;   // e = -1..1 (izquierda..derecha de la pantalla); f = punto de la traba que golpea, del agarre (0) a la punta (1)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const R=21,RB=15,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0.98,WIN=3,STRIKE_F=5;
-const RED='#D62839',PC=['#2A5BD7','#12855C'];
+const RED='#FF4D5E',PC=['#3D8BFF','#FFB020'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 const $=id=>document.getElementById(id);
@@ -500,17 +518,17 @@ function coinFace(g,x,y,r,ti,accent,rot){    // moneda: con equipo, la equipaci�
 const pitch=document.createElement('canvas');pitch.width=2*W;pitch.height=2*H;
 (function(){
   const g=pitch.getContext('2d');g.scale(2,2);
-  g.fillStyle='#FFFFFF';g.fillRect(0,0,W,H);
+  const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#0F6B3A');gr.addColorStop(.5,'#13884B');gr.addColorStop(1,'#0F6B3A');g.fillStyle=gr;g.fillRect(0,0,W,H);for(let i=0;i<14;i++){g.fillStyle=i%2?'rgba(255,255,255,.055)':'rgba(0,0,0,.06)';g.fillRect(0,i*H/14,W,H/14);}
   g.translate(60,30);g.scale(1.5,1.5);
   const FX0=20,FX1=380,FY0=40,FY1=600,GX0=140,GX1=260,GD=26;   // el campo se dibuja en sus medidas originales y se amplía 1,5
   // redes de las porterías
   for(const [y0,y1] of [[FY0-GD,FY0],[FY1,FY1+GD]]){
     g.save();g.beginPath();g.rect(GX0,y0,GX1-GX0,y1-y0);g.clip();
-    g.strokeStyle='rgba(214,40,57,.32)';g.lineWidth=1;g.beginPath();
+    g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=1;g.beginPath();
     for(let k=-GD;k<GX1-GX0+GD;k+=8){g.moveTo(GX0+k,y0);g.lineTo(GX0+k+GD,y1);g.moveTo(GX0+k+GD,y0);g.lineTo(GX0+k,y1);}
     g.stroke();g.restore();
   }
-  g.strokeStyle=RED;g.fillStyle=RED;g.lineWidth=2.5;g.lineJoin='round';g.lineCap='round';
+  g.strokeStyle='rgba(255,255,255,.95)';g.fillStyle='rgba(255,255,255,.95)';g.lineWidth=2.8;g.lineJoin='round';g.lineCap='round';
   g.beginPath();
   g.moveTo(GX0,FY0);g.lineTo(FX0,FY0);g.lineTo(FX0,FY1);g.lineTo(GX0,FY1);
   g.moveTo(GX1,FY1);g.lineTo(FX1,FY1);g.lineTo(FX1,FY0);g.lineTo(GX1,FY0);
@@ -1030,7 +1048,7 @@ function frame(ts){
 }
 
 /* ---------- tutorial ---------- */
-const coinSvg=(x,y,r,ring)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#D8B255" stroke="#8E6C1E"/><circle cx="${x}" cy="${y}" r="${r*.62}" fill="#E3E7EC" stroke="${ring}" stroke-width="3"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#2C333B" font-family="Karla,system-ui,sans-serif">1€</text>`;
+const coinSvg=(x,y,r,ring)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#D8B255" stroke="#8E6C1E"/><circle cx="${x}" cy="${y}" r="${r*.62}" fill="#E3E7EC" stroke="${ring}" stroke-width="3"/>`;
 const arrowHead=(x,y,a)=>`<polygon points="0,-6 12,0 0,6" fill="#141B24" transform="translate(${x} ${y}) rotate(${a})"/>`;
 const stickSvg=(x,y,w)=>`<rect x="${x}" y="${y}" width="${w}" height="16" rx="3" fill="#DDBB86" stroke="#8A6236"/><rect x="${x+w*.4-2}" y="${y}" width="4" height="16" fill="rgba(110,70,30,.65)"/>`;
 const tutSvg=b=>`<svg viewBox="0 0 240 140" role="img" aria-hidden="true"><rect width="240" height="140" fill="#fff"/>${b}</svg>`;
@@ -1370,7 +1388,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='37';
+const VER='38';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');

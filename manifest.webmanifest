@@ -1,14 +1,14 @@
 {
   "name": "Fútbol Monedas",
   "short_name": "Fútbol Monedas",
-  "description": "Fútbol de monedas para dos jugadores, con IA, partidas online y torneos.",
+  "description": "Fútbol de monedas by Chicha83: dos jugadores, IA, partidas online y torneos.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#E3E8EE",
-  "theme_color": "#D62839",
+  "background_color": "#0A1322",
+  "theme_color": "#0A1322",
   "icons": [
     {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
     {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
