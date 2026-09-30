@@ -414,7 +414,7 @@ const RED='#FF4D5E',PC=['#3D8BFF','#FFB020'];
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 const $=id=>document.getElementById(id);
-let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,net=null,VIEW=1,rem=null;
+let coins,turn=0,phase='aim',step=1,sel={ux:0,uy:-1,ok:false,e:0,p:0},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],soundOn=true,movesLeft=1,dbl=false,touched=false,oppFoul=false,leftField=false,inSeen=true,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,net=null,VIEW=1,rem=null;
 const flipOf=uy=>(uy>0?-1:1)*VIEW;      // -1 = la traba se dibuja en espejo (la punta queda siempre a la derecha de tu pantalla)
 const mine=()=>!net||turn===net.me;
 const isPending=()=>!!(net&&net.pend&&performance.now()-net.pend<1500);
@@ -676,6 +676,7 @@ function reset(t){
   coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
   turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;chain=null;pm={m:null};beginAim();
 }
+function beginTurnLoss(){turn=1-turn;movesLeft=1;dbl=false;beginAim();}
 function returnOut(){                       // una moneda de jugador que se ha quedado fuera de las líneas vuelve al campo, al punto libre más cercano y sin quedar pegada a la moneda rival
   for(let i=0;i<2;i++){
     const c=coins[i];c.out=0;
@@ -808,7 +809,7 @@ function physics(dt){
   }
   for(let i=0;i<coins.length;i++)for(let j=i+1;j<coins.length;j++){
     const a=coins[i],b=coins[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),min=a.r+b.r;
-    if(d<min&&d>0){
+    if(d<min&&d>0&&!(leftField&&phase==='roll'&&j===2&&i===turn)){   // una moneda que ya ha salido del campo no puede volver a entrar y tocar el balón
       const nx=dx/d,ny=dy/d,ov=min-d,ia=1/a.m,ib=1/b.m;
       a.x-=nx*ov*ia/(ia+ib);a.y-=ny*ov*ia/(ia+ib);
       b.x+=nx*ov*ib/(ia+ib);b.y+=ny*ov*ib/(ia+ib);
@@ -894,10 +895,11 @@ function hostUpdate(){
       const c=coins[turn],sp=(MINV+strike.p*(MAXV-MINV))*effAt(strike.f);
       fx={cx:c.x,cy:c.y,ux:strike.ux,uy:strike.uy,t:0,f:strike.f};
       c.vx=strike.ux*sp;c.vy=strike.uy*sp;c.spin=strike.spin;
-      tick(6,1200);strike=null;phase='roll';settle=0;touched=false;oppFoul=false;ui();
+      tick(6,1200);strike=null;phase='roll';settle=0;touched=false;oppFoul=false;leftField=false;inSeen=c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1;ui();
     }
   }
   for(let n=0;n<SUB;n++)physics(1/SUB);
+  if(phase==='roll'){const c=coins[turn];if(c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1)inSeen=true;else if(inSeen)leftField=true;}   // la moneda que golpea ha salido del campo
   if(oppFoul&&phase==='roll'){oppFoul=false;callFoul('su moneda tocó a la contraria antes que el balón');return;}
   const b=coins[2];
   const inM=b.x>GX0&&b.x<GX1;
@@ -908,7 +910,8 @@ function hostUpdate(){
     else if(++settle>12){
       settle=0;
       returnOut();
-      if(--movesLeft>0)beginAim();
+      if(leftField)beginTurnLoss();   // salió del campo: como mínimo pasa el turno (aunque le quedaran golpes)
+      else if(--movesLeft>0)beginAim();
       else{turn=1-turn;movesLeft=1;dbl=false;beginAim();}
     }
   }
@@ -1197,12 +1200,13 @@ const R=21,RB=12.5,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 
 const tick=()=>{},ui=()=>{},refreshAim=()=>{};
-let coins,turn=0,phase='aim',step=1,sel={},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],movesLeft=1,dbl=false,touched=false,oppFoul=false,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,bhN=0,bhV=0,goalEnd=0;
+let coins,turn=0,phase='aim',step=1,sel={},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],movesLeft=1,dbl=false,touched=false,oppFoul=false,leftField=false,inSeen=true,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,bhN=0,bhV=0,goalEnd=0;
 const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
 function reset(t){
   coins=[mk(CX,CY+240,R,MASS_COIN,0),mk(CX,CY-240,R,MASS_COIN,1),mk(CX,CY,RB,MASS_BALL,2)];
   turn=t;movesLeft=1;dbl=false;strike=null;fx=null;settle=0;msg=null;msgT=0;lastTouch=-1;chain=null;pm={m:null};beginAim();
 }
+function beginTurnLoss(){turn=1-turn;movesLeft=1;dbl=false;beginAim();}
 function returnOut(){                       // una moneda de jugador que se ha quedado fuera de las líneas vuelve al campo, al punto libre más cercano y sin quedar pegada a la moneda rival
   for(let i=0;i<2;i++){
     const c=coins[i];c.out=0;
@@ -1277,7 +1281,7 @@ function physics(dt){
   }
   for(let i=0;i<coins.length;i++)for(let j=i+1;j<coins.length;j++){
     const a=coins[i],b=coins[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),min=a.r+b.r;
-    if(d<min&&d>0){
+    if(d<min&&d>0&&!(leftField&&phase==='roll'&&j===2&&i===turn)){   // una moneda que ya ha salido del campo no puede volver a entrar y tocar el balón
       const nx=dx/d,ny=dy/d,ov=min-d,ia=1/a.m,ib=1/b.m;
       a.x-=nx*ov*ia/(ia+ib);a.y-=ny*ov*ia/(ia+ib);
       b.x+=nx*ov*ib/(ia+ib);b.y+=ny*ov*ib/(ia+ib);
@@ -1330,10 +1334,11 @@ function hostUpdate(){
       const c=coins[turn],sp=(MINV+strike.p*(MAXV-MINV))*effAt(strike.f);
       fx={cx:c.x,cy:c.y,ux:strike.ux,uy:strike.uy,t:0,f:strike.f};
       c.vx=strike.ux*sp;c.vy=strike.uy*sp;c.spin=strike.spin;
-      tick(6,1200);strike=null;phase='roll';settle=0;touched=false;oppFoul=false;ui();
+      tick(6,1200);strike=null;phase='roll';settle=0;touched=false;oppFoul=false;leftField=false;inSeen=c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1;ui();
     }
   }
   for(let n=0;n<SUB;n++)physics(1/SUB);
+  if(phase==='roll'){const c=coins[turn];if(c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1)inSeen=true;else if(inSeen)leftField=true;}   // la moneda que golpea ha salido del campo
   if(oppFoul&&phase==='roll'){oppFoul=false;callFoul('su moneda tocó a la contraria antes que el balón');return;}
   const b=coins[2];
   const inM=b.x>GX0&&b.x<GX1;
@@ -1344,7 +1349,8 @@ function hostUpdate(){
     else if(++settle>12){
       settle=0;
       returnOut();
-      if(--movesLeft>0)beginAim();
+      if(leftField)beginTurnLoss();   // salió del campo: como mínimo pasa el turno (aunque le quedaran golpes)
+      else if(--movesLeft>0)beginAim();
       else{turn=1-turn;movesLeft=1;dbl=false;beginAim();}
     }
   }
@@ -1376,7 +1382,7 @@ function probe(seat,m){                     // simula un golpe entero y devuelve
   while(n++<1400&&(phase==='strike'||phase==='roll'))hostUpdate();
   const b=coins[2];
   return {phase,goalFor:score[seat]-sc0[seat],goalAg:score[1-seat]-sc0[1-seat],bx:b.x,by:b.y,
-    mx:coins[seat].x,my:coins[seat].y,ox:coins[1-seat].x,oy:coins[1-seat].y,touched,
+    mx:coins[seat].x,my:coins[seat].y,ox:coins[1-seat].x,oy:coins[1-seat].y,touched,out:leftField,
     foul:phase==='foul'&&msg&&msg.foul&&!msg.restart,restart:phase==='foul'&&msg&&msg.restart?msg.k:'',taker:foulBen};
 }
 function placeInfo(){
@@ -1387,6 +1393,7 @@ function restore(s){
   coins=[mk(0,0,R,MASS_COIN,0),mk(0,0,R,MASS_COIN,1),mk(0,0,RB,MASS_BALL,2)];
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
   phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc.slice();over=s.ov;foulBen=s.fb;touched=!!s.tc;lastTouch=s.lt===undefined?-1:s.lt;
+  {const c=coins[turn]||coins[0];leftField=false;inSeen=c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1;}
   chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt||0;msg=s.ms||null;strike=s.st||null;fx=s.fx||null;settle=0;concede=s.ov?0:(msg&&typeof msg.s==='number'?1-msg.s:0);
   if(s.bh){bhN=s.bh[0];bhV=s.bh[1];}
   if(phase==='goal'&&!over){goalEnd=Date.now()+2000;}
@@ -1426,6 +1433,7 @@ function score_(o,seat,gy){                        // gy: y de la portería que 
   const dOwn=Math.hypot(o.bx-CX,o.by-ownY);v-=180*Math.max(0,1-dOwn/230);
   const dOpp=Math.hypot(o.bx-CX,o.by-gy);v+=90*Math.max(0,1-dOpp/230);
   if(o.foul)v-=400;
+  if(o.out)v-=150;                                   // salirse del campo = perder el turno
   if(o.restart){
     const mine=o.taker===seat;
     v+=o.restart==='c'?(mine?70:-70):o.restart==='g'?(mine?-40:40):(mine?8:-8);
@@ -1493,7 +1501,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='69';
+const VER='70';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
