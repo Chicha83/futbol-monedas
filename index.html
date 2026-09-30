@@ -723,7 +723,7 @@ function statusText0(){
   }
   if(phase==='aim'){
     if(net&&turn!==net.me)return 'Turno de '+dn(turn)+'. Espera a que golpee.';
-    const j=(net?'Tu turno':'Jugador '+(turn+1))+(dbl?' (golpe '+(3-movesLeft)+' de 2)':'');
+    const j='Turno de '+dn(turn)+(dbl?' (golpe '+(3-movesLeft)+' de 2)':'');
     if(step===1)return j+', paso 1 de 3. Toca o arrastra hacia donde quieres tirar y suelta para fijar la dirección.';
     if(step===2)return j+', paso 2 de 3. Arrastra a izquierda o derecha para elegir con qué parte de la traba golpeas y suelta. La moneda curva hacia ese lado.';
     return j+', paso 3 de 3. Arrastra hacia abajo para dar potencia y suelta para golpear.';
@@ -1427,7 +1427,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='52';
+const VER='53';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
