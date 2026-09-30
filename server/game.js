@@ -120,7 +120,7 @@ function outPlay(){
   }
   for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
   b.x=bx;b.y=by;strike=null;foulBen=taker;phase='foul';msgT=90;
-  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':kind==='SAQUE DE PUERTA'?'g':'',side:bx<=FX0?-1:1,gy:b.y<CY?FY0:FY1,reason:'',sub:'Saca el Jugador '+(taker+1)};
+  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':kind==='SAQUE DE PUERTA'?'g':'',side:bx<=FX0?-1:1,gy:b.y<CY?FY0:FY1,reason:'',sub:'Saca Jugador '+(taker+1)};
   ui();tick(4,520);
 }
 function goal(s){
