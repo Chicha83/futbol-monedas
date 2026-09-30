@@ -981,8 +981,13 @@ function draw(ts){
     }
   }
   for(const c of coins){if(phase==='place'&&c===coins[turn])continue;drawCoin(c);}
-  if(phase==='place'&&pm.m==='bdef'){const b=coins[2];ctx.save();ctx.strokeStyle=PC[turn];ctx.globalAlpha=.7;ctx.lineWidth=3;ctx.setLineDash([14,10]);ctx.beginPath();ctx.arc(b.x,b.y,BDIST+R+RB,0,Math.PI*2);ctx.stroke();ctx.restore();}
-  if(phase==='place'&&pm.m==='gkdef'){const ly=gkLim(pm.y);ctx.save();ctx.strokeStyle=PC[turn];ctx.globalAlpha=.6;ctx.lineWidth=3;ctx.setLineDash([14,10]);ctx.beginPath();ctx.moveTo(FX0,ly);ctx.lineTo(FX1,ly);ctx.stroke();ctx.restore();}
+  if(phase==='place'&&(pm.m==='bdef'||pm.m==='gkdef')){   // zona prohibida en rojo transparente, solo dentro del campo
+    ctx.save();ctx.beginPath();ctx.rect(FX0,FY0,FX1-FX0,FY1-FY0);ctx.clip();
+    ctx.fillStyle='rgba(214,40,57,.32)';ctx.strokeStyle='rgba(255,80,90,.9)';ctx.lineWidth=3;ctx.setLineDash([14,10]);
+    if(pm.m==='bdef'){const b=coins[2];ctx.beginPath();ctx.arc(b.x,b.y,BDIST+R+RB,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    else{const ly=gkLim(pm.y);if(pm.y<CY)ctx.fillRect(FX0,FY0,FX1-FX0,ly-FY0);else ctx.fillRect(FX0,ly,FX1-FX0,FY1-ly);ctx.beginPath();ctx.moveTo(FX0,ly);ctx.lineTo(FX1,ly);ctx.stroke();}
+    ctx.restore();
+  }
   {const pb=$('pconfirm'),on=phase==='place'&&mine()&&!over&&!(net&&isPending());if(pb.hidden===on)pb.hidden=!on;if(on){const o=!!placeOK(place,coins[turn]);if(pb.disabled===o)pb.disabled=!o;}}
   if(phase==='place'){
     const c=coins[turn],ok=placeOK(place,c);
@@ -1439,7 +1444,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='55';
+const VER='56';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
