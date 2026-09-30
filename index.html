@@ -402,7 +402,7 @@ function crowdInit(){
     const boo=crowdBus(nb,m,[[300,5,10],[520,4,7],[820,3,3]]);                       // ¡buuuu! (formante u, grave)
     CR={m,rg,bab,che,boo,roar:0,roarK:0};
     setInterval(crowdVoices,180);
-    loadSample('ambiente.mp3',b=>{CR.amb=b;});loadSample('gol.mp3',b=>{CR.golB=b;});loadSample('balon.mp3',b=>{CR.balB=b;});
+    loadSample('gol.mp3',b=>{CR.golB=b;});loadSample('balon.mp3',b=>{CR.balB=b;});
   }catch(e){CR=null;}
 }
 function clap(t,lv){                            // aplauso suelto: golpecito corto de ruido
@@ -429,19 +429,12 @@ function crowdVoices(){                          // timbre y volumen cambian al 
 function loadSample(url,cb){                 // carga una grabación real (ambiente.mp3, gol.mp3) si está en el repositorio
   try{fetch(url).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>new Promise((ok,ko)=>AC.decodeAudioData(b,ok,ko))).then(cb).catch(()=>{});}catch(e){}
 }
-function crowdUpdate(){                      // el ambiente es siempre el mismo, sin depender del balón
+function crowdUpdate(){                      // sin ambiente: solo queda el rugido de reserva si el sonido de gol no ha cargado
   if(!AC||!CR)return;
   try{
-    const t=AC.currentTime,on=soundOn;
-    if(CR.amb&&!CR.ag){                       // grabación de ambiente en bucle
-      const g=AC.createGain();g.gain.value=0;g.connect(CR.m);const x=AC.createBufferSource();x.buffer=CR.amb;x.loop=true;x.connect(g);x.start();CR.ag=g;
-    }
-    if(CR.ag)CR.ag.gain.setTargetAtTime(on?.7:0,t,.4);
-    const syn=on&&!CR.amb;                    // sin grabación: murmullo sintético de reserva
-    CR.rg.gain.setTargetAtTime(syn?.12:0,t,.4);
-    CR.bab.tgt=syn?.06:0;CR.bab.bus.gain.setTargetAtTime(CR.bab.tgt,t,.4);
-    CR.che.tgt=on&&CR.roar>t&&!CR.golB?.18:0;CR.che.bus.gain.setTargetAtTime(CR.che.tgt,t,.3);
-    CR.boo.tgt=0;CR.boo.bus.gain.setTargetAtTime(0,t,.3);
+    const t=AC.currentTime;
+    CR.rg.gain.setTargetAtTime(0,t,.2);CR.bab.bus.gain.setTargetAtTime(0,t,.2);CR.boo.bus.gain.setTargetAtTime(0,t,.2);
+    CR.che.tgt=soundOn&&CR.roar>t&&!CR.golB?.18:0;CR.che.bus.gain.setTargetAtTime(CR.che.tgt,t,.3);
   }catch(e){}
 }
 let bhN=0,bhV=0,bhSeen=-1,goalEnd=0;
@@ -902,7 +895,7 @@ $('howto').addEventListener('click',openTut);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('teams').hidden)closeTeams();else if(!$('tut').hidden)closeTut();else if(!$('net').hidden)closeNet();}});
 /* ---------- online: el anfitrión (Jugador 1) calcula todo y envía el estado; el invitado (Jugador 2) solo envía sus golpes ---------- */
 let peer=null,syncN=0,syncKey='',saveN=0;
-const VER='25';
+const VER='26';
 const PEERCFG={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 /* La partida online se guarda en el móvil: si el sistema cierra o recarga la pestaña al cambiar de app, al volver se retoma sola. */
 const SESS='fmon-sess';
