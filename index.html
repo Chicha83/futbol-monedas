@@ -33,6 +33,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 .score{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
 .chip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:10px;background:var(--surface);border:2px solid transparent;min-width:0}
 .chip[data-active="true"]{border-color:var(--pc)}
+.chip .wn{display:grid;min-width:0;line-height:1.15}.chip .wn>span,.chip .wn small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chip .wn small{font-size:10.5px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted)}
 .chip .who{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;min-width:0}
 .dot{width:14px;height:14px;border-radius:50%;background:var(--pc);flex:none}
 .chip b{font:800 36px/1 var(--display);font-variant-numeric:tabular-nums}
@@ -184,11 +185,11 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     <section class="game" aria-label="Partida">
       <div class="score">
         <div class="chip" id="chip0" style="--pc:var(--p1)" data-active="true">
-          <span class="who"><i class="dot"></i><span id="n0">Jugador 1</span></span><b id="s0">0</b>
+          <span class="who"><i class="dot"></i><span class="wn"><span id="n0">Jugador 1</span><small id="t0"></small></span></span><b id="s0">0</b>
         </div>
         <button type="button" class="goal-to menu-btn" id="menubtn" aria-label="Menú"><strong>☰</strong><span>Menú · a 3</span></button>
         <div class="chip" id="chip1" style="--pc:var(--p2)" data-active="false">
-          <span class="who"><i class="dot"></i><span id="n1">Jugador 2</span></span><b id="s1">0</b>
+          <span class="who"><i class="dot"></i><span class="wn"><span id="n1">Jugador 2</span><small id="t1"></small></span></span><b id="s1">0</b>
         </div>
       </div>
 
@@ -1388,7 +1389,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='38';
+const VER='39';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1419,7 +1420,7 @@ function startAI(level){
   const g=Engine.createGame({goalMs:()=>(soundOn&&CR&&CR.golB)?8300:1800});
   const mt=myTeam();let at;do{at=Math.floor(Math.random()*TEAMS.length);}while(at===mt);
   net={me:0,local:true,g,level,ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false};
-  VIEW=1;team=[mt,at];names=['','IA '+AILEV[level-1]];
+  VIEW=1;team=[mt,at];names=[acct?acct.name:'','IA '+AILEV[level-1]];
   labelChips();newGame();$('net').hidden=true;
 }
 function localMsg(m){
@@ -1447,8 +1448,8 @@ function localStep(){
   applyState(s);refreshAim();
 }
 function labelChips(){
-  const nm=i=>(net&&names[i])?names[i]:team[i]>=0?TEAMS[team[i]][1]:(net?(net.me===i?'Tú':'Rival'):'Jugador '+(i+1));
-  $('n0').textContent=nm(0);$('n1').textContent=nm(1);
+  const nm=i=>names[i]?names[i]:(net?(net.me===i?(acct?acct.name:'Tú'):'Rival'):'Jugador '+(i+1));
+  for(let i=0;i<2;i++){$('n'+i).textContent=nm(i);$('t'+i).textContent=team[i]>=0?TEAMS[team[i]][1]:'';}
   for(let i=0;i<2;i++)$('chip'+i).style.opacity=(net&&net.up&&net.up[i]===false)?'.45':'';
 }
 /* ---------- sesión de la partida (se guarda en el móvil para retomarla al volver) ---------- */
