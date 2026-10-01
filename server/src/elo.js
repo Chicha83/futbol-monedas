@@ -14,6 +14,17 @@ export function botTeam(level, tid, k) {          // equipo de la IA número k (
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   return pool[(k - 1) % pool.length];
 }
+// Equipos de la IA de un torneo: del grupo de su nivel (Pesadilla top 5, Difícil 6-15, Normal 16-30, Fácil 31-último); si el grupo se queda corto,
+// se completa con los puestos más cercanos al grupo. Nunca repite equipo entre las IA ni con los de los jugadores humanos.
+export const AI_TIERS = { 1: [30, 64], 2: [15, 30], 3: [5, 15], 4: [0, 5] };
+export function botTeams(level, tid, humanTeams, n) {
+  const [lo, hi] = AI_TIERS[level] || AI_TIERS[2], taken = new Set((humanTeams || []).filter(t => t >= 0));
+  const r = rng(tid * 7919 + level), inTier = ORDER.slice(lo, hi).filter(t => !taken.has(t));
+  for (let i = inTier.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [inTier[i], inTier[j]] = [inTier[j], inTier[i]]; }
+  const dist = rk => (rk < lo ? lo - rk : rk - hi + 1);
+  const rest = ORDER.map((t, rk) => ({ t, rk })).filter(x => (x.rk < lo || x.rk >= hi) && !taken.has(x.t)).sort((a, b) => dist(a.rk) - dist(b.rk)).map(x => x.t);
+  return inTier.concat(rest).slice(0, n);
+}
 export const eloOf = t => (t >= 0 && t < TEAM_ELO.length ? TEAM_ELO[t] : 1900);
 export const AIENG = [0, 2, 3, 4, 5];   // nivel de la app (1 Fácil, 2 Normal, 3 Difícil, 4 Pesadilla) → nivel del motor de IA; igual que jugar contra la IA
 // Nivel real de la IA = nivel elegido (Fácil/Normal/Difícil/Pesadilla) ± el efecto del equipo: de -1,5 (equipo flojo) a +1,5 (equipo top).

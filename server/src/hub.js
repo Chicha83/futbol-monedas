@@ -1,7 +1,7 @@
 import { newVapid, sendPush, endpointOk } from './push.js';
 // Base de datos del juego (un único Hub): usuarios con PIN de 4 cifras, estadísticas, ranking y torneos.
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-import { botTeam, botSkill, eloOf, winProb } from './elo.js';
+import { botTeam, botTeams, botSkill, eloOf, winProb } from './elo.js';
 const BOTS = ['IA Lobo', 'IA Halcón', 'IA Tigre', 'IA Toro', 'IA Zorro', 'IA Águila', 'IA Oso', 'IA Pantera'];
 const LOCK_MS = 15 * 60 * 1000;
 const MAX_FAILS = 5;
@@ -51,6 +51,7 @@ export class Hub {
         id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER, rnd INTEGER, idx INTEGER, p0 INTEGER DEFAULT 0, p1 INTEGER DEFAULT 0,
         winner INTEGER DEFAULT 0, s0 INTEGER DEFAULT 0, s1 INTEGER DEFAULT 0, state TEXT, room TEXT, tok0 TEXT, tok1 TEXT)`);
       try { this.sql.exec('ALTER TABLE tournaments ADD COLUMN blevel INTEGER DEFAULT 2'); } catch (e) { /* ya existe */ }   // nivel de la IA del torneo: 1 Fácil, 2 Normal, 3 Difícil, 4 Pesadilla (como jugar contra la IA)
+      try { this.sql.exec('ALTER TABLE tournaments ADD COLUMN bteams TEXT'); } catch (e) { /* ya existe */ }   // equipos de las IA del torneo (JSON), fijados al empezar
       for (const c of ['t0', 't1']) { try { this.sql.exec('ALTER TABLE tmatches ADD COLUMN ' + c + ' INTEGER DEFAULT -1'); } catch (e) { /* ya existe */ } }   // equipo de cada jugador en el partido
       this.sql.exec('CREATE INDEX IF NOT EXISTS tm_tid ON tmatches(tid)');
       this.sql.exec(`CREATE TABLE IF NOT EXISTS push(endpoint TEXT PRIMARY KEY, pid INTEGER, p256dh TEXT, auth TEXT,
@@ -240,7 +241,10 @@ export class Hub {
     if (!t) bad('No existe ese torneo.', 404);
     return t;
   }
-  botTm(t, pid) { return botTeam(t.blevel || 2, t.id, -pid); }     // equipo de una IA del torneo
+  botTm(t, pid) {                                  // equipo de una IA del torneo (fijado al empezar; los torneos antiguos usan el reparto anterior)
+    try { const r = this.one('SELECT bteams FROM tournaments WHERE id=?', t.id), a = r && r.bteams ? JSON.parse(r.bteams) : null; if (a && Number.isInteger(a[-pid - 1])) return a[-pid - 1]; } catch (e) { /* sin datos */ }
+    return botTeam(t.blevel || 2, t.id, -pid);
+  }
   pname(id) { if (!id) return ''; if (id < 0) return BOTS[(-id - 1) % BOTS.length]; const r = this.one('SELECT name FROM players WHERE id=?', id); return r ? r.name : '?'; }
   tCreate(b) {
     const u = this.auth(b.sid);
@@ -276,7 +280,11 @@ export class Hub {
     if (t.state !== 'open') bad('Ese torneo ya ha empezado.');
     const ids = this.q('SELECT pid FROM tmembers WHERE tid=?', t.id).map(r => r.pid);
     if (ids.length < 2 && !t.bots) bad('Hacen falta al menos 2 jugadores (o activa las IA al crear el torneo).');
-    if (t.bots) { let k = 1; while (ids.length < t.maxp) ids.push(-(k++)); }       // los huecos se rellenan con IA
+    if (t.bots) {                                   // los huecos se rellenan con IA, con equipos distintos entre sí y de los de los jugadores
+      let k = 1; while (ids.length < t.maxp) ids.push(-(k++));
+      const humanTeams = ids.filter(id => id > 0).map(id => { const p = this.one('SELECT team FROM players WHERE id=?', id); return p ? p.team : -1; });
+      this.q('UPDATE tournaments SET bteams=? WHERE id=?', JSON.stringify(botTeams(t.blevel || 2, t.id, humanTeams, k - 1)), t.id);
+    }
     for (let i = ids.length - 1; i > 0; i--) { const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     let size = 2; while (size < ids.length) size *= 2;
     if (size > t.maxp) size = t.maxp;
