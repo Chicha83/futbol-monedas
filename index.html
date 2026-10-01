@@ -342,7 +342,6 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
     </div>
     <div class="net-row" id="nai" hidden>
       <button type="button" id="nai1">Fácil</button><button type="button" id="nai2" class="primary">Normal</button><button type="button" id="nai3">Difícil</button><button type="button" id="nai4">Pesadilla</button>
-      <button type="button" id="nai0">Atrás</button>
     </div>
     <div class="net-code" id="ncode" hidden></div>
     <div class="net-row" id="njoinform" hidden>
@@ -1612,7 +1611,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='78';
+const VER='79';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1803,12 +1802,14 @@ $('cinput').addEventListener('keydown',e=>{if(e.key==='Enter')chatSend($('cinput
 for(const q of QUICK){const b=el('button','',q);b.type='button';b.addEventListener('click',()=>chatSend(q));$('cquick').appendChild(b);}
 function netView(mode,text){
   $('nx').textContent=text;
+  $('nt').textContent=(mode==='ai'||(mode==='conn'&&net&&net.local))?'Jugar contra la IA':'Amistoso online';
   $('nback').hidden=mode==='choose'||mode==='conn';
   $('nchoose').hidden=mode!=='choose';$('nai').hidden=mode!=='ai';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
 }
 function netBack(){
   const txt='Crea un amistoso online o únete con el código que te dé tu amigo.';
-  if(!$('nai').hidden||!$('njoinform').hidden){netView('choose',txt);return true;}
+  if(!$('nai').hidden){closeNet();return true;}
+  if(!$('njoinform').hidden){netView('choose',txt);return true;}
   if(!$('ncode').hidden){if(net&&!net.started)stopNet();netView('choose',txt);return true;}
   return false;
 }
@@ -1939,7 +1940,6 @@ $('ndisc').addEventListener('click',()=>{leaveNet();stopNet();newGame();netView(
 $('nclose').addEventListener('click',closeNet);
 $('nback').addEventListener('click',netBack);
 for(const k of [1,2,3,4])$('nai'+k).addEventListener('click',()=>startAI(k));
-$('nai0').addEventListener('click',closeNet);
 $('nprof').addEventListener('click',()=>{$('net').hidden=true;showWelcome();});
 /* ---------- cuenta (nombre + PIN de 4 cifras) ---------- */
 let tSize=8;
