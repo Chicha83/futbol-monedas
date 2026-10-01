@@ -59,7 +59,12 @@ function initPlace(c){
   if(pm.m==='any'&&pm.s!==undefined)return{x:pm.s<0?FX0-32:FX1+32,y:pm.y<CY?FY0-32:FY1+32};   // córner: el que saca empieza en la esquina, fuera del campo
   if(pm.m==='line')return{x:CX,y:pm.y};
   if(pm.m==='gkdef')return{x:CX,y:gkLim(pm.y)};
-  if(pm.m==='bdef')return{x:b.x<CX?Math.min(b.x+BDIST+c.r+RB+12,FX1-c.r):Math.max(b.x-BDIST-c.r-RB-12,FX0+c.r),y:Math.max(FY0+c.r+2,Math.min(FY1-c.r-2,b.y))};
+  if(pm.m==='bdef'){
+    const d={x:b.x<CX?Math.min(b.x+BDIST+c.r+RB+12,FX1-c.r):Math.max(b.x-BDIST-c.r-RB-12,FX0+c.r),y:Math.max(FY0+c.r+2,Math.min(FY1-c.r-2,b.y))};
+    if(placeOK(d,c))return d;
+    let best=d,bd=1e9;   // si el punto por defecto está en zona prohibida (córner: área o pasillo), el legal más cercano a él
+    for(let x=FX0+c.r;x<=FX1-c.r;x+=10)for(let y=FY0+c.r;y<=FY1-c.r;y+=10){const q={x,y};if(placeOK(q,c)){const e=Math.hypot(x-d.x,y-d.y);if(e<bd){bd=e;best=q;}}}
+    return best;}
   return{x:c.x,y:c.y};
 }
 function beginPlace(){phase='place';drag=null;place=initPlace(coins[turn]);ui();}
@@ -133,7 +138,7 @@ function outPlay(){
   }
   for(const c of coins){c.vx=0;c.vy=0;c.spin=0;}
   b.x=bx;b.y=by;strike=null;foulBen=taker;phase='foul';msgT=90;
-  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':kind==='SAQUE DE PUERTA'?'g':'',side:bx<=FX0?-1:1,gy:b.y<CY?FY0:FY1,reason:'',sub:'Saca Jugador '+(taker+1)};
+  msg={t:kind,s:lt,foul:true,restart:true,k:kind==='SAQUE DE BANDA'?'b':kind==='CÓRNER'?'c':kind==='SAQUE DE PUERTA'?'g':'',side:bx<CX?-1:1,gy:b.y<CY?FY0:FY1,reason:'',sub:'Saca Jugador '+(taker+1)};
   ui();tick(4,520);
 }
 function goal(s){
