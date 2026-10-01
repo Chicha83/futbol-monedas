@@ -1,7 +1,7 @@
 import { newVapid, sendPush, endpointOk } from './push.js';
 // Base de datos del juego (un único Hub): usuarios con PIN de 4 cifras, estadísticas, ranking y torneos.
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-import { botTeam, botSkill, eloOf, winProb } from './elo.js';
+import { botTeam, AIENG, eloOf, winProb } from './elo.js';
 const BOTS = ['IA Lobo', 'IA Halcón', 'IA Tigre', 'IA Toro', 'IA Zorro', 'IA Águila', 'IA Oso', 'IA Pantera'];
 const LOCK_MS = 15 * 60 * 1000;
 const MAX_FAILS = 5;
@@ -50,7 +50,7 @@ export class Hub {
       this.sql.exec(`CREATE TABLE IF NOT EXISTS tmatches(
         id INTEGER PRIMARY KEY AUTOINCREMENT, tid INTEGER, rnd INTEGER, idx INTEGER, p0 INTEGER DEFAULT 0, p1 INTEGER DEFAULT 0,
         winner INTEGER DEFAULT 0, s0 INTEGER DEFAULT 0, s1 INTEGER DEFAULT 0, state TEXT, room TEXT, tok0 TEXT, tok1 TEXT)`);
-      try { this.sql.exec('ALTER TABLE tournaments ADD COLUMN blevel INTEGER DEFAULT 2'); } catch (e) { /* ya existe */ }   // nivel de la IA del torneo: 1 baja, 2 media, 3 alta
+      try { this.sql.exec('ALTER TABLE tournaments ADD COLUMN blevel INTEGER DEFAULT 2'); } catch (e) { /* ya existe */ }   // nivel de la IA del torneo: 1 Fácil, 2 Normal, 3 Difícil, 4 Pesadilla (como jugar contra la IA)
       for (const c of ['t0', 't1']) { try { this.sql.exec('ALTER TABLE tmatches ADD COLUMN ' + c + ' INTEGER DEFAULT -1'); } catch (e) { /* ya existe */ } }   // equipo de cada jugador en el partido
       this.sql.exec('CREATE INDEX IF NOT EXISTS tm_tid ON tmatches(tid)');
       this.sql.exec(`CREATE TABLE IF NOT EXISTS push(endpoint TEXT PRIMARY KEY, pid INTEGER, p256dh TEXT, auth TEXT,
@@ -248,7 +248,7 @@ export class Hub {
     let code;
     do { code = rndCode(5); } while (this.one('SELECT id FROM tournaments WHERE code=?', code));
     const maxp = Number(b.size) === 4 ? 4 : 8;
-    const lv = [1, 2, 3].includes(Number(b.ai)) ? Number(b.ai) : 2;
+    const lv = [1, 2, 3, 4].includes(Number(b.ai)) ? Number(b.ai) : 2;
     this.q('INSERT INTO tournaments(code,name,owner,state,created,maxp,bots,blevel) VALUES(?,?,?,?,?,?,?,?)', code, name, u.id, 'open', Date.now(), maxp, b.bots ? 1 : 0, lv);
     const t = this.tour(code);
     this.q('INSERT INTO tmembers(tid,pid,joined) VALUES(?,?,?)', t.id, u.id, Date.now());
@@ -357,7 +357,7 @@ export class Hub {
       const stub = this.env.ROOM.get(this.env.ROOM.idFromName(room));
       await stub.fetch('https://room/init', {
         method: 'POST',
-        body: JSON.stringify({ matchId: m.id, seats: [m.p0, m.p1].map((pid, i) => { const tm = pid < 0 ? this.botTm(t, pid) : -1; return { pid, name: this.pname(pid), tok: pid < 0 ? 'bot' : (i === 0 ? tok0 : tok1), bot: pid < 0, team: tm, lv: pid < 0 ? botSkill(eloOf(tm)) : 0 }; }) })
+        body: JSON.stringify({ matchId: m.id, seats: [m.p0, m.p1].map((pid, i) => { const tm = pid < 0 ? this.botTm(t, pid) : -1; return { pid, name: this.pname(pid), tok: pid < 0 ? 'bot' : (i === 0 ? tok0 : tok1), bot: pid < 0, team: tm, lv: pid < 0 ? (AIENG[t.blevel || 2] || 3) : 0 }; }) })
       });
       this.q('UPDATE tmatches SET room=?, tok0=?, tok1=? WHERE id=?', room, tok0, tok1, m.id);
     }

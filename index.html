@@ -380,7 +380,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
       <div class="net-row" id="tsize"><button type="button" data-n="4">4 jugadores</button><button type="button" data-n="8" class="sel">8 jugadores</button></div>
       <label class="chk"><input type="checkbox" id="tbots" checked> Rellenar los huecos con IA</label>
       <div id="tailv" style="display:grid;gap:6px">
-        <div class="net-row" id="tai"><button type="button" data-l="1">IA baja</button><button type="button" data-l="2" class="sel">IA media</button><button type="button" data-l="3">IA alta</button></div>
+        <div class="net-row" id="tai"><button type="button" data-l="1">Fácil</button><button type="button" data-l="2" class="sel">Normal</button><button type="button" data-l="3">Difícil</button><button type="button" data-l="4">Pesadilla</button></div>
         <small id="tait" style="opacity:.8"></small>
       </div>
       <button type="button" id="tcreate" class="primary">Crear torneo</button>
@@ -1611,7 +1611,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='79';
+const VER='80';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -2168,7 +2168,7 @@ function renderTour(t){
   $('tcode').textContent=t.code;
   const box=$('tbody');box.textContent='';
   const estado=t.state==='open'?'Inscripción abierta':t.state==='running'?'En juego':'Terminado';
-  box.appendChild(el('p','tmeta',estado+' · '+t.count+' de '+t.maxp+' jugadores'+(t.bots?' (+ IA '+['baja','media','alta'][(t.ai||2)-1]+')':'')+' · Organiza '+t.owner));
+  box.appendChild(el('p','tmeta',estado+' · '+t.count+' de '+t.maxp+' jugadores'+(t.bots?' (+ IA '+['fácil','normal','difícil','pesadilla'][(t.ai||2)-1]+')':'')+' · Organiza '+t.owner));
   if(t.state==='done')box.appendChild(el('p','tchamp','🏆 Campeón: '+t.champion));
   if(t.state==='open'){
     box.appendChild(el('p','tmeta','Inscritos: '+t.members.join(', ')));
@@ -2240,7 +2240,7 @@ async function playMine(){
   }catch(e){tourMsg(e.message);}
 }
 let tAi=2;
-const TAI_TXT={1:'IA baja: los rivales de IA son equipos de la parte baja del fútbol actual y juegan flojo.',2:'IA media: equipos de nivel medio, y la IA juega acorde.',3:'IA alta: los rivales de IA son los mejores equipos del mundo hoy, y cada uno juega al nivel de su equipo.'};
+const TAI_TXT={1:'IA fácil: la misma dificultad que jugar contra la IA en fácil. Los rivales son equipos de la parte baja del fútbol actual.',2:'IA normal: la misma dificultad que jugar contra la IA en normal. Los rivales son equipos de nivel medio.',3:'IA difícil: la misma dificultad que jugar contra la IA en difícil. Los rivales son de los mejores equipos del mundo hoy.',4:'IA pesadilla: el máximo nivel, igual que jugar contra la IA en pesadilla. Los rivales son de los mejores equipos del mundo hoy.'};
 function taiSync(){document.querySelectorAll('#tai button').forEach(x=>x.classList.toggle('sel',+x.dataset.l===tAi));$('tait').textContent=TAI_TXT[tAi];$('tailv').hidden=!$('tbots').checked;}
 $('tai').addEventListener('click',e=>{const b=e.target.closest('button[data-l]');if(!b)return;tAi=+b.dataset.l;taiSync();});
 $('tbots').addEventListener('change',taiSync);taiSync();
