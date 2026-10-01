@@ -1611,7 +1611,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='82';
+const VER='83';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1642,15 +1642,17 @@ const AI_ORDER=TEAM_ELO.map((_,i)=>i).sort((a,b)=>TEAM_ELO[b]-TEAM_ELO[a]);
 const AI_TIER={1:[30,64],2:[15,30],3:[5,15],4:[0,5]};   // rivales por nivel: Pesadilla top 5, Difícil 6-15, Normal 16-30, Fácil 31-último
 const eloX=e=>Math.max(0,Math.min(1,(e-1650)/750));
 function aiTierTeams(level){const t=AI_TIER[level]||AI_TIER[2];return AI_ORDER.slice(t[0],t[1]);}
-function aiEff(level,at){   // nivel real de la IA: la base del nivel elegido, más o menos según lo bueno que sea su equipo respecto a la media de su grupo
+function aiEff(level,at,mt){   // nivel real de la IA: la base del nivel elegido, más o menos según lo bueno que sea su equipo respecto a la media de su grupo
   const pool=aiTierTeams(level),c=pool.reduce((a,t)=>a+eloX(TEAM_ELO[t]),0)/pool.length;
-  return Math.max(.3,Math.min(5,(AIENG[level]||3)+3*(eloX(TEAM_ELO[at]===undefined?1900:TEAM_ELO[at])-c)));
+  const xa=eloX(TEAM_ELO[at]===undefined?1900:TEAM_ELO[at]),xm=TEAM_ELO[mt]===undefined?xa:eloX(TEAM_ELO[mt]);
+  return Math.max(.3,Math.min(5,(AIENG[level]||3)+3*(xa-c)+2*Math.max(0,xa-xm)));   // bonus extra solo si el equipo de la IA es mejor que el tuyo; si es peor, tú no pierdes nada
+
 }
 function startAI(level){
   stopNet();
   const g=Engine.createGame({goalMs:()=>(soundOn&&CR&&CR.golB)?8300:1800});
   const mt=myTeam();const pool=aiTierTeams(level).filter(t=>t!==mt),at=pool[Math.floor(Math.random()*pool.length)];
-  net={me:0,local:true,g,level,eff:aiEff(level,at),ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false};
+  net={me:0,local:true,g,level,eff:aiEff(level,at,mt),ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false};
   VIEW=1;team=[mt,at];names=[acct?acct.name:'','IA '+AILEV[level-1]];
   labelChips();newGame();$('net').hidden=true;menuSync();
 }
@@ -1664,7 +1666,7 @@ function restoreAI(){
     stopNet();
     const g=Engine.createGame({goalMs:()=>(soundOn&&CR&&CR.golB)?8300:1800});
     g.restore(o.snap);
-    net={me:0,local:true,g,level:o.level,eff:aiEff(o.level,(o.team||[0,0])[1]),ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false,sk:g.key};
+    net={me:0,local:true,g,level:o.level,eff:aiEff(o.level,(o.team||[0,0])[1],(o.team||[0,0])[0]),ws:null,tok:'',code:'',pend:0,lastRx:Date.now(),down:false,up:[true,true],started:true,tn:0,retries:0,closed:false,think:false,sk:g.key};
     VIEW=1;team=o.team;names=o.names;labelChips();$('net').hidden=true;menuSync();return true;
   }catch(e){clearAI();stopNet();return false;}
 }
