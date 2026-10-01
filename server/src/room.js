@@ -114,7 +114,7 @@ export class Room {
     if (Number.isInteger(m.team) && m.team >= -1 && m.team < 64) s.team = m.team;
     ws.send(JSON.stringify({ t: 'hi', me: seat, tok: s.tok, room: m.room }));
     if (fresh || m.team !== undefined) await this.save();
-    if (fresh && !this.matchId && this.seats[1 - seat].tok) this.pushTo(1 - seat, 'game', 'Fútbol Monedas', (s.name || 'Tu rival') + ' se ha unido a la partida.', 'union');
+    if (fresh && !this.matchId && this.seats[1 - seat].tok) this.pushTo(1 - seat, 'game', 'Fútbol Monedas', (s.name || 'Tu rival') + ' se ha unido a la partida.', 'union', 'join', [s.name || '']);
     this.lastAct = Date.now();
     if (!this.g.idleWait && !this.g.over) this.run();            // la sala se ha recuperado a mitad de jugada
     if (!this.idleT) {
@@ -153,7 +153,7 @@ export class Room {
         s.lastChat = now;
         const o = this.seats[1 - seat];
         if (o && o.ws) this.send(o.ws, { t: 'chat', f: seat, x });
-        if (o) this.pushTo(1 - seat, 'chat', s.name || 'Tu rival', x, 'chat');
+        if (o) this.pushTo(1 - seat, 'chat', s.name || 'Tu rival', x, 'chat', 'chat', [s.name || '']);
         return;
       }
       case 'team':
@@ -192,7 +192,7 @@ export class Room {
     this.reported = true;
     const msg = JSON.stringify({ t: 'left', n: this.seats[seat].name || '' });
     if (o.ws) { try { o.ws.send(msg); } catch (e) { /* cerrada */ } }
-    this.pushTo(1 - seat, 'game', 'Fútbol Monedas', (this.seats[seat].name || 'Tu rival') + ' ha abandonado la partida. Queda nula.', 'abandono');
+    this.pushTo(1 - seat, 'game', 'Fútbol Monedas', (this.seats[seat].name || 'Tu rival') + ' ha abandonado la partida. Queda nula.', 'abandono', 'left', [this.seats[seat].name || '']);
     if (this.matchId) { this.g.newGame(); this.reported = false; }   // partido de torneo: vuelve a 0-0 para poder jugarse de nuevo (el creador también puede dar el pase directo)
     else this.left = seat;
     this.lastAct = Date.now();
@@ -238,14 +238,14 @@ export class Room {
   }
 
   away(i) { const s = this.seats[i]; return !!s && !s.bot && (!s.ws || s.hidden); }
-  pushTo(i, kind, title, body, tag) {             // aviso al móvil del jugador i (solo si tiene usuario y no está mirando el juego)
+  pushTo(i, kind, title, body, tag, code, args) {             // aviso al móvil del jugador i (solo si tiene usuario y no está mirando el juego)
     const s = this.seats[i];
     if (!s || s.bot || !(s.pid > 0) || !this.away(i)) return;
     const now = Date.now(), k = 'p_' + kind;
     if (now - (s[k] || 0) < 4000) return;
     s[k] = now;
     try {
-      this.env.HUB.get(this.env.HUB.idFromName('main')).fetch('https://hub/internal/push', { method: 'POST', body: JSON.stringify({ pid: s.pid, kind, title, body, tag }) }).catch(() => {});
+      this.env.HUB.get(this.env.HUB.idFromName('main')).fetch('https://hub/internal/push', { method: 'POST', body: JSON.stringify({ pid: s.pid, kind, title, body, tag, c: code || '', a: args || [] }) }).catch(() => {});
     } catch (e) { /* sin aviso */ }
   }
   notifyTurn() {                                  // le toca a un jugador que no está mirando: aviso
@@ -253,7 +253,7 @@ export class Room {
     const key = this.g.turn + '|' + this.g.phase + '|' + this.g.score + '|' + this.g.movesLeft;
     if (key === this.turnKey) return;
     this.turnKey = key;
-    if (this.g.phase === 'aim' || this.g.phase === 'place') this.pushTo(this.g.turn, 'game', '¡Te toca!', 'Es tu turno en la partida.', 'turno');
+    if (this.g.phase === 'aim' || this.g.phase === 'place') this.pushTo(this.g.turn, 'game', '¡Te toca!', 'Es tu turno en la partida.', 'turno', 'turn', []);
   }
   showBot(seat, a, done) {                         // la IA enseña en directo cómo coloca su moneda o cómo apunta (dirección, contacto, potencia) antes de actuar
     const tot = a.t === 'shot' ? 2300 : 1150, t0 = Date.now(), place = a.t !== 'shot';

@@ -175,6 +175,17 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
 .by{margin:-6px 0 0!important;font:700 13px var(--body);letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
 .acrow.win{color:#5BE39A}.acrow.loss{color:#FF7A85}
 .pills,.pills span{color:#141B24}
+/* ---- idiomas ---- */
+.wlang{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:2px 0 0;direction:ltr}
+.wlang{gap:5px}.wlang button{padding:4px 8px;font-size:11.5px;border-radius:999px}
+.wlang button.sel{border-color:#C6FF3D;color:#EAF2FF;background:#16284A}
+.wlang .wlbl{font-size:14px;opacity:.8}
+.rtl .tut-card,.rtl .wel-card,.rtl .chatlist,.rtl .tview,.rtl .toastbox{direction:rtl;text-align:right}
+.rtl .wel-card h1,.rtl .wel-card .by,.rtl .wlang{text-align:center}
+.rtl .game,.rtl .score,.rtl .steps,.rtl .meters,.rtl .paper,.rtl canvas{direction:ltr}
+.rtl .steps button{text-align:center;justify-content:center}
+.rtl input.txt,.rtl .net-code,.rtl .tcode{direction:ltr;text-align:center}
+.rtl input.txt::placeholder{direction:rtl}
 </style>
 </head>
 <body>
@@ -217,6 +228,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
   <div class="wel-card">
     <h1 id="wt">Fútbol <span>Monedas</span></h1>
     <p class="by">by Chicha83</p>
+    <div class="wlang" id="wlang"></div>
     <div id="wload" class="wbox"><p>Conectando con el servidor…</p></div>
     <div id="wlogin" class="wbox" hidden>
       <p id="wlx">Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.</p>
@@ -404,6 +416,49 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
 <script>
 (()=>{
 "use strict";
+/* ---------- idiomas (español es la base; el resto se traduce al mostrar) ---------- */
+const LANGS=[['es','Español'],['en','English'],['ru','Русский'],['ar','العربية'],['fil','Filipino']],LKEY='fmon-lang';
+let LANG='es';
+try{const v=localStorage.getItem(LKEY);if(LANGS.some(l=>l[0]===v))LANG=v;else{const n=String((navigator.languages&&navigator.languages[0])||navigator.language||'es').toLowerCase();LANG=n.startsWith('es')?'es':n.startsWith('ru')?'ru':n.startsWith('ar')?'ar':(n.startsWith('fil')||n.startsWith('tl'))?'fil':'en';}}catch(e){}
+const TB=[["Jugador 1","Player 1","Игрок 1","اللاعب 1","Manlalaro 1"],["Jugador 2","Player 2","Игрок 2","اللاعب 2","Manlalaro 2"],["Jugador {0}","Player {0}","Игрок {0}","اللاعب {0}","Manlalaro {0}"],["Menú · a 3","Menu · first to 3","Меню · до 3","القائمة · حتى 3","Menu · hanggang 3"],["Dirección","Direction","Прицел","الاتجاه","Direksyon"],["Contacto","Contact","Контакт","التماس","Kontak"],["Potencia","Power","Сила","القوة","Lakas"],["Efecto","Spin","Закрутка","الدوران","Ikot"],["Conectando con el servidor…","Connecting to the server…","Подключение к серверу…","جارٍ الاتصال بالخادم…","Kumokonekta sa server…"],["Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.","Sign in with your username and 4-digit PIN to save your matches and ranking and to play tournaments.","Войди с именем пользователя и 4-значным PIN-кодом, чтобы сохранять матчи и рейтинг и играть в турнирах.","سجّل الدخول باسم المستخدم ورمز PIN المكوّن من 4 أرقام لحفظ مبارياتك وترتيبك واللعب في البطولات.","Mag-sign in gamit ang username at 4-digit na PIN para ma-save ang mga laro at ranking mo at makasali sa mga torneo."],["Entrar","Sign in","Войти","دخول","Pumasok"],["Crear usuario","Create user","Создать пользователя","إنشاء مستخدم","Gumawa ng user"],["Jugar sin conexión (2 jugadores en este móvil)","Play offline (2 players on this phone)","Играть без сети (2 игрока на этом телефоне)","اللعب دون اتصال (لاعبان على هذا الهاتف)","Maglaro offline (2 manlalaro sa teleponong ito)"],["Tienes un partido en curso. Seguirá jugándose: vuelve cuando quieras.","You have a match in progress. It keeps going: come back whenever you like.","У тебя есть незавершённый матч. Он продолжится: возвращайся, когда захочешь.","لديك مباراة جارية. ستستمر: عُد متى شئت.","May laro kang kasalukuyang tumatakbo. Magpapatuloy ito: bumalik ka kailan mo gusto."],["Volver al partido","Back to the match","Вернуться в матч","العودة إلى المباراة","Bumalik sa laro"],["Jugar contra la IA","Play against the AI","Играть против ИИ","اللعب ضد الذكاء الاصطناعي","Laruin laban sa AI"],["Amistoso online","Online friendly","Товарищеский матч онлайн","مباراة ودية عبر الإنترنت","Online na friendly"],["Torneos (4 u 8 jugadores)","Tournaments (4 or 8 players)","Турниры (4 или 8 игроков)","البطولات (4 أو 8 لاعبين)","Mga torneo (4 o 8 manlalaro)"],["Dos jugadores en este móvil","Two players on this phone","Два игрока на этом телефоне","لاعبان على هذا الهاتف","Dalawang manlalaro sa teleponong ito"],["📲 Instalar la app en este móvil","📲 Install the app on this phone","📲 Установить приложение на этот телефон","📲 تثبيت التطبيق على هذا الهاتف","📲 I-install ang app sa teleponong ito"],["Tu marcador","Your record","Твой счёт","سجلّك","Iyong talaan"],["Tus últimos 5 resultados","Your last 5 results","Твои последние 5 результатов","آخر 5 نتائج لك","Ang huling 5 mong resulta"],["Ranking","Ranking","Рейтинг","الترتيب","Ranking"],["Cargando…","Loading…","Загрузка…","جارٍ التحميل…","Naglo-load…"],["Cómo se golpea","How to hit","Как бить","طريقة الضرب","Paano tumira"],["1 · Dirección.","1 · Direction.","1 · Прицел.","1 · الاتجاه.","1 · Direksyon."],["Arrastra sobre tu moneda para apuntar.","Drag over your coin to aim.","Веди пальцем по своей монете, чтобы прицелиться.","اسحب فوق عملتك لتصويب الاتجاه.","I-drag sa ibabaw ng barya mo para mag-aim."],["2 · Contacto.","2 · Contact.","2 · Контакт.","2 · التماس.","2 · Kontak."],["Arrastra a izquierda o derecha: eliges con qué parte del canto golpea la traba y hacia dónde curva.","Drag left or right: you choose which part of the edge the peg hits with and which way the coin curves.","Веди влево или вправо: так выбираешь, какой частью ребра бьёт прищепка и в какую сторону закрутится монета.","اسحب يسارًا أو يمينًا: تختار أي جزء من الحافة يضرب به المشبك وإلى أي جهة تنحني العملة.","I-drag pakaliwa o pakanan: pipiliin mo kung aling bahagi ng gilid ang tatama ng sipit at kung saang direksyon kakurba ang barya."],["3 · Potencia.","3 · Power.","3 · Сила.","3 · القوة.","3 · Lakas."],["Arrastra hacia abajo y suelta: la traba golpea, sin retención.","Drag down and release: the peg strikes, with no holding.","Потяни вниз и отпусти: прищепка бьёт чисто, без удержания.","اسحب للأسفل ثم اترك: يضرب المشبك ضربة نظيفة دون احتجاز العملة.","I-drag pababa at bitawan: tatama ang sipit nang malinis, walang paghawak."],["Meta:","Goal:","Цель:","الهدف:","Layunin:"],["tu moneda debe golpear el balón y meterlo en la portería rival. Si tocas antes a la moneda contraria, es falta.","your coin must hit the ball and put it in the opponent’s goal. If you touch the opposing coin first, it’s a foul.","твоя монета должна ударить по мячу и загнать его в ворота соперника. Если сначала заденешь монету соперника — это фол.","يجب أن تضرب عملتك الكرة وتدخلها مرمى الخصم. إذا لمستَ عملة الخصم أولًا فهذه مخالفة.","dapat tamaan ng barya mo ang bola at maipasok ito sa goal ng kalaban. Kung mauna mong tamaan ang barya ng kalaban, foul iyon."],["Ver el tutorial paso a paso","See the step-by-step tutorial","Смотреть обучение по шагам","عرض الشرح خطوة بخطوة","Tingnan ang tutorial nang paisa-isang hakbang"],["Avisos en el móvil","Phone notifications","Уведомления на телефоне","التنبيهات على الهاتف","Mga abiso sa telepono"],["Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.","We notify you when it’s your turn, when someone messages you or when your tournament match is ready, even with the game closed.","Мы сообщим, когда твой ход, когда тебе напишут или когда твой матч в турнире готов — даже если игра закрыта.","سنخبرك عندما يحين دورك أو تصلك رسالة أو تصبح مباراتك في البطولة جاهزة، حتى لو كانت اللعبة مغلقة.","Aabisuhan ka namin kapag turn mo na, may nag-message sa iyo o handa na ang laro mo sa torneo, kahit sarado ang laro."],["Activar avisos","Turn on notifications","Включить уведомления","تفعيل التنبيهات","I-on ang mga abiso"],["Desactivar avisos","Turn off notifications","Выключить уведомления","إيقاف التنبيهات","I-off ang mga abiso"],["Partidas: tu turno y amigo que se une","Matches: your turn and a friend joining","Матчи: твой ход и вход друга","المباريات: دورك وانضمام صديق","Mga laro: turn mo at pagsali ng kaibigan"],["Mensajes del chat","Chat messages","Сообщения чата","رسائل الدردشة","Mga mensahe sa chat"],["Torneos: partido listo","Tournaments: match ready","Турниры: матч готов","البطولات: المباراة جاهزة","Mga torneo: handa na ang laro"],["Cerrar sesión","Sign out","Выйти","تسجيل الخروج","Mag-sign out"],["↺ Repetir","↺ Replay","↺ Повторить","↺ إعادة","↺ Ulitin"],["Siguiente gol ▶","Next goal ▶","Следующий гол ▶","الهدف التالي ▶","Susunod na goal ▶"],["Cerrar","Close","Закрыть","إغلاق","Isara"],["Colocar aquí ✔","Place here ✔","Поставить сюда ✔","ضع هنا ✔","Ilagay dito ✔"],["Menú","Menu","Меню","القائمة","Menu"],["Paso anterior","Previous step","Предыдущий шаг","الخطوة السابقة","Nakaraang hakbang"],["Jugar","Play","Играть","لعب","Maglaro"],["Nueva partida","New match","Новый матч","مباراة جديدة","Bagong laro"],["Equipos","Teams","Команды","الفرق","Mga koponan"],["Sonido: sí","Sound: on","Звук: вкл.","الصوت: يعمل","Tunog: naka-on"],["Sonido: no","Sound: off","Звук: выкл.","الصوت: متوقف","Tunog: naka-off"],["Chat","Chat","Чат","الدردشة","Chat"],["Enviar","Send","Отправить","إرسال","Ipadala"],["Saltar","Skip","Пропустить","تخطّي","Laktawan"],["Atrás","Back","Назад","رجوع","Bumalik"],["Siguiente","Next","Далее","التالي","Susunod"],["Empezar","Start","Начать","ابدأ","Magsimula"],["Listo","Done","Готово","تم","Tapos na"],["Continuar","Continue","Продолжить","متابعة","Magpatuloy"],["Ver goles","See goals","Смотреть голы","عرض الأهداف","Tingnan ang mga goal"],["Ver goles ({0})","See goals ({0})","Смотреть голы ({0})","عرض الأهداف ({0})","Tingnan ang mga goal ({0})"],["Revancha","Rematch","Реванш","إعادة المباراة","Rematch"],["Ver el torneo","See the tournament","Смотреть турнир","عرض البطولة","Tingnan ang torneo"],["Salir al menú principal","Exit to the main menu","Выйти в главное меню","الخروج إلى القائمة الرئيسية","Lumabas sa pangunahing menu"],["Volver al menú principal","Back to the main menu","Вернуться в главное меню","العودة إلى القائمة الرئيسية","Bumalik sa pangunahing menu"],["Abandonar partida","Leave the match","Покинуть матч","مغادرة المباراة","Iwan ang laro"],["¿Seguro? Toca otra vez","Sure? Tap again","Точно? Нажми ещё раз","متأكد؟ المس مرة أخرى","Sigurado ka ba? Pindutin ulit"],["Crear amistoso online","Create an online friendly","Создать онлайн-матч","إنشاء مباراة ودية عبر الإنترنت","Gumawa ng online na friendly"],["Unirme a un amistoso","Join a friendly","Присоединиться к матчу","الانضمام إلى مباراة ودية","Sumali sa friendly"],["Inicio y mi perfil","Home and my profile","Главная и мой профиль","الرئيسية وملفي الشخصي","Home at ang profile ko"],["Fácil","Easy","Лёгкий","سهل","Madali"],["Normal","Normal","Нормальный","عادي","Katamtaman"],["Difícil","Hard","Сложный","صعب","Mahirap"],["Pesadilla","Nightmare","Кошмар","كابوس","Bangungot"],["fácil","easy","лёгкий","سهل","madali"],["normal","normal","нормальный","عادي","katamtaman"],["difícil","hard","сложный","صعب","mahirap"],["pesadilla","nightmare","кошмар","كابوس","bangungot"],["Salir de la partida","Leave the match","Выйти из матча","الخروج من المباراة","Umalis sa laro"],["Mi perfil","My profile","Мой профиль","ملفي الشخصي","Aking profile"],["Torneos","Tournaments","Турниры","البطولات","Mga torneo"],["4 jugadores","4 players","4 игрока","4 لاعبين","4 manlalaro"],["8 jugadores","8 players","8 игроков","8 لاعبين","8 manlalaro"],["Rellenar los huecos con IA","Fill empty spots with AI","Заполнить свободные места ИИ","ملء الأماكن الشاغرة بالذكاء الاصطناعي","Punan ng AI ang mga bakanteng puwesto"],["Crear torneo","Create tournament","Создать турнир","إنشاء بطولة","Gumawa ng torneo"],["Unirme con código","Join with a code","Войти по коду","الانضمام برمز","Sumali gamit ang code"],["Crear mi usuario","Create my user","Создать моего пользователя","إنشاء مستخدمي","Gawin ang user ko"],["Otro torneo","Another tournament","Другой турнир","بطولة أخرى","Ibang torneo"],["Partida","Match","Матч","المباراة","Laro"],["Pasos del golpe","Shot steps","Шаги удара","خطوات الضربة","Mga hakbang ng tira"],["Campo de fútbol con tres monedas","Football pitch with three coins","Футбольное поле с тремя монетами","ملعب كرة قدم بثلاث عملات","Football field na may tatlong barya"],["Chat con el rival","Chat with your opponent","Чат с соперником","دردشة مع الخصم","Makipag-chat sa kalaban"],["Nombre de usuario","Username","Имя пользователя","اسم المستخدم","Username"],["PIN de 4 números","4-digit PIN","PIN из 4 цифр","رمز PIN من 4 أرقام","4-digit na PIN"],["Repite el PIN","Repeat the PIN","Повтори PIN","أعد كتابة الرمز","Ulitin ang PIN"],["Escribe un mensaje","Write a message","Напиши сообщение","اكتب رسالة","Magsulat ng mensahe"],["Mensaje","Message","Сообщение","رسالة","Mensahe"],["CÓDIGO","CODE","КОД","الرمز","CODE"],["Código de la partida","Match code","Код матча","رمز المباراة","Code ng laro"],["Tu nombre","Your name","Твоё имя","اسمك","Pangalan mo"],["Nombre del torneo (opcional)","Tournament name (optional)","Название турнира (необязательно)","اسم البطولة (اختياري)","Pangalan ng torneo (opsyonal)"],["Nombre del torneo","Tournament name","Название турнира","اسم البطولة","Pangalan ng torneo"],["Código de un torneo","A tournament code","Код турнира","رمز بطولة","Code ng torneo"],["Código del torneo","Tournament code","Код турнира","رمز البطولة","Code ng torneo"],["1. Dirección","1. Direction","1. Прицел","1. الاتجاه","1. Direksyon"],["Toca o arrastra por el campo hacia donde quieres que vaya tu moneda y suelta. La línea de puntos marca el recorrido.","Tap or drag on the pitch towards where you want your coin to go, then release. The dotted line shows the path.","Коснись поля или веди пальцем туда, куда должна полететь монета, и отпусти. Пунктирная линия показывает путь.","المس الملعب أو اسحب نحو المكان الذي تريد أن تذهب إليه عملتك ثم اترك. الخط المنقّط يبيّن المسار.","Pindutin o i-drag sa field papunta sa gusto mong puntahan ng barya mo, saka bitawan. Ang tuldok-tuldok na linya ang daan."],["2. Contacto","2. Contact","2. Контакт","2. التماس","2. Kontak"],["Arrastra a izquierda o derecha y suelta. La traba se desliza y eliges con qué parte del canto golpeas. La moneda curva hacia el lado al que arrastras. Cerca de la punta fina, el golpe pierde fuerza.","Drag left or right and release. The peg slides and you choose which part of the edge you hit with. The coin curves towards the side you drag to. Near the thin tip, the hit loses strength.","Веди влево или вправо и отпусти. Прищепка скользит, и ты выбираешь, какой частью ребра ударить. Монета закручивается в ту сторону, куда ты ведёшь. Ближе к тонкому кончику удар слабее.","اسحب يسارًا أو يمينًا ثم اترك. ينزلق المشبك وتختار أي جزء من الحافة تضرب به. تنحني العملة نحو الجهة التي تسحب إليها. قرب الطرف الرفيع تضعف الضربة.","I-drag pakaliwa o pakanan at bitawan. Dumudulas ang sipit at pipiliin mo kung aling bahagi ng gilid ang tatama. Kumukurba ang barya sa direksyong dina-drag mo. Malapit sa manipis na dulo, humihina ang tama."],["3. Potencia","3. Power","3. Сила","3. القوة","3. Lakas"],["Arrastra hacia abajo para dar potencia y suelta. En ese momento la traba golpea, sin retención.","Drag down to add power, then release. At that moment the peg strikes, with no holding.","Потяни вниз, чтобы задать силу, и отпусти. В этот момент прищепка бьёт чисто, без удержания.","اسحب للأسفل لزيادة القوة ثم اترك. في تلك اللحظة يضرب المشبك ضربة نظيفة دون احتجاز العملة.","I-drag pababa para magdagdag ng lakas, saka bitawan. Sa sandaling iyon tatama ang sipit, walang paghawak."],["Si te equivocas","If you make a mistake","Если что-то не так","إذا أخطأت","Kung nagkamali ka"],["Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».","Tap Direction, Contact or Power on the top bar to go back to that step and fix it before you hit. You can also use “Previous step”.","Нажми «Прицел», «Контакт» или «Сила» на верхней панели, чтобы вернуться к этому шагу и исправить его до удара. Ещё можно нажать «Предыдущий шаг».","المس «الاتجاه» أو «التماس» أو «القوة» في الشريط العلوي للعودة إلى تلك الخطوة وتصحيحها قبل الضرب. ويمكنك أيضًا استخدام «الخطوة السابقة».","Pindutin ang Direksyon, Kontak o Lakas sa itaas na bar para bumalik sa hakbang na iyon at itama ito bago tumira. Puwede mo ring gamitin ang «Nakaraang hakbang»."],["Toca uno para volver a ese paso","Tap one to go back to that step","Нажми на шаг, чтобы вернуться к нему","المس أحدها للعودة إلى تلك الخطوة","Pindutin ang isa para bumalik sa hakbang na iyon"],["Faltas y saques","Fouls and restarts","Фолы и вбрасывания","المخالفات والرميات","Mga foul at restart"],["Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó. En el saque de banda eliges dónde colocarte fuera de la banda; en el córner, el defensor coloca primero su moneda, después el que saca coloca la suya donde quiera y juega dos golpes: sacar y rematar; en el saque de puerta, el rival coloca primero su moneda y quien saca se pone sobre la línea de gol y dispara el balón, que está en el límite del área pequeña.","It is a foul if your coin touches the opposing coin before the ball. After a foul, the opponent places their coin wherever they like, without moving the ball, and plays two shots in a row. If the ball goes out over the sideline it is a throw-in; over the end line it is a corner or a goal kick: the opponent of the last player to touch it takes it. For a throw-in you choose where to stand outside the sideline. For a corner, the defender places their coin first, then the taker places theirs wherever they like and plays two shots: the kick and the finish. For a goal kick, the opponent places their coin first and the taker stands on the goal line and shoots the ball, which sits on the edge of the six-yard box.","Фол — когда твоя монета задевает монету соперника раньше мяча. После фола соперник ставит свою монету куда угодно, не двигая мяч, и бьёт два раза подряд. Если мяч уходит за боковую — это вбрасывание, а за лицевую — угловой или удар от ворот: пробивает соперник того, кто коснулся мяча последним. При вбрасывании ты выбираешь, где встать за боковой линией; при угловом защитник сначала ставит монету, затем пробивающий ставит свою куда угодно и бьёт два раза: подача и добивание; при ударе от ворот соперник сначала ставит монету, а пробивающий встаёт на линию ворот и бьёт по мячу, лежащему на границе вратарской площади.","تُحتسب مخالفة إذا لمست عملتك عملة الخصم قبل الكرة. بعد المخالفة يضع الخصم عملته أينما شاء دون تحريك الكرة ويلعب ضربتين متتاليتين. إذا خرجت الكرة من الخط الجانبي فهي رمية تماس، وإذا خرجت من خط المرمى فهي ركنية أو ضربة مرمى: ينفّذها خصم من لمسها آخرًا. في رمية التماس تختار أين تقف خارج الخط الجانبي؛ وفي الركنية يضع المدافع عملته أولًا، ثم يضع المنفّذ عملته أينما شاء ويلعب ضربتين: التنفيذ والإنهاء؛ وفي ضربة المرمى يضع الخصم عملته أولًا ثم يقف المنفّذ على خط المرمى ويضرب الكرة الموضوعة على حدّ منطقة المرمى الصغيرة.","Foul kapag nauna mong tamaan ng barya mo ang barya ng kalaban bago ang bola. Pagkatapos ng foul, ilalagay ng kalaban ang barya niya kahit saan, nang hindi ginagalaw ang bola, at dalawang sunod na tira ang laro niya. Kung lumabas ang bola sa gilid ng field, throw-in iyon; kung sa dulo, corner o goal kick: ang kalaban ng huling nakahawak ang maglalaro nito. Sa throw-in, ikaw ang pipili kung saan tatayo sa labas ng gilid. Sa corner, unang ilalagay ng defender ang barya niya, tapos ilalagay ng magse-serve ang kaniya kahit saan at dalawang tira ang laro niya: ang serve at ang tapos. Sa goal kick, unang ilalagay ng kalaban ang barya niya at tatayo ang magsa-shoot sa goal line at tatamaan ang bola na nasa gilid ng maliit na area."],["agarre","grip","хват","المقبض","hawakan"],["punta fina","thin tip","тонкий кончик","الطرف الرفيع","manipis na dulo"],["FALTA","FOUL","ФОЛ","مخالفة","FOUL"],["¡FALTA!","FOUL!","ФОЛ!","مخالفة!","FOUL!"],["¡GOL!","GOAL!","ГОЛ!","هدف!","GOAL!"],["SAQUE DE BANDA","THROW-IN","ВБРАСЫВАНИЕ","رمية تماس","THROW-IN"],["CÓRNER","CORNER","УГЛОВОЙ","ركنية","CORNER"],["SAQUE DE PUERTA","GOAL KICK","УДАР ОТ ВОРОТ","ضربة مرمى","GOAL KICK"],["¡Gana {0}!","{0} wins!","Побеждает {0}!","فوز {0}!","Panalo si {0}!"],["Saca {0}","{0} to take it","Пробивает {0}","التنفيذ: {0}","Si {0} ang magse-serve"],["Doble turno para {0}","Double turn for {0}","Двойной ход: {0}","دور مزدوج لصالح {0}","Dobleng turn para kay {0}"],["¡Gol {0}! Saca {1}.","Goal for {0}! {1} to restart.","Гол: {0}! Начинает {1}.","هدف لصالح {0}! التنفيذ: {1}.","Goal para kay {0}! Si {1} ang magse-serve."],["Falta {0}: su moneda tocó a la contraria antes que el balón. Doble turno para {1}.","Foul by {0}: the coin touched the opposing coin before the ball. Double turn for {1}.","Фол ({0}): монета задела монету соперника раньше мяча. Двойной ход: {1}.","مخالفة من {0}: لمست العملة عملة الخصم قبل الكرة. دور مزدوج لصالح {1}.","Foul ni {0}: nauna ang barya sa barya ng kalaban bago ang bola. Dobleng turn para kay {1}."],["Saque de banda: saca {0}.","Throw-in: {0} takes it.","Вбрасывание: подаёт {0}.","رمية تماس: ينفّذها {0}.","Throw-in: si {0} ang magse-serve."],["Córner: saca {0}.","Corner: {0} takes it.","Угловой: подаёт {0}.","ركنية: ينفّذها {0}.","Corner: si {0} ang magse-serve."],["Saque de puerta: saca {0}.","Goal kick: {0} takes it.","Удар от ворот: пробивает {0}.","ضربة مرمى: ينفّذها {0}.","Goal kick: si {0} ang magse-serve."],["Partido de torneo terminado.","Tournament match over.","Матч турнира окончен.","انتهت مباراة البطولة.","Tapos na ang laro sa torneo."],["Partido de torneo terminado","Tournament match over","Матч турнира окончен","انتهت مباراة البطولة","Tapos na ang laro sa torneo"],["Toca el campo para jugar otra vez.","Tap the pitch to play again.","Коснись поля, чтобы сыграть ещё раз.","المس الملعب للعب مرة أخرى.","Pindutin ang field para maglaro ulit."],["Toca el campo para jugar otra vez","Tap the pitch to play again","Коснись поля, чтобы сыграть ещё раз","المس الملعب للعب مرة أخرى","Pindutin ang field para maglaro ulit"],["Cuando esté bien, pulsa «Colocar aquí».","When it looks right, press “Place here”.","Когда всё готово, нажми «Поставить сюда».","عندما يصبح المكان مناسبًا اضغط «ضع هنا».","Kapag ayos na, pindutin ang «Ilagay dito»."],["{0} está colocando su moneda…","{0} is placing their coin…","{0} ставит свою монету…","{0} يضع عملته…","Inilalagay ni {0} ang barya niya…"],["Elige dónde colocar tu moneda, fuera de la banda (toca o arrastra y suelta). El balón está en la línea; después haces tu golpe.","Choose where to place your coin, outside the sideline (tap or drag and release). The ball is on the line; then you take your shot.","Выбери, где поставить монету, за боковой линией (коснись или перетащи и отпусти). Мяч лежит на линии; затем ты бьёшь.","اختر مكان وضع عملتك خارج الخط الجانبي (المس أو اسحب ثم اترك). الكرة على الخط، ثم تنفّذ ضربتك.","Piliin kung saan ilalagay ang barya mo, sa labas ng gilid (pindutin o i-drag at bitawan). Nasa linya ang bola; pagkatapos ay titira ka."],["Coloca tu moneda sobre la línea de gol, dentro del área pequeña (arrastra y suelta). Después disparas el balón.","Place your coin on the goal line, inside the small box (drag and release). Then you shoot the ball.","Поставь монету на линию ворот внутри вратарской площади (перетащи и отпусти). Затем бьёшь по мячу.","ضع عملتك على خط المرمى داخل منطقة المرمى الصغيرة (اسحب ثم اترك). بعدها تسدّد الكرة.","Ilagay ang barya mo sa goal line, sa loob ng maliit na area (i-drag at bitawan). Pagkatapos ay ipa-shoot mo ang bola."],["Coloca tu moneda donde quieras, pero a más de 6 monedas de distancia del balón (zona roja). Después saca tu rival.","Place your coin wherever you like, but more than 6 coins away from the ball (red zone). Then your opponent takes it.","Поставь монету куда угодно, но дальше чем на 6 монет от мяча (красная зона). Затем подаёт соперник.","ضع عملتك أينما شئت لكن على بُعد أكثر من 6 عملات من الكرة (المنطقة الحمراء). بعدها ينفّذ خصمك.","Ilagay ang barya mo kahit saan, pero mahigit 6 na barya ang layo sa bola (pulang zone). Pagkatapos ay ang kalaban mo ang magse-serve."],["Coloca tu moneda donde quieras, pero a más de 6 monedas de distancia del balón (zona roja), fuera del área y del pasillo de tiro hacia tu portería. Después saca tu rival.","Place your coin wherever you like, but more than 6 coins away from the ball (red zone), outside the box and the shooting lane towards your goal. Then your opponent takes it.","Поставь монету куда угодно, но дальше чем на 6 монет от мяча (красная зона), вне штрафной и вне коридора удара к твоим воротам. Затем подаёт соперник.","ضع عملتك أينما شئت لكن على بُعد أكثر من 6 عملات من الكرة (المنطقة الحمراء)، وخارج منطقة الجزاء وممرّ التسديد نحو مرماك. بعدها ينفّذ خصمك.","Ilagay ang barya mo kahit saan, pero mahigit 6 na barya ang layo sa bola (pulang zone), sa labas ng area at ng daanan ng tira papunta sa goal mo. Pagkatapos ay ang kalaban mo ang magse-serve."],["Coloca tu moneda donde quieras, pero sin acercarte más allá de la línea marcada (tres cuartas partes del campo desde tu portería). Después saca tu rival.","Place your coin wherever you like, but no further than the marked line (three quarters of the pitch from your goal). Then your opponent takes it.","Поставь монету куда угодно, но не дальше отмеченной линии (три четверти поля от твоих ворот). Затем подаёт соперник.","ضع عملتك أينما شئت لكن دون تجاوز الخط المحدّد (ثلاثة أرباع الملعب من مرماك). بعدها ينفّذ خصمك.","Ilagay ang barya mo kahit saan, pero hindi lalampas sa markang linya (tatlong-kapat ng field mula sa goal mo). Pagkatapos ay ang kalaban mo ang magse-serve."],["Coloca tu moneda donde quieras, incluso fuera del campo. Después juegas dos golpes: sacar y rematar.","Place your coin wherever you like, even outside the pitch. Then you play two shots: the kick and the finish.","Поставь монету куда угодно, даже за пределами поля. Затем бьёшь два раза: подача и добивание.","ضع عملتك أينما شئت حتى خارج الملعب. بعدها تلعب ضربتين: التنفيذ والإنهاء.","Ilagay ang barya mo kahit saan, kahit sa labas ng field. Pagkatapos ay dalawang tira: ang serve at ang tapos."],["Coloca tu moneda donde quieras dentro del campo; después saca tu rival.","Place your coin wherever you like inside the pitch; then your opponent takes it.","Поставь монету куда угодно внутри поля; затем подаёт соперник.","ضع عملتك أينما شئت داخل الملعب؛ بعدها ينفّذ خصمك.","Ilagay ang barya mo kahit saan sa loob ng field; pagkatapos ay ang kalaban mo ang magse-serve."],["Coloca tu moneda donde quieras: toca o arrastra por el campo y suelta. El balón no se mueve. Después juegas dos golpes seguidos.","Place your coin wherever you like: tap or drag across the pitch and release. The ball doesn’t move. Then you play two shots in a row.","Поставь монету куда угодно: коснись или перетащи по полю и отпусти. Мяч не двигается. Затем бьёшь два раза подряд.","ضع عملتك أينما شئت: المس أو اسحب عبر الملعب ثم اترك. الكرة لا تتحرك. بعدها تلعب ضربتين متتاليتين.","Ilagay ang barya mo kahit saan: pindutin o i-drag sa field at bitawan. Hindi gagalaw ang bola. Pagkatapos ay dalawang sunod na tira."],["Coloca tu moneda donde quieras: toca o arrastra por el campo y suelta. El balón no se mueve. Después haces tu golpe.","Place your coin wherever you like: tap or drag across the pitch and release. The ball doesn’t move. Then you take your shot.","Поставь монету куда угодно: коснись или перетащи по полю и отпусти. Мяч не двигается. Затем делаешь свой удар.","ضع عملتك أينما شئت: المس أو اسحب عبر الملعب ثم اترك. الكرة لا تتحرك. بعدها تنفّذ ضربتك.","Ilagay ang barya mo kahit saan: pindutin o i-drag sa field at bitawan. Hindi gagalaw ang bola. Pagkatapos ay titira ka."],["Turno de {0}. Espera a que golpee.","{0}’s turn. Wait for the shot.","Ходит {0}. Жди удара.","دور {0}. انتظر حتى يضرب.","Turn ni {0}. Hintayin ang tira niya."],["Turno de {0}","{0}’s turn","Ходит {0}","دور {0}","Turn ni {0}"],[" (golpe {0} de 2)"," (shot {0} of 2)"," (удар {0} из 2)"," (الضربة {0} من 2)"," (tira {0} sa 2)"],[", paso 1 de 3. Toca o arrastra hacia donde quieres tirar y suelta para fijar la dirección.",", step 1 of 3. Tap or drag towards where you want to shoot and release to set the direction.",", шаг 1 из 3. Коснись или веди пальцем туда, куда хочешь бить, и отпусти — так задаётся направление.","، الخطوة 1 من 3. المس أو اسحب نحو المكان الذي تريد التسديد إليه ثم اترك لتحديد الاتجاه.",", hakbang 1 sa 3. Pindutin o i-drag papunta sa gusto mong tirahin at bitawan para itakda ang direksyon."],[", paso 2 de 3. Arrastra a izquierda o derecha para elegir con qué parte de la traba golpeas y suelta. La moneda curva hacia ese lado.",", step 2 of 3. Drag left or right to choose which part of the peg you hit with, then release. The coin curves to that side.",", шаг 2 из 3. Веди влево или вправо, чтобы выбрать, какой частью прищепки ударить, и отпусти. Монета закрутится в ту сторону.","، الخطوة 2 من 3. اسحب يسارًا أو يمينًا لتختار أي جزء من المشبك تضرب به ثم اترك. تنحني العملة نحو تلك الجهة.",", hakbang 2 sa 3. I-drag pakaliwa o pakanan para piliin kung aling bahagi ng sipit ang tatama, saka bitawan. Kukurba ang barya sa gilid na iyon."],[", paso 3 de 3. Arrastra hacia abajo para dar potencia y suelta para golpear.",", step 3 of 3. Drag down to add power and release to hit.",", шаг 3 из 3. Потяни вниз, чтобы задать силу, и отпусти для удара.","، الخطوة 3 من 3. اسحب للأسفل لزيادة القوة ثم اترك للضرب.",", hakbang 3 sa 3. I-drag pababa para magdagdag ng lakas at bitawan para tumira."],["Las monedas ruedan…","The coins are rolling…","Монеты катятся…","العملات تتحرك…","Gumugulong ang mga barya…"],["Conexión: {0} ms (máx. {1}) · Fluidez: {2} fps","Connection: {0} ms (max {1}) · Smoothness: {2} fps","Соединение: {0} мс (макс. {1}) · Плавность: {2} к/с","الاتصال: {0} م.ث (الأقصى {1}) · السلاسة: {2} إطار/ث","Koneksyon: {0} ms (max {1}) · Kinis: {2} fps"],["REPETICIÓN","REPLAY","ПОВТОР","إعادة اللقطة","REPLAY"],["REPETICIÓN · GOL {0} DE {1}","REPLAY · GOAL {0} OF {1}","ПОВТОР · ГОЛ {0} ИЗ {1}","إعادة اللقطة · الهدف {0} من {1}","REPLAY · GOAL {0} SA {1}"],["Elige tu equipo. Después elegirás el nivel de la IA.","Pick your team. Then you will choose the AI level.","Выбери команду. Потом выберешь уровень ИИ.","اختر فريقك. بعدها ستختار مستوى الذكاء الاصطناعي.","Piliin ang koponan mo. Pagkatapos ay pipili ka ng antas ng AI."],["Elige tu equipo. Después elegirás cómo jugar el amistoso online.","Pick your team. Then you will choose how to play the online friendly.","Выбери команду. Потом выберешь, как играть онлайн-матч.","اختر فريقك. بعدها ستختار طريقة لعب المباراة الودية عبر الإنترنت.","Piliin ang koponan mo. Pagkatapos ay pipiliin mo kung paano lalaruin ang online na friendly."],["¿Con qué equipo quieres jugar?","Which team do you want to play with?","За какую команду хочешь играть?","بأي فريق تريد أن تلعب؟","Anong koponan ang gusto mong gamitin?"],["Tu equipo","Your team","Твоя команда","فريقك","Iyong koponan"],["Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.","Choose which team you play with; your opponent will see your colours on their screen.","Выбери команду, за которую играешь; соперник увидит твои цвета на своём экране.","اختر الفريق الذي تلعب به؛ سيرى خصمك ألوانك على شاشته.","Piliin kung anong koponan ang gagamitin mo; makikita ng kalaban ang kulay mo sa screen niya."],["Elige el equipo del Jugador {0}. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.","Choose Player {0}’s team. Their coin will carry the club’s colours. If both teams look alike, Player 2 (away) plays in the second kit.","Выбери команду игрока {0}. Его монета будет в цветах клуба. Если команды похожи, игрок 2 (гость) играет во второй форме.","اختر فريق اللاعب {0}. ستحمل عملته ألوان النادي. إذا تشابه الفريقان يلعب اللاعب 2 (الضيف) بالطقم الثاني.","Piliin ang koponan ni Manlalaro {0}. Magdadala ang barya niya ng kulay ng club. Kung magkamukha ang dalawang koponan, gagamit ng pangalawang uniporme si Manlalaro 2 (bisita)."],["Sin equipo","No team","Без команды","بلا فريق","Walang koponan"],["Mejores clubes de Europa","Best clubs in Europe","Лучшие клубы Европы","أفضل أندية أوروبا","Pinakamahuhusay na club sa Europa"],["LaLiga Hypermotion (Segunda)","LaLiga Hypermotion (Second Division)","LaLiga Hypermotion (Сегунда)","لا ليغا هايبرموشن (الدرجة الثانية)","LaLiga Hypermotion (Segunda)"],["¡Buen golpe!","Nice shot!","Отличный удар!","ضربة رائعة!","Magandang tira!"],["¡Suerte!","Good luck!","Удачи!","حظًا موفقًا!","Good luck!"],["¡Vamos!","Let’s go!","Вперёд!","هيا بنا!","Tara na!"],["¡Qué mala suerte!","What bad luck!","Не повезло!","يا لسوء الحظ!","Sayang naman!"],["Buen partido","Good game","Хорошая игра","مباراة جيدة","Magandang laro"],["Di algo a tu rival: no se guarda al terminar la partida.","Say something to your opponent: it isn’t saved when the match ends.","Напиши что-нибудь сопернику: после матча переписка не сохраняется.","قل شيئًا لخصمك: لا تُحفظ الرسائل بعد انتهاء المباراة.","Magsabi ng kahit ano sa kalaban mo: hindi ito sine-save pagkatapos ng laro."],["Rival","Opponent","Соперник","الخصم","Kalaban"],["Tú","You","Ты","أنت","Ikaw"],["IA","AI","ИИ","الذكاء الاصطناعي","AI"],["Tu rival","Your opponent","Твой соперник","خصمك","Ang kalaban mo"],["Elige la dificultad de la IA.","Choose the AI difficulty.","Выбери сложность ИИ.","اختر مستوى صعوبة الذكاء الاصطناعي.","Piliin ang hirap ng AI."],["Crea un amistoso online o únete con el código que te dé tu amigo.","Create an online friendly or join with the code your friend gives you.","Создай онлайн-матч или присоединись по коду, который даст друг.","أنشئ مباراة ودية عبر الإنترنت أو انضم بالرمز الذي يعطيه لك صديقك.","Gumawa ng online na friendly o sumali gamit ang code na ibibigay ng kaibigan mo."],["Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.","Room ready. Give this code to your friend and wait for them to join. Keep this tab open.","Комната готова. Назови этот код другу и жди, пока он зайдёт. Не закрывай эту вкладку.","الغرفة جاهزة. أعطِ هذا الرمز لصديقك وانتظر دخوله. أبقِ هذه الصفحة مفتوحة.","Handa na ang room. Ibigay ang code na ito sa kaibigan mo at hintayin siyang pumasok. Panatilihing bukas ang tab na ito."],["No se ha podido entrar en la sala.","Couldn’t join the room.","Не удалось войти в комнату.","تعذّر الدخول إلى الغرفة.","Hindi nakapasok sa room."],["Se ha perdido la conexión con el servidor (quizá cambiaste de app). Reconectando… la partida sigue guardada.","Connection to the server was lost (maybe you switched apps). Reconnecting… the match is still saved.","Соединение с сервером потеряно (возможно, приложение было свёрнуто). Переподключаемся… матч сохранён.","انقطع الاتصال بالخادم (ربما انتقلت إلى تطبيق آخر). جارٍ إعادة الاتصال… المباراة ما زالت محفوظة.","Nawala ang koneksyon sa server (baka lumipat ka ng app). Muling kumokonekta… naka-save pa rin ang laro."],["Estás jugando contra la IA ({0}).","You are playing against the AI ({0}).","Ты играешь против ИИ ({0}).","أنت تلعب ضد الذكاء الاصطناعي ({0}).","Naglalaro ka laban sa AI ({0})."],["Estás en un amistoso online. Si sales un momento de la app, la conexión se recupera sola al volver.","You are in an online friendly. If you leave the app for a moment, the connection recovers by itself when you come back.","Ты в онлайн-матче. Если ненадолго выйдешь из приложения, соединение восстановится само при возвращении.","أنت في مباراة ودية عبر الإنترنت. إذا غادرت التطبيق للحظة فسيعود الاتصال تلقائيًا عند رجوعك.","Nasa online na friendly ka. Kung saglit kang lumabas sa app, kusang babalik ang koneksyon pagbalik mo."],["Esperando a tu rival…","Waiting for your opponent…","Ждём соперника…","في انتظار خصمك…","Hinihintay ang kalaban mo…"],["Hola, {0}.","Hi, {0}.","Привет, {0}.","مرحبًا {0}.","Hi, {0}."],["Hola, {0}","Hi, {0}","Привет, {0}","مرحبًا {0}","Hi, {0}"],["Un amistoso online se juega contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.","An online friendly is played against a friend from another phone: one creates the match and the other joins with the code.","Онлайн-матч играют против друга с другого телефона: один создаёт игру, другой присоединяется по коду.","تُلعب المباراة الودية عبر الإنترنت ضد صديق من هاتف آخر: أحدكما ينشئ المباراة والآخر ينضم بالرمز.","Nilalaro ang online na friendly laban sa kaibigan mula sa ibang telepono: isa ang gumagawa ng laro at sumasali ang isa gamit ang code."],["Creando la sala…","Creating the room…","Создаём комнату…","جارٍ إنشاء الغرفة…","Gumagawa ng room…"],["Escribe el código que te ha dado tu amigo.","Enter the code your friend gave you.","Введи код, который дал друг.","اكتب الرمز الذي أعطاك إياه صديقك.","I-type ang code na ibinigay ng kaibigan mo."],["{0} ha abandonado la partida. Te has desconectado y la partida queda nula.","{0} left the match. You have been disconnected and the match is void.","Игрок {0} покинул матч. Соединение разорвано, матч аннулирован.","غادر {0} المباراة. تم فصلك وأُلغيت المباراة.","Umalis si {0} sa laro. Na-disconnect ka at walang bisa ang laro."],["Te has desconectado. Ya juegas en local.","You are disconnected. You are now playing locally.","Соединение разорвано. Теперь игра идёт локально.","تم فصلك. أنت الآن تلعب محليًا.","Na-disconnect ka. Naglalaro ka na ngayon nang lokal."],["🏆 ¡Campeón del torneo!","🏆 Tournament champion!","🏆 Чемпион турнира!","🏆 بطل البطولة!","🏆 Kampeon ng torneo!"],["Has sido eliminado","You have been eliminated","Вылет из турнира","لقد تم إقصاؤك","Na-eliminate ka na"],["¡Has ganado!","You won!","Победа!","لقد فزت!","Nanalo ka!"],["¡Ha ganado {0}!","{0} has won!","Победа: {0}!","فاز {0}!","Nanalo si {0}!"],["Has perdido el partido y quedas fuera del torneo.","You lost the match and are out of the tournament.","Матч проигран, ты вылетаешь из турнира.","لقد خسرت المباراة وخرجت من البطولة.","Natalo ka sa laro at wala ka na sa torneo."],["Has ganado {0}. ¡Enhorabuena, campeón!","You won {0}. Congratulations, champion!","Турнир выигран: {0}. Поздравляем, чемпион!","لقد فزت في {0}. مبروك أيها البطل!","Napanalunan mo ang {0}. Congratulations, kampeon!"],["el torneo","the tournament","турнир","البطولة","ang torneo"],["Partido de torneo ganado. Mira el torneo para ver lo que sigue.","Tournament match won. Check the tournament to see what’s next.","Матч турнира выигран. Загляни в турнир, чтобы узнать, что дальше.","فزت بمباراة البطولة. اطّلع على البطولة لمعرفة ما التالي.","Panalo sa laro ng torneo. Tingnan ang torneo para makita ang susunod."],["{0} ha salido al menú principal. Ya no hay revancha.","{0} went back to the main menu. There is no rematch.","Игрок {0} вышел в главное меню. Реванша не будет.","عاد {0} إلى القائمة الرئيسية. لا توجد إعادة للمباراة.","Bumalik si {0} sa pangunahing menu. Wala nang rematch."],["Esperando a que {0} acepte la revancha…","Waiting for {0} to accept the rematch…","Ждём, пока {0} примет реванш…","في انتظار موافقة {0} على إعادة المباراة…","Hinihintay na tanggapin ni {0} ang rematch…"],["{0} quiere la revancha.","{0} wants a rematch.","{0} хочет реванш.","{0} يريد إعادة المباراة.","Gusto ni {0} ng rematch."],["torneo","tournament","турнир","بطولة","torneo"],["Escribe tu nombre y un PIN de 4 números. Sirve para recordarte en cualquier móvil, guardar tus partidos y jugar torneos.","Write your name and a 4-digit PIN. It lets us recognise you on any phone, save your matches and play tournaments.","Введи имя и PIN из 4 цифр. По ним мы узнаем тебя на любом телефоне, сохраним твои матчи и ты сможешь играть в турнирах.","اكتب اسمك ورمز PIN من 4 أرقام. يساعدنا على التعرّف عليك في أي هاتف وحفظ مبارياتك واللعب في البطولات.","I-type ang pangalan mo at 4-digit na PIN. Ito ang magpapakilala sa iyo sa kahit anong telepono, mag-se-save ng mga laro mo at magpapasali sa iyo sa mga torneo."],["Partidos {0} · Ganados {1} · Perdidos {2} · Goles {3}-{4}","Matches {0} · Won {1} · Lost {2} · Goals {3}-{4}","Матчей {0} · Побед {1} · Поражений {2} · Голы {3}-{4}","المباريات {0} · الفوز {1} · الخسارة {2} · الأهداف {3}-{4}","Mga laro {0} · Panalo {1} · Talo {2} · Goals {3}-{4}"],["Aún no has jugado ninguna partida con tu usuario. Entra en una partida online con tu sesión iniciada y se anotará aquí.","You haven’t played any match with your user yet. Join an online match while signed in and it will be recorded here.","У этого пользователя пока нет сыгранных матчей. Зайди в онлайн-матч, будучи авторизованным, и он появится здесь.","لم تلعب أي مباراة بمستخدمك بعد. ادخل مباراة عبر الإنترنت وأنت مسجّل الدخول وستُسجَّل هنا.","Wala ka pang nalarong laro gamit ang user mo. Sumali sa online na laro habang naka-sign in at maitatala ito rito."],["Últimos partidos","Latest matches","Последние матчи","آخر المباريات","Mga huling laro"],["Victoria contra {0} · {1}-{2}","Win against {0} · {1}-{2}","Победа над {0} · {1}-{2}","فوز على {0} · {1}-{2}","Panalo laban kay {0} · {1}-{2}"],["Derrota contra {0} · {1}-{2}","Loss against {0} · {1}-{2}","Поражение от {0} · {1}-{2}","خسارة أمام {0} · {1}-{2}","Talo laban kay {0} · {1}-{2}"],["{0} ganadas de {1}","{0} won out of {1}","Побед: {0} из {1}","فاز بـ{0} من {1}","{0} panalo sa {1}"],["Listo: te recordaremos en este móvil.","Done: we will remember you on this phone.","Готово: мы запомним тебя на этом телефоне.","تم: سنتذكّرك على هذا الهاتف.","Tapos na: maaalala ka namin sa teleponong ito."],["Elige un nombre (de 3 a 14 caracteres) y un PIN de 4 números. Escribe el PIN dos veces para confirmarlo: con él te reconoceremos en cualquier móvil.","Choose a name (3 to 14 characters) and a 4-digit PIN. Type the PIN twice to confirm it: we will recognise you on any phone with it.","Выбери имя (от 3 до 14 символов) и PIN из 4 цифр. Введи PIN дважды для подтверждения: по нему мы узнаем тебя на любом телефоне.","اختر اسمًا (من 3 إلى 14 حرفًا) ورمز PIN من 4 أرقام. اكتب الرمز مرتين للتأكيد: سنتعرّف عليك به في أي هاتف.","Pumili ng pangalan (3 hanggang 14 na character) at 4-digit na PIN. I-type nang dalawang beses ang PIN para kumpirmahin: ito ang magpapakilala sa iyo sa kahit anong telepono."],["Tu sesión ha caducado: entra otra vez con tu nombre y tu PIN.","Your session has expired: sign in again with your name and PIN.","Сессия истекла: войди снова с именем и PIN.","انتهت جلستك: سجّل الدخول مجددًا باسمك ورمز PIN.","Nag-expire ang session mo: mag-sign in ulit gamit ang pangalan at PIN mo."],["Jugados","Played","Сыграно","لُعبت","Nalaro"],["Ganados","Won","Побед","فاز","Panalo"],["Perdidos","Lost","Поражений","خسر","Talo"],["Victorias","Wins","Побед","الانتصارات","Panalo"],["Goles {0} a favor · {1} en contra","Goals {0} for · {1} against","Голы: {0} забито · {1} пропущено","الأهداف: {0} له · {1} عليه","Goals: {0} nai-score · {1} nasalo"],["Puesto {0} de {1}","Rank {0} of {1}","Место {0} из {1}","المركز {0} من {1}","Ika-{0} sa {1}"],["Aún sin clasificar","Not ranked yet","Пока без места","لم يُصنَّف بعد","Wala pang ranggo"],["Racha: {0} victorias","Win streak: {0}","Серия побед: {0}","سلسلة انتصارات: {0}","Sunod-sunod na panalo: {0}"],["Todavía no has jugado con tu usuario. Juega una partida online o un torneo y aparecerá aquí.","You haven’t played with your user yet. Play an online match or a tournament and it will show up here.","У этого пользователя пока нет сыгранных матчей. Сыграй онлайн-матч или турнир, и он появится здесь.","لم تلعب بمستخدمك بعد. العب مباراة عبر الإنترنت أو بطولة وستظهر هنا.","Wala ka pang nalaro gamit ang user mo. Maglaro ng online na laro o torneo at lalabas ito rito."],["Todavía no hay partidas en el ranking. ¡Sé el primero!","There are no matches in the ranking yet. Be the first!","В рейтинге пока нет матчей. Стань первым!","لا توجد مباريات في الترتيب بعد. كن الأول!","Wala pang laro sa ranking. Ikaw ang mauna!"],["No se ha podido cargar el ranking.","Couldn’t load the ranking.","Не удалось загрузить рейтинг.","تعذّر تحميل الترتيب.","Hindi ma-load ang ranking."],["Escribe tu nombre de usuario (mínimo 3 caracteres).","Enter your username (at least 3 characters).","Введи имя пользователя (минимум 3 символа).","اكتب اسم المستخدم (3 أحرف على الأقل).","I-type ang username mo (hindi bababa sa 3 character)."],["El PIN son 4 números.","The PIN is 4 digits.","PIN — это 4 цифры.","رمز PIN مكوّن من 4 أرقام.","Ang PIN ay 4 na numero."],["Los dos PIN no coinciden. Escríbelos de nuevo.","The two PINs don’t match. Type them again.","Два PIN не совпадают. Введи их заново.","رمزا PIN غير متطابقين. اكتبهما من جديد.","Hindi magkapareho ang dalawang PIN. I-type ulit ang mga ito."],["En el iPhone: pulsa el botón Compartir de Safari y elige «Añadir a pantalla de inicio».","On iPhone: tap Safari’s Share button and choose “Add to Home Screen”.","На iPhone: нажми кнопку «Поделиться» в Safari и выбери «На экран “Домой”».","على الآيفون: اضغط زر المشاركة في سفاري واختر «إضافة إلى الشاشة الرئيسية».","Sa iPhone: pindutin ang Share button ng Safari at piliin ang «Add to Home Screen»."],["En el iPhone los avisos solo funcionan con el juego instalado en la pantalla de inicio (Safari → Compartir → «Añadir a pantalla de inicio»).","On iPhone, notifications only work with the game installed on the home screen (Safari → Share → “Add to Home Screen”).","На iPhone уведомления работают только если игра установлена на экран «Домой» (Safari → Поделиться → «На экран “Домой”»).","على الآيفون تعمل التنبيهات فقط إذا كانت اللعبة مثبّتة على الشاشة الرئيسية (سفاري ← مشاركة ← «إضافة إلى الشاشة الرئيسية»).","Sa iPhone, gumagana lang ang mga abiso kapag naka-install ang laro sa home screen (Safari → Share → «Add to Home Screen»)."],["Has bloqueado las notificaciones de esta web. Actívalas en los ajustes de Chrome (icono del candado junto a la dirección → Permisos → Notificaciones).","You have blocked notifications for this site. Turn them on in Chrome’s settings (padlock icon next to the address → Permissions → Notifications).","Уведомления этого сайта заблокированы. Включи их в настройках Chrome (значок замка рядом с адресом → Разрешения → Уведомления).","لقد حظرت إشعارات هذا الموقع. فعّلها من إعدادات كروم (أيقونة القفل بجانب العنوان ← الأذونات ← الإشعارات).","Hinarang mo ang mga notification ng site na ito. I-on ang mga ito sa settings ng Chrome (padlock icon sa tabi ng address → Permissions → Notifications)."],["Avisos activados en este móvil.","Notifications are on for this phone.","Уведомления включены на этом телефоне.","التنبيهات مفعّلة على هذا الهاتف.","Naka-on ang mga abiso sa teleponong ito."],["No se puede usar el modo de avisos en este navegador.","Notifications can’t be used in this browser.","В этом браузере уведомления недоступны.","لا يمكن استخدام التنبيهات في هذا المتصفح.","Hindi magagamit ang mga abiso sa browser na ito."],["No se han podido activar los avisos: {0}","Couldn’t turn on notifications: {0}","Не удалось включить уведомления: {0}","تعذّر تفعيل التنبيهات: {0}","Hindi ma-on ang mga abiso: {0}"],["Final","Final","Финал","النهائي","Final"],["Semifinales","Semi-finals","Полуфинал","نصف النهائي","Semi-finals"],["Cuartos de final","Quarter-finals","Четвертьфинал","ربع النهائي","Quarter-finals"],["Octavos de final","Round of 16","1/8 финала","دور الـ16","Round of 16"],["Dieciseisavos","Round of 32","1/16 финала","دور الـ32","Round of 32"],["Primera ronda","First round","Первый раунд","الجولة الأولى","Unang round"],["Para jugar torneos necesitas un usuario con PIN.","To play tournaments you need a user with a PIN.","Чтобы играть в турнирах, нужен пользователь с PIN.","للعب البطولات تحتاج إلى مستخدم برمز PIN.","Para makasali sa mga torneo, kailangan mo ng user na may PIN."],["Crea un torneo de 4 u 8 jugadores o únete con el código que te den. Se juega por eliminatorias. Los huecos pueden rellenarlos jugadores de verdad o la IA.","Create a tournament for 4 or 8 players or join with a code you are given. It is played as a knockout. Empty spots can be filled by real players or by the AI.","Создай турнир на 4 или 8 игроков или присоединись по коду. Играется на вылет. Свободные места могут занять живые игроки или ИИ.","أنشئ بطولة لـ4 أو 8 لاعبين أو انضم برمز تحصل عليه. تُلعب بنظام خروج المغلوب. يمكن أن يملأ الأماكن الشاغرة لاعبون حقيقيون أو الذكاء الاصطناعي.","Gumawa ng torneo para sa 4 o 8 manlalaro o sumali gamit ang code na ibibigay sa iyo. Knockout ang laban. Ang mga bakanteng puwesto ay mapupunan ng totoong manlalaro o ng AI."],["Inscripción abierta","Registration open","Регистрация открыта","التسجيل مفتوح","Bukas ang rehistrasyon"],["En juego","In progress","Идёт","جارية","Tumatakbo"],["Terminado","Finished","Завершён","انتهت","Tapos na"],["{0} de {1} jugadores","{0} of {1} players","{0} из {1} игроков","{0} من {1} لاعبين","{0} sa {1} manlalaro"],["(+ IA {0})","(+ AI {0})","(+ ИИ: {0})","(+ ذكاء اصطناعي {0})","(+ AI {0})"],["Organiza {0}","Organised by {0}","Организатор: {0}","المنظّم: {0}","Inorganisa ni {0}"],["🏆 Campeón: {0}","🏆 Champion: {0}","🏆 Чемпион: {0}","🏆 البطل: {0}","🏆 Kampeon: {0}"],["Inscritos: {0}","Registered: {0}","Участники: {0}","المسجّلون: {0}","Nakarehistro: {0}"],["Empezar (las IA rellenan los huecos)","Start (AI fills the empty spots)","Начать (ИИ займёт свободные места)","ابدأ (الذكاء الاصطناعي يملأ الأماكن الشاغرة)","Magsimula (pupunan ng AI ang mga bakante)"],["Empezar torneo","Start tournament","Начать турнир","بدء البطولة","Simulan ang torneo"],["Salirme","Leave","Выйти","انسحاب","Umalis"],["Apuntarme","Sign me up","Записаться","تسجيلي","Magpalista"],["Pasa el código a tus amigos (hasta {0}).","Share the code with your friends (up to {0}).","Передай код друзьям (до {0}).","أعطِ الرمز لأصدقائك (حتى {0}).","Ibigay ang code sa mga kaibigan mo (hanggang {0})."],["Puedes empezar cuando quieras: los huecos que queden los juega la IA.","You can start whenever you like: any empty spots are played by the AI.","Можно начинать в любой момент: свободные места займёт ИИ.","يمكنك البدء متى شئت: ستلعب الأماكن الشاغرة بالذكاء الاصطناعي.","Puwede kang magsimula kahit kailan: ang AI ang maglalaro sa mga bakante."],["Empieza cuando estéis todos; si falta gente, algunos pasan la primera ronda sin jugar.","Start when everyone is here; if people are missing, some go through the first round without playing.","Начинайте, когда соберутся все; если кого-то не хватает, некоторые пройдут первый раунд без игры.","ابدؤوا عندما يحضر الجميع؛ وإذا نقص العدد فسيعبر بعضهم الجولة الأولى دون لعب.","Magsimula kapag kumpleto na kayo; kung kulang ang tao, may ilang makakapasa sa unang round nang hindi naglalaro."],["Tu partido: contra {0}","Your match: against {0}","Твой матч: против {0}","مباراتك: ضد {0}","Ang laro mo: laban kay {0}"],["Jugar mi partido","Play my match","Играть мой матч","العب مباراتي","Laruin ang laro ko"],["Ahora mismo no tienes partido pendiente: espera a que terminen los demás.","You have no pending match right now: wait for the others to finish.","Сейчас у тебя нет ожидающего матча: подожди, пока закончат остальные.","ليس لديك مباراة معلّقة الآن: انتظر حتى ينتهي الآخرون.","Wala kang nakabinbing laro ngayon: hintayin matapos ang iba."],["(pasa directo)","(goes straight through)","(проходит дальше без игры)","(يتأهل مباشرة)","(diretso na)"],["Gana {0}","{0} wins","Победа {0}","فوز {0}","Panalo si {0}"],["Por decidir","To be decided","Ещё не определено","لم يُحدَّد بعد","Hindi pa tiyak"],["vs","vs","vs","ضد","vs"],["Preparando tu partido…","Preparing your match…","Готовим твой матч…","جارٍ تجهيز مباراتك…","Inihahanda ang laro mo…"],["Escribe el código del torneo.","Enter the tournament code.","Введи код турнира.","اكتب رمز البطولة.","I-type ang code ng torneo."],["IA fácil: nivel base fácil, pero cada rival juega mejor o peor según lo bueno que sea su equipo hoy en el fútbol mundial.","Easy AI: easy base level, but each opponent plays better or worse depending on how good their team is in world football today.","ИИ «лёгкий»: базовый уровень лёгкий, но каждый соперник играет лучше или хуже в зависимости от того, насколько силён его клуб в мировом футболе сегодня.","ذكاء اصطناعي سهل: مستوى أساسي سهل، لكن كل خصم يلعب أفضل أو أسوأ بحسب قوة فريقه اليوم في كرة القدم العالمية.","Madaling AI: madali ang batayang antas, pero mas mahusay o mas mahina ang laro ng bawat kalaban depende sa lakas ng koponan nila ngayon sa mundo ng football."],["IA normal: nivel base normal, ajustado por lo bueno que sea cada equipo rival (un grande juega mejor que un equipo pequeño).","Normal AI: normal base level, adjusted by how good each opposing team is (a big club plays better than a small one).","ИИ «нормальный»: базовый уровень нормальный, с поправкой на силу клуба соперника (топ-клуб играет лучше слабого).","ذكاء اصطناعي عادي: مستوى أساسي عادي يُعدَّل بحسب قوة كل فريق خصم (الفريق الكبير يلعب أفضل من الصغير).","Katamtamang AI: katamtaman ang batayang antas, inaayos ayon sa lakas ng bawat koponang kalaban (mas mahusay maglaro ang malaking club kaysa sa maliit)."],["IA difícil: nivel base difícil, ajustado por lo bueno que sea cada equipo rival.","Hard AI: hard base level, adjusted by how good each opposing team is.","ИИ «сложный»: базовый уровень сложный, с поправкой на силу клуба соперника.","ذكاء اصطناعي صعب: مستوى أساسي صعب يُعدَّل بحسب قوة كل فريق خصم.","Mahirap na AI: mahirap ang batayang antas, inaayos ayon sa lakas ng bawat koponang kalaban."],["IA pesadilla: el máximo nivel base, ajustado por lo bueno que sea cada equipo rival.","Nightmare AI: the highest base level, adjusted by how good each opposing team is.","ИИ «кошмар»: максимальный базовый уровень, с поправкой на силу клуба соперника.","ذكاء اصطناعي كابوس: أعلى مستوى أساسي، يُعدَّل بحسب قوة كل فريق خصم.","Bangungot na AI: ang pinakamataas na batayang antas, inaayos ayon sa lakas ng bawat koponang kalaban."],["Copa de {0}","{0}’s Cup","Кубок {0}","كأس {0}","Copa ni {0}"],["IA {0}","AI {0}","ИИ {0}","ذكاء {0}","AI {0}"],["Lobo","Wolf","Волк","الذئب","Lobo"],["Halcón","Falcon","Сокол","الصقر","Falcon"],["Tigre","Tiger","Тигр","النمر","Tigre"],["Toro","Bull","Бык","الثور","Toro"],["Zorro","Fox","Лис","الثعلب","Zorro"],["Águila","Eagle","Орёл","النسر","Agila"],["Oso","Bear","Медведь","الدب","Oso"],["Pantera","Panther","Пантера","الفهد","Panter"],["Versión {0}","Version {0}","Версия {0}","الإصدار {0}","Bersyon {0}"],["El partido sigue en curso. Vuelve con «Volver al partido».","The match is still in progress. Return with “Back to the match”.","Матч продолжается. Вернись с помощью «Вернуться в матч».","المباراة ما زالت جارية. عُد بالضغط على «العودة إلى المباراة».","Tumatakbo pa ang laro. Bumalik gamit ang «Bumalik sa laro»."],["Pulsa otra vez atrás para salir del juego","Press back again to leave the game","Нажми «назад» ещё раз, чтобы выйти из игры","اضغط رجوع مرة أخرى للخروج من اللعبة","Pindutin ulit ang back para lumabas sa laro"],["Idioma","Language","Язык","اللغة","Wika"],["No se puede conectar con el servidor. Comprueba tu conexión.","Can’t connect to the server. Check your connection.","Не удаётся подключиться к серверу. Проверь соединение.","تعذّر الاتصال بالخادم. تحقّق من اتصالك.","Hindi makakonekta sa server. Suriin ang koneksyon mo."],["Error del servidor","Server error","Ошибка сервера","خطأ في الخادم","Error sa server"],["No encontrado","Not found","Не найдено","غير موجود","Hindi nahanap"],["Sesión caducada: vuelve a entrar con tu nombre y tu PIN.","Session expired: sign in again with your name and PIN.","Сессия истекла: войди снова с именем и PIN.","انتهت الجلسة: سجّل الدخول مجددًا باسمك ورمز PIN.","Nag-expire ang session: mag-sign in ulit gamit ang pangalan at PIN mo."],["Este móvil no admite avisos.","This phone doesn’t support notifications.","Этот телефон не поддерживает уведомления.","هذا الهاتف لا يدعم التنبيهات.","Hindi sinusuportahan ng teleponong ito ang mga abiso."],["No existe ese jugador.","That player doesn’t exist.","Такого игрока нет.","هذا اللاعب غير موجود.","Walang ganoong manlalaro."],["El nombre debe tener de 3 a 14 caracteres (letras, números, espacio, guion o punto).","The name must be 3 to 14 characters (letters, numbers, space, hyphen or dot).","Имя должно содержать от 3 до 14 символов (буквы, цифры, пробел, дефис или точка).","يجب أن يتكوّن الاسم من 3 إلى 14 حرفًا (حروف أو أرقام أو مسافة أو شرطة أو نقطة).","Dapat 3 hanggang 14 na character ang pangalan (letra, numero, espasyo, gitling o tuldok)."],["Los dos PIN no coinciden.","The two PINs don’t match.","Два PIN не совпадают.","رمزا PIN غير متطابقين.","Hindi magkapareho ang dalawang PIN."],["Ese nombre ya está cogido. Si eres tú, pulsa «Entrar».","That name is already taken. If it’s you, press “Sign in”.","Это имя уже занято. Если это ты, нажми «Войти».","هذا الاسم مأخوذ بالفعل. إذا كنت أنت فاضغط «دخول».","Gamit na ang pangalang iyon. Kung ikaw iyon, pindutin ang «Pumasok»."],["Nombre o PIN incorrectos.","Wrong name or PIN.","Неверное имя или PIN.","الاسم أو رمز PIN غير صحيح.","Mali ang pangalan o PIN."],["Demasiados intentos. Prueba de nuevo en {0} min.","Too many attempts. Try again in {0} min.","Слишком много попыток. Попробуй снова через {0} мин.","محاولات كثيرة جدًا. حاول مجددًا بعد {0} دقيقة.","Masyadong maraming subok. Subukan ulit pagkatapos ng {0} min."],["No existe ese torneo.","That tournament doesn’t exist.","Такого турнира нет.","هذه البطولة غير موجودة.","Walang ganoong torneo."],["Ese torneo ya ha empezado.","That tournament has already started.","Этот турнир уже начался.","بدأت هذه البطولة بالفعل.","Nagsimula na ang torneong iyon."],["El torneo está completo ({0} jugadores).","The tournament is full ({0} players).","Турнир заполнен ({0} игроков).","البطولة مكتملة ({0} لاعبين).","Puno na ang torneo ({0} manlalaro)."],["El creador no puede salirse: si quieres cancelarlo, simplemente no lo empieces.","The creator can’t leave: if you want to cancel it, just don’t start it.","Создатель не может выйти: если хочешь отменить турнир, просто не начинай его.","لا يمكن للمنشئ الانسحاب: إذا أردت إلغاءها فلا تبدأ البطولة.","Hindi puwedeng umalis ang gumawa: kung gusto mong kanselahin, huwag mo lang simulan."],["Solo el creador puede empezar el torneo.","Only the creator can start the tournament.","Только создатель может начать турнир.","المنشئ وحده يستطيع بدء البطولة.","Ang gumawa lang ang makakapagsimula ng torneo."],["Hacen falta al menos 2 jugadores (o activa las IA al crear el torneo).","At least 2 players are needed (or turn on the AI when creating the tournament).","Нужно не менее 2 игроков (или включи ИИ при создании турнира).","يلزم لاعبان على الأقل (أو فعّل الذكاء الاصطناعي عند إنشاء البطولة).","Kailangan ng hindi bababa sa 2 manlalaro (o i-on ang AI sa paggawa ng torneo)."],["Ahora mismo no tienes ningún partido pendiente.","You have no pending match right now.","Сейчас у тебя нет ожидающих матчей.","ليس لديك أي مباراة معلّقة الآن.","Wala kang nakabinbing laro ngayon."],["Solo el creador puede decidirlo.","Only the creator can decide this.","Это может решить только создатель.","المنشئ وحده يستطيع تحديد ذلك.","Ang gumawa lang ang makapagpapasya nito."],["Ese partido no está pendiente.","That match isn’t pending.","Этот матч не ожидает игры.","هذه المباراة ليست معلّقة.","Hindi nakabinbin ang larong iyon."],["Esta sala ya tiene dos jugadores.","This room already has two players.","В этой комнате уже два игрока.","هذه الغرفة فيها لاعبان بالفعل.","May dalawang manlalaro na ang room na ito."],["Esta sala está completa.","This room is full.","Эта комната заполнена.","هذه الغرفة ممتلئة.","Puno na ang room na ito."],["Conectando…","Connecting…","Подключение…","جارٍ الاتصال…","Kumokonekta…"]];
+const TR=LANG==='es'?null:(()=>{const k={en:1,ru:2,ar:3,fil:4}[LANG],o={};for(const r of TB)o[r[0]]=r[k];return o;})();
+const $t=(s,...a)=>{const r=(TR&&TR[s]!==undefined)?TR[s]:s;return a.length?r.replace(/\{(\d)\}/g,(m,i)=>a[+i]===undefined?m:a[+i]):r;};
+const RTLC=LANG==='ar',LOCALE={es:'es-ES',en:'en-GB',ru:'ru-RU',ar:'ar-u-nu-latn',fil:'fil-PH'}[LANG];
+const DISPF=(LANG==='ru'||LANG==='ar')?'"Roboto Condensed","Noto Sans Arabic",Arial,sans-serif':'"Big Shoulders Display",Impact,sans-serif';
+const bn=n=>{                              // nombres que pone el servidor: «IA Lobo», «Copa de Ana»
+  if(!TR||typeof n!=='string')return n;
+  let m=n.match(/^IA (Lobo|Halcón|Tigre|Toro|Zorro|Águila|Oso|Pantera)$/);if(m)return $t('IA {0}',$t(m[1]));
+  m=n.match(/^IA (fácil|normal|difícil|pesadilla)$/);if(m)return $t('IA {0}',$t(m[1]));
+  m=n.match(/^Copa de (.+)$/);if(m)return $t('Copa de {0}',m[1]);
+  return n;
+};
+const errT=m=>{                            // errores del servidor (llegan en español)
+  if(!TR||typeof m!=='string')return m;
+  if(TR[m]!==undefined)return TR[m];
+  let x=m.match(/^Demasiados intentos\. Prueba de nuevo en (\d+) min\.$/);if(x)return $t('Demasiados intentos. Prueba de nuevo en {0} min.',x[1]);
+  x=m.match(/^El torneo está completo \((\d+) jugadores\)\.$/);if(x)return $t('El torneo está completo ({0} jugadores).',x[1]);
+  return m;
+};
+(function(){
+  document.documentElement.lang=LANG;
+  if(RTLC)document.documentElement.classList.add('rtl');
+  if(LANG==='ru'||LANG==='ar'){
+    try{const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&display=swap';document.head.appendChild(l);}catch(e){}
+    document.documentElement.style.setProperty('--display',DISPF);
+  }
+  try{if(window.caches)caches.open('fmon-prefs').then(c=>c.put('lang',new Response(LANG))).catch(()=>{});}catch(e){}   // el service worker lo usa para traducir los avisos
+  if(TR){                                    // textos del HTML: se traducen una vez al cargar
+    const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
+    for(const n of ns){const p=n.parentNode;if(p&&/^(SCRIPT|STYLE)$/.test(p.tagName))continue;const m=n.nodeValue.match(/^(\s*)([\s\S]*?)(\s*)$/);if(m[2]&&TR[m[2]]!==undefined)n.nodeValue=m[1]+TR[m[2]]+m[3];}
+    for(const e of document.querySelectorAll('[placeholder],[aria-label],[title]'))for(const a of ['placeholder','aria-label','title']){const v=e.getAttribute(a);if(v&&TR[v]!==undefined)e.setAttribute(a,TR[v]);}
+  }
+  const b=document.getElementById('wlang');                  // selector de idioma (pantalla principal): al cambiar se recarga
+  if(b){
+    const lb=document.createElement('span');lb.className='wlbl';lb.textContent='🌐';b.appendChild(lb);
+    for(const [c,n] of LANGS){const x=document.createElement('button');x.type='button';x.textContent=n;x.lang=c;if(c===LANG){x.classList.add('sel');x.setAttribute('aria-pressed','true');}
+      x.addEventListener('click',()=>{if(c===LANG)return;try{localStorage.setItem(LKEY,c);}catch(e){}location.reload();});b.appendChild(x);}
+  }
+})();
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let rmTm=0,rmOn=false;   // cartel de revancha
 async function tChamp(){                   // tras ganar un partido de torneo: si el torneo ya ha terminado, eres el campeón
@@ -501,6 +556,7 @@ const TEAMS=[
 ];
 const TGROUPS=[[0,'LaLiga EA Sports'],[20,'LaLiga Hypermotion (Segunda)'],[42,'Mejores clubes de Europa']];
 let team=[-1,-1];
+if(TR){const EX={'Bayern Múnich':'Bayern Munich','Nápoles':'Napoli','Oporto':'Porto','Olympique de Marsella':'Olympique de Marseille','Marsella':'Marseille','París Saint-Germain':'Paris Saint-Germain'};for(const t of TEAMS){if(EX[t[0]])t[0]=EX[t[0]];if(EX[t[1]])t[1]=EX[t[1]];}}   // exónimos: en otros idiomas se usan los nombres de cada club
 const AWAY='S,#1D2A44,#EE2523|S,#1B2F6B,#CB3524|S,#0A1F44,#D91A21|S,#1E2A5A,#8AC3EE|S,#111111,#0761AF|S,#111111,#00A650|S,#F2C500,#A50044|S,#F2F2F2,#005999|S,#FFFFFF,#C8102E|S,#0B5FA5,#FFFFFF|S,#FFFFFF,#00A550|S,#111111,#E4002B|S,#FFFFFF,#0057B8|S,#111111,#0074C8|S,#111111,#0BB363|S,#1E2A5A,#FEBE10|S,#111111,#0067B1|S,#C8102E,#FFFFFF|S,#111111,#F29A00|S,#111111,#FFE667|S,#0A3D91,#FFFFFF|S,#111111,#FFFFFF|S,#D50000,#FFFFFF|S,#0033A0,#FFDD00|S,#FFFFFF,#111111|S,#FFFFFF,#0A3D91|S,#FFFFFF,#0A5DA8|S,#0A3D91,#FFFFFF|S,#FFFFFF,#0A5DA8|S,#1E2A5A,#B5DDF5|S,#FFFFFF,#0B8A3B|S,#F2C400,#0A3D91|S,#111111,#C8102E|S,#111111,#C8102E|S,#111111,#0067B1|S,#111111,#C8102E|S,#FFFFFF,#003DA5|S,#C8102E,#FFFFFF|S,#FFFFFF,#5B2C83|S,#FFFFFF,#0A3D91|S,#FFFFFF,#C8102E|S,#0A3D91,#FFDD00|S,#1C2C5B,#6CABDD|S,#F2C500,#1C2C5B|S,#FFFFFF,#C8102E|S,#FFFFFF,#034694|S,#FFFFFF,#DA291C|S,#132257,#FFFFFF|S,#0A3D91,#FFFFFF|S,#FFFFFF,#670E36|S,#FFFFFF,#0A3D91|S,#FFFFFF,#FB090B|S,#111111,#FFFFFF|S,#FFFFFF,#12A0D7|S,#FFFFFF,#1E71B8|S,#FFFFFF,#8E1F2F|S,#0A1F44,#DC052D|S,#111111,#FDE100|S,#111111,#E32221|S,#FFFFFF,#004170|S,#2FAEE0,#FFFFFF|S,#111111,#E30613|S,#FFFFFF,#00875A|S,#FFFFFF,#003D8C'.split('|').map(k=>k.split(','));   // segunda equipación de cada club (mismo orden que TEAMS)
 const rgb=h=>{const n=parseInt(h.slice(1),16);return[n>>16,(n>>8)&255,n&255];};
 const cdist=(a,b)=>{const x=rgb(a),y=rgb(b);return Math.hypot(x[0]-y[0],x[1]-y[1],x[2]-y[2]);};
@@ -757,16 +813,24 @@ function callFoul(reason){
 }
 function newGame(){if(net&&net.local){net.g.newGame();return;}score=[0,0];over=false;reset(0);}
 function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.p*55,f:s.f,e:s.e,spin:s.spin};ui();}
-const dn=i=>names[i]||(net&&net.me===i&&acct?acct.name:'')||(team[i]>=0?TEAMS[team[i]][1]:'Jugador '+(i+1));
-const fixN=t=>String(t).replace(/\b(?:(del|al|el|El) )?Jugador ([12])/g,(m,p,d)=>(p==='del'?'de ':p==='al'?'a ':'')+dn(d-1));   // sin artículo delante del nombre: «Gana CHICHA83», «Doble turno para CHICHA83»
-function statusText(){return fixN(statusText0())+((phase==='place'&&mine()&&!over)?' Cuando esté bien, pulsa «Colocar aquí».':'');}
+const dn=i=>bn(names[i])||(net&&net.me===i&&acct?acct.name:'')||(team[i]>=0?TEAMS[team[i]][1]:$t('Jugador {0}',i+1));
+const fixN0=t=>String(t).replace(/\b(?:(del|al|el|El) )?Jugador ([12])/g,(m,p,d)=>(p==='del'?'de ':p==='al'?'a ':'')+dn(d-1));
+const fixN=t=>{                            // el motor sigue hablando en español: aquí se traduce al idioma elegido y se pone el nombre de cada jugador
+  t=String(t);if(!TR)return fixN0(t);
+  const a=[],norm=t.replace(/\b(?:(?:del|al|el|El) )?Jugador ([12])/g,(m,d)=>{a.push(dn(d-1));return '{'+(a.length-1)+'}';}),k=norm.trim();
+  if(TR[k]!==undefined)return $t(k,...a);
+  const m=k.match(/^\{0\}, (\S[\s\S]*)$/);   // modo local: «Jugador 2, coloca…»
+  if(m){const K=m[1].charAt(0).toUpperCase()+m[1].slice(1);if(TR[K]!==undefined){const x=$t(K,...a.slice(1));return a[0]+(RTLC?'، ':', ')+x.charAt(0).toLowerCase()+x.slice(1);}}
+  return fixN0(t);
+};   // sin artículo delante del nombre: «Gana CHICHA83», «Doble turno para CHICHA83»
+function statusText(){return fixN(statusText0())+((phase==='place'&&mine()&&!over)?' '+$t('Cuando esté bien, pulsa «Colocar aquí».'):'');}
 function statusText0(){
-  if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':''):'Toca el campo para jugar otra vez.');
+  if(over)return fixN('¡Gana el Jugador '+(msg?msg.s+1:1)+'!')+' '+(net?(net.tn?$t('Partido de torneo terminado.'):''):$t('Toca el campo para jugar otra vez.'));
   if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca Jugador '+(msg?2-msg.s:2)+'.';
   if(phase==='foul'&&msg&&msg.restart)return msg.t.charAt(0)+msg.t.slice(1).toLowerCase()+': saca Jugador '+(foulBen+1)+'.';
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
   if(phase==='place'){
-    if(net&&turn!==net.me)return dn(turn)+' está colocando su moneda…';
+    if(net&&turn!==net.me)return $t('{0} está colocando su moneda…',dn(turn));
     const who=net?'':'Jugador '+(turn+1)+', ';
     if(pm.m==='side')return who+(net?'Elige':'elige')+' dónde colocar tu moneda, fuera de la banda (toca o arrastra y suelta). El balón está en la línea; después haces tu golpe.';
     if(pm.m==='line')return who+(net?'Coloca':'coloca')+' tu moneda sobre la línea de gol, dentro del área pequeña (arrastra y suelta). Después disparas el balón.';
@@ -777,13 +841,13 @@ function statusText0(){
     return (net?'Coloca':'Jugador '+(turn+1)+', coloca')+' tu moneda donde quieras: toca o arrastra por el campo y suelta. '+(dbl?'El balón no se mueve. Después juegas dos golpes seguidos.':'El balón no se mueve. Después haces tu golpe.');
   }
   if(phase==='aim'){
-    if(net&&turn!==net.me)return 'Turno de '+dn(turn)+'. Espera a que golpee.';
-    const j='Turno de '+dn(turn)+(dbl?' (golpe '+(3-movesLeft)+' de 2)':'');
-    if(step===1)return j+', paso 1 de 3. Toca o arrastra hacia donde quieres tirar y suelta para fijar la dirección.';
-    if(step===2)return j+', paso 2 de 3. Arrastra a izquierda o derecha para elegir con qué parte de la traba golpeas y suelta. La moneda curva hacia ese lado.';
-    return j+', paso 3 de 3. Arrastra hacia abajo para dar potencia y suelta para golpear.';
+    if(net&&turn!==net.me)return $t('Turno de {0}. Espera a que golpee.',dn(turn));
+    const j=$t('Turno de {0}',dn(turn))+(dbl?$t(' (golpe {0} de 2)',3-movesLeft):'');
+    if(step===1)return j+$t(', paso 1 de 3. Toca o arrastra hacia donde quieres tirar y suelta para fijar la dirección.');
+    if(step===2)return j+$t(', paso 2 de 3. Arrastra a izquierda o derecha para elegir con qué parte de la traba golpeas y suelta. La moneda curva hacia ese lado.');
+    return j+$t(', paso 3 de 3. Arrastra hacia abajo para dar potencia y suelta para golpear.');
   }
-  return 'Las monedas ruedan…';
+  return $t('Las monedas ruedan…');
 }
 function ui(){
   $('s0').textContent=score[0];$('s1').textContent=score[1];
@@ -1023,9 +1087,9 @@ function draw(ts){
   try{
     draw0(ts);
     ctx.setTransform(2,0,0,2,-2*VM,-2*VM);
-    const e=replays[rpIdx],tx=rpAuto?'REPETICIÓN'+(rpRun?' ×0,5':' ×1'):'REPETICIÓN · GOL '+(rpIdx+1)+' DE '+replays.length+(e?' · '+dn(e.by):'');
+    const e=replays[rpIdx],tx=rpAuto?$t('REPETICIÓN')+(rpRun?(TR?' ×0.5':' ×0,5'):' ×1'):$t('REPETICIÓN · GOL {0} DE {1}',rpIdx+1,replays.length)+(e?' · '+dn(e.by):'');
     const lit=((ts/420)|0)%2===0;   // cartel luminoso intermitente
-    ctx.font='800 26px "Big Shoulders Display",Impact,sans-serif';const w=ctx.measureText(tx).width+36;
+    ctx.font='800 26px '+DISPF;ctx.direction=RTLC?'rtl':'ltr';const w=ctx.measureText(tx).width+36;
     ctx.save();
     if(lit){ctx.shadowColor='rgba(255,60,70,.95)';ctx.shadowBlur=22;}
     ctx.fillStyle=lit?'rgba(226,40,57,.97)':'rgba(70,14,20,.92)';ctx.beginPath();ctx.roundRect?ctx.roundRect(W/2-w/2,38,w,40,20):ctx.rect(W/2-w/2,38,w,40);ctx.fill();
@@ -1089,10 +1153,10 @@ function draw0(ts){
   ctx.setTransform(2,0,0,2,-2*VM,-2*VM);   // mismo recorte que el campo: el aviso queda centrado
   if(msg){
     ctx.fillStyle='rgba(255,255,255,.86)';ctx.fillRect(0,CY-120,W,240);
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(fixN(msg.t).length>9?'800 52px':'800 100px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(fixN(msg.t),W/2,CY-42);
-    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px':'800 52px')+' "Big Shoulders Display",Impact,sans-serif';ctx.fillText(msg.foul?fixN(msg.sub):score[0]+'  -  '+score[1],W/2,CY+30);
-    if(over&&!(net&&!net.tn)){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net?'Partido de torneo terminado':'Toca el campo para jugar otra vez',W/2,CY+88);}
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.direction=RTLC?'rtl':'ltr';
+    const mt=fixN(msg.t);ctx.fillStyle=msg.foul?RED:PC[msg.s];ctx.font=(mt.length>9?'800 52px ':'800 100px ')+DISPF;{const w0=ctx.measureText(mt).width;if(w0>W-50)ctx.font='800 '+Math.max(18,Math.floor((mt.length>9?52:100)*(W-50)/w0))+'px '+DISPF;}ctx.fillText(mt,W/2,CY-42);
+    ctx.fillStyle='#141B24';ctx.font=(msg.foul?'800 40px ':'800 52px ')+DISPF;const st=msg.foul?fixN(msg.sub):score[0]+'  -  '+score[1];{const w1=ctx.measureText(st).width;if(w1>W-50)ctx.font=(msg.foul?'800 ':'800 ')+Math.max(18,Math.floor((msg.foul?40:52)*(W-50)/w1))+'px '+DISPF;}ctx.fillText(st,W/2,CY+30);
+    if(over&&!(net&&!net.tn)){ctx.fillStyle='#546171';ctx.font='600 22px Karla,system-ui,sans-serif';ctx.fillText(net?$t('Partido de torneo terminado'):$t('Toca el campo para jugar otra vez'),W/2,CY+88);}
   }
 }
 
@@ -1152,7 +1216,7 @@ function goStep(n){
   step=n;drag=null;ui();
 }
 for(let i=1;i<=3;i++)$('st'+i).addEventListener('click',()=>goStep(i));
-$('menubtn').addEventListener('click',()=>{menuSync();menuTour();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt){const a=(net.rs||[net.rtt]).slice().sort((x,y)=>x-y);r.textContent='Conexión: '+a[Math.floor(a.length/2)]+' ms (máx. '+a[a.length-1]+') · Fluidez: '+fpsNow+' fps';}}}$('menu').hidden=false;});
+$('menubtn').addEventListener('click',()=>{menuSync();menuTour();{const r=$('rtt');if(r){r.hidden=!(net&&!net.local&&net.rtt);if(net&&net.rtt){const a=(net.rs||[net.rtt]).slice().sort((x,y)=>x-y);r.textContent=$t('Conexión: {0} ms (máx. {1}) · Fluidez: {2} fps',a[Math.floor(a.length/2)],a[a.length-1],fpsNow);}}}$('menu').hidden=false;});
 $('menuclose').addEventListener('click',()=>{$('menu').hidden=true;});
 $('menu').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&b.id!=='snd'&&b.id!=='menuclose')$('menu').hidden=true;});
 $('back').addEventListener('click',()=>{
@@ -1161,11 +1225,11 @@ $('back').addEventListener('click',()=>{
   step--;drag=null;ui();
 });
 $('newgame').addEventListener('click',()=>{
-  if(net&&net.local)startFlow('ai',()=>{openNet();netView('ai','Elige la dificultad de la IA.');});
+  if(net&&net.local)startFlow('ai',()=>{openNet();netView('ai',$t('Elige la dificultad de la IA.'));});
   else startFlow('loc',()=>{newGame();});
 });
 $('snd').addEventListener('click',()=>{
-  soundOn=!soundOn;ensureAudio();$('snd').setAttribute('aria-pressed',String(soundOn));$('snd').textContent='Sonido: '+(soundOn?'sí':'no');
+  soundOn=!soundOn;ensureAudio();$('snd').setAttribute('aria-pressed',String(soundOn));$('snd').textContent=$t(soundOn?'Sonido: sí':'Sonido: no');
 });
 
 /* ---------- bucle ---------- */
@@ -1252,29 +1316,29 @@ function frame(ts){
 const coinSvg=(x,y,r,ring)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#D8B255" stroke="#8E6C1E"/><circle cx="${x}" cy="${y}" r="${r*.62}" fill="#E3E7EC" stroke="${ring}" stroke-width="3"/>`;
 const arrowHead=(x,y,a)=>`<polygon points="0,-6 12,0 0,6" fill="#141B24" transform="translate(${x} ${y}) rotate(${a})"/>`;
 const stickSvg=(x,y,w)=>`<rect x="${x}" y="${y}" width="${w}" height="16" rx="3" fill="#DDBB86" stroke="#8A6236"/><rect x="${x+w*.4-2}" y="${y}" width="4" height="16" fill="rgba(110,70,30,.65)"/>`;
-const tutSvg=b=>`<svg viewBox="0 0 240 140" role="img" aria-hidden="true"><rect width="240" height="140" fill="#fff"/>${b}</svg>`;
+const tutSvg=b=>`<svg viewBox="0 0 240 140" role="img" aria-hidden="true" style="direction:ltr"><rect width="240" height="140" fill="#fff"/>${b}</svg>`;
 const TUT=[
- {t:'1. Dirección',x:'Toca o arrastra por el campo hacia donde quieres que vaya tu moneda y suelta. La línea de puntos marca el recorrido.',
+ {t:$t('1. Dirección'),x:$t('Toca o arrastra por el campo hacia donde quieres que vaya tu moneda y suelta. La línea de puntos marca el recorrido.'),
   a:tutSvg(`<line x1="0" y1="70" x2="240" y2="70" stroke="#D62839" stroke-width="2"/>${coinSvg(90,108,17,'#2A5BD7')}
    <path d="M98 90 L156 40" stroke="#2A5BD7" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" fill="none"/>
    <circle cx="168" cy="30" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
- {t:'2. Contacto',x:'Arrastra a izquierda o derecha y suelta. La traba se desliza y eliges con qué parte del canto golpeas. La moneda curva hacia el lado al que arrastras. Cerca de la punta fina, el golpe pierde fuerza.',
+ {t:$t('2. Contacto'),x:$t('Arrastra a izquierda o derecha y suelta. La traba se desliza y eliges con qué parte del canto golpeas. La moneda curva hacia el lado al que arrastras. Cerca de la punta fina, el golpe pierde fuerza.'),
   a:tutSvg(`${coinSvg(120,50,17,'#2A5BD7')}${stickSvg(50,76,140)}
    <line x1="90" y1="112" x2="30" y2="112" stroke="#141B24" stroke-width="3" stroke-linecap="round"/>${arrowHead(24,112,180)}
    <line x1="150" y1="112" x2="210" y2="112" stroke="#141B24" stroke-width="3" stroke-linecap="round"/>${arrowHead(216,112,0)}
-   <text x="52" y="132" font-size="11" fill="#546171" font-family="Karla,system-ui,sans-serif">agarre</text>
-   <text x="188" y="132" font-size="11" fill="#546171" text-anchor="end" font-family="Karla,system-ui,sans-serif">punta fina</text>`)},
- {t:'3. Potencia',x:'Arrastra hacia abajo para dar potencia y suelta. En ese momento la traba golpea, sin retención.',
+   <text x="52" y="132" font-size="11" fill="#546171" font-family="Karla,system-ui,sans-serif">${$t('agarre')}</text>
+   <text x="188" y="132" font-size="11" fill="#546171" text-anchor="end" font-family="Karla,system-ui,sans-serif">${$t('punta fina')}</text>`)},
+ {t:$t('3. Potencia'),x:$t('Arrastra hacia abajo para dar potencia y suelta. En ese momento la traba golpea, sin retención.'),
   a:tutSvg(`${coinSvg(100,48,17,'#2A5BD7')}<path d="M100 22 A26 26 0 1 1 74 48" stroke="#2A5BD7" stroke-width="3.5" fill="none" stroke-linecap="round"/>
    ${stickSvg(60,84,80)}
    <line x1="190" y1="24" x2="190" y2="104" stroke="#141B24" stroke-width="3" stroke-linecap="round"/>${arrowHead(190,110,90)}
    <circle cx="190" cy="24" r="11" fill="rgba(20,27,36,.14)" stroke="#141B24" stroke-width="2"/>`)},
- {t:'Si te equivocas',x:'Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».',
-  a:`<div class="pills"><span>1<br>Dirección</span><span class="now">2<br>Contacto</span><span>3<br>Potencia</span></div><div class="pills-note">Toca uno para volver a ese paso</div>`},
- {t:'Faltas y saques',x:'Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó. En el saque de banda eliges dónde colocarte fuera de la banda; en el córner, el defensor coloca primero su moneda, después el que saca coloca la suya donde quiera y juega dos golpes: sacar y rematar; en el saque de puerta, el rival coloca primero su moneda y quien saca se pone sobre la línea de gol y dispara el balón, que está en el límite del área pequeña.',
+ {t:$t('Si te equivocas'),x:$t('Toca Dirección, Contacto o Potencia en la barra de arriba para volver a ese paso y corregirlo antes de golpear. También puedes usar «Paso anterior».'),
+  a:`<div class="pills"><span>1<br>${$t('Dirección')}</span><span class="now">2<br>${$t('Contacto')}</span><span>3<br>${$t('Potencia')}</span></div><div class="pills-note">${$t('Toca uno para volver a ese paso')}</div>`},
+ {t:$t('Faltas y saques'),x:$t('Es falta que tu moneda toque a la contraria antes que al balón. Con una falta, el rival coloca su moneda donde quiera, sin mover el balón, y juega dos golpes seguidos. Si el balón sale por la banda es saque de banda, y por el fondo, córner o saque de puerta: saca el rival del último que lo tocó. En el saque de banda eliges dónde colocarte fuera de la banda; en el córner, el defensor coloca primero su moneda, después el que saca coloca la suya donde quiera y juega dos golpes: sacar y rematar; en el saque de puerta, el rival coloca primero su moneda y quien saca se pone sobre la línea de gol y dispara el balón, que está en el límite del área pequeña.'),
   a:tutSvg(`${stickSvg(50,34,140)}<circle cx="120" cy="76" r="13" fill="#F2F5F9" stroke="#2C333B"/><path d="M120 69.5 L126.2 74 L123.8 81.3 L116.2 81.3 L113.8 74Z" fill="#141B24"/>
    <circle cx="120" cy="76" r="21" fill="none" stroke="#D62839" stroke-width="3" stroke-dasharray="5 4"/>
-   <text x="120" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#D62839" font-family="Karla,system-ui,sans-serif">FALTA</text>`)}
+   <text x="120" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#D62839" font-family="Karla,system-ui,sans-serif">${$t('FALTA')}</text>`)}
 ];
 let ti=0;
 function showTut(i){
@@ -1282,7 +1346,7 @@ function showTut(i){
   $('tart').innerHTML=p.a;$('tt').textContent=p.t;$('tx').textContent=p.x;
   $('tdots').innerHTML=TUT.map((_,k)=>'<i'+(k===i?' class="on"':'')+'></i>').join('');
   $('tprev').hidden=i===0;$('tskip').hidden=i===TUT.length-1;
-  $('tnext').textContent=i===TUT.length-1?'Empezar':'Siguiente';
+  $('tnext').textContent=$t(i===TUT.length-1?'Empezar':'Siguiente');
 }
 function openTut(){$('tut').hidden=false;showTut(0);$('tnext').focus();}
 function closeTut(){$('tut').hidden=true;}
@@ -1696,7 +1760,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='88';
+const VER='89';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1709,9 +1773,9 @@ try{acct=JSON.parse(localStorage.getItem(ACCT)||'null');}catch(e){}
 function saveAcct(){try{if(acct)localStorage.setItem(ACCT,JSON.stringify({sid:acct.sid,name:acct.name}));else localStorage.removeItem(ACCT);}catch(e){}}
 async function api(path,body){
   let r;
-  try{r=await fetch(API+path,{method:'POST',body:JSON.stringify(body||{})});}catch(e){throw new Error('No se puede conectar con el servidor. Comprueba tu conexión.');}
+  try{r=await fetch(API+path,{method:'POST',body:JSON.stringify(body||{})});}catch(e){throw new Error($t('No se puede conectar con el servidor. Comprueba tu conexión.'));}
   let j={};try{j=await r.json();}catch(e){}
-  if(!r.ok){const err=new Error(j.error||'Error del servidor');err.status=r.status;throw err;}
+  if(!r.ok){const err=new Error(errT(j.error||'Error del servidor'));err.status=r.status;throw err;}
   return j;
 }
 async function syncTeam(){try{if(acct&&acct.sid){const t=myTeam();if(t>=0)await api('/api/team',{sid:acct.sid,team:t});}}catch(e){}}   // el servidor necesita saber tu equipo (los torneos no repiten equipos con la IA)
@@ -1798,7 +1862,7 @@ function localStep(){
   applyState(s);refreshAim();
 }
 function labelChips(){
-  const nm=i=>names[i]?names[i]:(net?(net.me===i?(acct?acct.name:'Tú'):'Rival'):'Jugador '+(i+1));
+  const nm=i=>names[i]?bn(names[i]):(net?(net.me===i?(acct?acct.name:$t('Tú')):$t('Rival')):$t('Jugador {0}',i+1));
   for(let i=0;i<2;i++){$('n'+i).textContent=nm(i);$('t'+i).textContent=team[i]>=0?TEAMS[team[i]][1]:'';}
   for(let i=0;i<2;i++)$('chip'+i).style.opacity=(net&&net.up&&net.up[i]===false)?'.45':'';
 }
@@ -1819,29 +1883,29 @@ function saveTeams(){try{if(net)localStorage.setItem(MYKEY,String(team[net.me]))
 let tmSel=0,tmBuilt=false;
 let flow=null;
 const solo=()=>!!(flow&&flow.kind!=='loc');
-function startFlow(kind,next){flow={kind,next};buildTeams();tmSel=0;markTeams();$('tmclose').textContent='Continuar';$('teams').hidden=false;}
+function startFlow(kind,next){flow={kind,next};buildTeams();tmSel=0;markTeams();$('tmclose').textContent=$t('Continuar');$('teams').hidden=false;}
 function markTeams(){
   const cur=solo()?myTeam():net?team[net.me]:team[tmSel];
   document.querySelectorAll('#tgrid button').forEach(b=>b.classList.toggle('sel',+b.dataset.i===cur));
   document.querySelectorAll('#tmtabs button').forEach(b=>b.classList.toggle('sel',+b.dataset.p===tmSel));
   $('tmtabs').hidden=!!net||solo();
-  $('tmt').textContent=solo()?'¿Con qué equipo quieres jugar?':net?'Tu equipo':'Equipos';
-  $('tmx').textContent=solo()?'Elige tu equipo. Después elegirás '+(flow.kind==='ai'?'el nivel de la IA.':'cómo jugar el amistoso online.'):net?'Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.':'Elige el equipo del Jugador '+(tmSel+1)+'. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.';
+  $('tmt').textContent=solo()?$t('¿Con qué equipo quieres jugar?'):net?$t('Tu equipo'):$t('Equipos');
+  $('tmx').textContent=solo()?$t(flow.kind==='ai'?'Elige tu equipo. Después elegirás el nivel de la IA.':'Elige tu equipo. Después elegirás cómo jugar el amistoso online.'):net?$t('Elige con qué equipo juegas; tu rival verá tus colores en su pantalla.'):$t('Elige el equipo del Jugador {0}. Su moneda llevará los colores del club. Si ambos equipos se parecen, el Jugador 2 (visitante) juega con la segunda equipación.',tmSel+1);
 }
 function buildTeams(){
   if(tmBuilt)return;tmBuilt=true;
   const g=$('tgrid');
   for(let i=-1;i<TEAMS.length;i++){
     const grp=TGROUPS.find(q=>q[0]===i);
-    if(grp){const h=document.createElement('div');h.className='tgh';h.textContent=grp[1];g.appendChild(h);}
+    if(grp){const h=document.createElement('div');h.className='tgh';h.textContent=$t(grp[1]);g.appendChild(h);}
     const b=document.createElement('button');b.type='button';b.dataset.i=i;
     const c=document.createElement('canvas');c.width=104;c.height=104;
     const x=c.getContext('2d');x.scale(2,2);coinFace(x,26,26,24,i,null,false);
-    b.appendChild(c);b.appendChild(document.createTextNode(i<0?'Sin equipo':TEAMS[i][1]));g.appendChild(b);
+    b.appendChild(c);b.appendChild(document.createTextNode(i<0?$t('Sin equipo'):TEAMS[i][1]));g.appendChild(b);
   }
 }
-function openTeams(){flow=null;$('tmclose').textContent='Listo';buildTeams();tmSel=net?net.me:0;markTeams();$('teams').hidden=false;}
-function closeTeams(){$('teams').hidden=true;flow=null;$('tmclose').textContent='Listo';}
+function openTeams(){flow=null;$('tmclose').textContent=$t('Listo');buildTeams();tmSel=net?net.me:0;markTeams();$('teams').hidden=false;}
+function closeTeams(){$('teams').hidden=true;flow=null;$('tmclose').textContent=$t('Listo');}
 function pickTeam(i){
   if(solo()){try{localStorage.setItem(MYKEY,String(i));}catch(e){}syncTeam();markTeams();return;}
   if(net){team[net.me]=i;net.tmT=performance.now();netSend({t:'team',i});}
@@ -1878,15 +1942,15 @@ function applyState(s){
 /* ---------- conexión con el servidor ---------- */
 document.addEventListener('visibilitychange',()=>{if(net&&!net.local)netSend({t:'vis',h:document.hidden});});
 /* ---------- chat con el rival (solo partidas online) ---------- */
-const QUICK=['¡Buen golpe!','¡Suerte!','¡Vamos!','¡Qué mala suerte!','Buen partido'];
+const QUICK=['¡Buen golpe!','¡Suerte!','¡Vamos!','¡Qué mala suerte!','Buen partido'].map(q=>$t(q));
 let toastT=0;
 function chatOn(){return !!(net&&!net.local&&net.ws);}
 function chatSync(){const on=!!(net&&!net.local);$('chatbtn').hidden=!on;if(!on){$('chat').hidden=true;$('chattoast').hidden=true;}}
 function chatDraw(){
   const l=$('chatlist');l.textContent='';
   const arr=(net&&net.chat)||[];
-  if(!arr.length)l.appendChild(el('p','','Di algo a tu rival: no se guarda al terminar la partida.'));
-  for(const c of arr){const d=el('div','cmsg'+(c.me?' me':''));if(!c.me)d.appendChild(el('small','',(net&&names[c.f])||'Rival'));d.appendChild(document.createTextNode(c.x));l.appendChild(d);}
+  if(!arr.length)l.appendChild(el('p','',$t('Di algo a tu rival: no se guarda al terminar la partida.')));
+  for(const c of arr){const d=el('div','cmsg'+(c.me?' me':''));if(!c.me)d.appendChild(el('small','',(net&&bn(names[c.f]))||$t('Rival')));d.appendChild(document.createTextNode(c.x));l.appendChild(d);}
   l.scrollTop=l.scrollHeight;
 }
 function chatOpen(){if(!net||net.local)return;$('chat').hidden=false;$('chatdot').hidden=true;net.unread=0;chatDraw();$('cinput').focus();}
@@ -1904,7 +1968,7 @@ function chatRecv(m){
   if(!$('chat').hidden){chatDraw();return;}
   net.unread=(net.unread||0)+1;$('chatdot').hidden=false;
   const t=$('chattoast');t.textContent='';
-  for(const c of net.chat.slice(-5)){const d=el('div','tl'+(c.me?' me':''));d.appendChild(el('b','',c.me?'Tú: ':((names[c.f])||'Rival')+': '));d.appendChild(document.createTextNode(c.x));t.appendChild(d);}
+  for(const c of net.chat.slice(-5)){const d=el('div','tl'+(c.me?' me':''));d.appendChild(el('b','',c.me?$t('Tú')+': ':(bn(names[c.f])||$t('Rival'))+': '));d.appendChild(document.createTextNode(c.x));t.appendChild(d);}
   t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},7000);
   try{if(navigator.vibrate)navigator.vibrate(40);}catch(e){}
 }
@@ -1915,12 +1979,12 @@ $('cinput').addEventListener('keydown',e=>{if(e.key==='Enter')chatSend($('cinput
 for(const q of QUICK){const b=el('button','',q);b.type='button';b.addEventListener('click',()=>chatSend(q));$('cquick').appendChild(b);}
 function netView(mode,text){
   $('nx').textContent=text;
-  $('nt').textContent=(mode==='ai'||(mode==='conn'&&net&&net.local))?'Jugar contra la IA':'Amistoso online';
+  $('nt').textContent=$t((mode==='ai'||(mode==='conn'&&net&&net.local))?'Jugar contra la IA':'Amistoso online');
   $('nback').hidden=mode==='choose'||mode==='conn';
   $('nchoose').hidden=mode!=='choose';$('nai').hidden=mode!=='ai';$('ncode').hidden=mode!=='create';$('njoinform').hidden=mode!=='join';$('nconn').hidden=mode!=='conn';
 }
 function netBack(){
-  const txt='Crea un amistoso online o únete con el código que te dé tu amigo.';
+  const txt=$t('Crea un amistoso online o únete con el código que te dé tu amigo.');
   if(!$('nai').hidden){closeNet();return true;}
   if(!$('njoinform').hidden){netView('choose',txt);return true;}
   if(!$('ncode').hidden){if(net&&!net.started)stopNet();netView('choose',txt);return true;}
@@ -1951,13 +2015,13 @@ function openSocket(){
     if(m.t==='hi'){
       n.me=m.me;n.tok=m.tok;n.retries=0;VIEW=n.me===1?-1:1;saveSession();netSend({t:'vis',h:document.hidden});
       if(n.down){n.down=false;clearTimeout(n.dt);if(n.downShown){n.downShown=false;$('net').hidden=true;}}
-      if(!n.started){netView('create','Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.');$('ncode').textContent=n.code;}
+      if(!n.started){netView('create',$t('Sala lista. Dile este código a tu amigo y espera a que entre. Mantén esta pestaña abierta.'));$('ncode').textContent=n.code;}
     }else if(m.t==='s')applyState(m);
     else if(m.t==='aim'){rem={...m,t:Date.now()};}
     else if(m.t==='q'){if(n.pt){const v=Math.round(performance.now()-n.pt);n.pt=0;n.rtt=v;(n.rs=n.rs||[]).push(v);if(n.rs.length>12)n.rs.shift();}}
     else if(m.t==='chat')chatRecv(m);
     else if(m.t==='left')oppLeft(m.n);
-    else if(m.t==='err')fail(m.e||'No se ha podido entrar en la sala.');
+    else if(m.t==='err')fail(errT(m.e)||$t('No se ha podido entrar en la sala.'));
   };
   ws.onclose=()=>{if(net!==n||n.ws!==ws)return;n.ws=null;if(!n.closed)lost();};
   ws.onerror=()=>{};
@@ -1965,7 +2029,7 @@ function openSocket(){
 function lost(){
   const n=net;if(!n||n.closed||n.rc)return;
   n.down=true;
-  if(!n.dt)n.dt=setTimeout(()=>{n.dt=0;if(net===n&&n.down&&n.started){n.downShown=true;$('net').hidden=false;netView('conn','Se ha perdido la conexión con el servidor (quizá cambiaste de app). Reconectando… la partida sigue guardada.');}},1500);
+  if(!n.dt)n.dt=setTimeout(()=>{n.dt=0;if(net===n&&n.down&&n.started){n.downShown=true;$('net').hidden=false;netView('conn',$t('Se ha perdido la conexión con el servidor (quizá cambiaste de app). Reconectando… la partida sigue guardada.'));}},1500);
   n.retries++;
   n.rc=setTimeout(()=>{n.rc=0;if(net===n)openSocket();},Math.min(3000,300*n.retries));
 }
@@ -1993,19 +2057,19 @@ setInterval(()=>{                          // vigilante: si el servidor deja de 
 },3000);
 function openNet(){
   $('net').hidden=false;
-  if(net)netView('conn',net.local?'Estás jugando contra la IA ('+AILEV[net.level-1]+').':net.started?'Estás en un amistoso online. Si sales un momento de la app, la conexión se recupera sola al volver.':'Esperando a tu rival…');
-  else netView('choose',(acct?'Hola, '+acct.name+'. ':'')+'Un amistoso online se juega contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.');
+  if(net)netView('conn',net.local?$t('Estás jugando contra la IA ({0}).',$t(AILEV[net.level-1])):net.started?$t('Estás en un amistoso online. Si sales un momento de la app, la conexión se recupera sola al volver.'):$t('Esperando a tu rival…'));
+  else netView('choose',(acct?$t('Hola, {0}.',acct.name)+' ':'')+$t('Un amistoso online se juega contra un amigo desde otro móvil: uno crea la partida y el otro se une con el código.'));
 }
 function closeNet(){if(net&&!net.started)stopNet();$('net').hidden=true;if(!net&&!locOn&&$('wel').hidden)showWelcome();}
 function createGame(){
   const code=newCode();
-  netView('create','Creando la sala…');$('ncode').textContent='·····';
+  netView('create',$t('Creando la sala…'));$('ncode').textContent='·····';
   connectRoom(code);
 }
 function joinGame(raw){
   const code=String(raw||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(code.length<4||code.length>8){$('nx').textContent='Escribe el código que te ha dado tu amigo.';return;}
-  netView('join','Conectando…');
+  if(code.length<4||code.length>8){$('nx').textContent=$t('Escribe el código que te ha dado tu amigo.');return;}
+  netView('join',$t('Conectando…'));
   connectRoom(code);
 }
 function leaveNet(){                       // abandonar una partida online en curso: avisa al rival, que se desconecta y la partida queda nula
@@ -2015,7 +2079,7 @@ function leaveNet(){                       // abandonar una partida online en cu
 function oppLeft(nm){                      // el rival ha abandonado: se desconecta esta partida y queda nula
   clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();
   $('chat').hidden=true;$('net').hidden=false;
-  netView('choose',(nm||'Tu rival')+' ha abandonado la partida. Te has desconectado y la partida queda nula.');
+  netView('choose',$t('{0} ha abandonado la partida. Te has desconectado y la partida queda nula.',bn(nm)||$t('Tu rival')));
 }
 function toMainMenu(){                     // salir de la partida (o de la revancha) a la pantalla principal
   leaveNet();clearAI();stopNet();locOn=false;try{localStorage.removeItem(LOCKEY);}catch(e){}locKey='';newGame();$('rm').hidden=true;showWelcome();
@@ -2027,15 +2091,15 @@ function rmSync(){                         // cartel de fin de partida: Revancha
   if(!want){clearTimeout(rmTm);rmTm=0;rmOn=false;if(!box.hidden)box.hidden=true;return;}
   if(!rmOn){if(!rmTm)rmTm=setTimeout(()=>{rmTm=0;rmOn=true;rmSync();},1600);return;}
   const me=net.me,o=1-me,rv=net.rv||[false,false],gone=net.gn>=0&&net.gn!==me,w=score[0]>score[1]?0:1;
-  const pn=i=>names[i]||(net.local?(i===0?(acct?acct.name:'Tú'):'IA'):(me===i?(acct?acct.name:'Tú'):'Rival'));
+  const pn=i=>bn(names[i])||(net.local?(i===0?(acct?acct.name:$t('Tú')):$t('IA')):(me===i?(acct?acct.name:$t('Tú')):$t('Rival')));
   const tn=!!net.tn,elim=tn&&w!==me;
   if(tn&&!elim&&net.champ===undefined)tChamp();            // ¿era la final? el servidor lo sabe cuando registra el resultado
   const champ=tn&&!elim&&net.champ===1;
-  $('rmt').textContent=champ?'🏆 ¡Campeón del torneo!':elim?'Has sido eliminado':w===me?'¡Has ganado!':'¡Ha ganado '+pn(w)+'!';
+  $('rmt').textContent=champ?$t('🏆 ¡Campeón del torneo!'):elim?$t('Has sido eliminado'):w===me?$t('¡Has ganado!'):$t('¡Ha ganado {0}!',pn(w));
   box.classList.toggle('champ',champ);
-  $('rmx').textContent=score[0]+' - '+score[1]+(tn?(elim?' · Has perdido el partido y quedas fuera del torneo.':champ?' · Has ganado '+(net.champName||'el torneo')+'. ¡Enhorabuena, campeón!':' · Partido de torneo ganado. Mira el torneo para ver lo que sigue.'):gone?' · '+pn(o)+' ha salido al menú principal. Ya no hay revancha.':rv[me]?' · Esperando a que '+pn(o)+' acepte la revancha…':rv[o]?' · '+pn(o)+' quiere la revancha.':'');
-  $('rmgoals').hidden=!replays.length;$('rmgoals').textContent='Ver goles ('+replays.length+')';
-  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;$('rmexit').textContent=elim||champ?'Volver al menú principal':'Salir al menú principal';
+  $('rmx').textContent=score[0]+' - '+score[1]+(tn?(elim?' · '+$t('Has perdido el partido y quedas fuera del torneo.'):champ?' · '+$t('Has ganado {0}. ¡Enhorabuena, campeón!',bn(net.champName)||$t('el torneo')):' · '+$t('Partido de torneo ganado. Mira el torneo para ver lo que sigue.')):gone?' · '+$t('{0} ha salido al menú principal. Ya no hay revancha.',pn(o)):rv[me]?' · '+$t('Esperando a que {0} acepte la revancha…',pn(o)):rv[o]?' · '+$t('{0} quiere la revancha.',pn(o)):'');
+  $('rmgoals').hidden=!replays.length;$('rmgoals').textContent=$t('Ver goles ({0})',replays.length);
+  $('rmre').hidden=gone||tn;$('rmre').disabled=!!rv[me];$('rmtour').hidden=!tn;$('rmexit').textContent=$t(elim||champ?'Volver al menú principal':'Salir al menú principal');
   box.hidden=false;
 }
 $('rmgoals').addEventListener('click',()=>{if(replays.length)rpStart(0,false);});
@@ -2045,18 +2109,18 @@ $('rpclose').addEventListener('click',rpStop);
 $('rmre').addEventListener('click',()=>{if(!net)return;if(!net.local){net.rv=(net.rv||[false,false]).slice();net.rv[net.me]=true;}netSend({t:'new'});rmSync();});
 $('rmexit').addEventListener('click',toMainMenu);
 $('rmtour').addEventListener('click',()=>{if(net&&net.tn)openTour();});
-function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=(net&&over)?'Salir al menú principal':(net||locOn)?'Abandonar partida':'Jugar';}
+function menuSync(){const b=$('online');if(!b)return;delete b.dataset.ask;b.textContent=$t((net&&over)?'Salir al menú principal':(net||locOn)?'Abandonar partida':'Jugar');}
 $('online').addEventListener('click',e=>{
   const b=$('online');
   if(!net&&!locOn){openNet();return;}
-  if(!b.dataset.ask&&!(net&&over)){e.stopPropagation();b.dataset.ask='1';b.textContent='¿Seguro? Toca otra vez';setTimeout(menuSync,4000);return;}
+  if(!b.dataset.ask&&!(net&&over)){e.stopPropagation();b.dataset.ask='1';b.textContent=$t('¿Seguro? Toca otra vez');setTimeout(menuSync,4000);return;}
   toMainMenu();
 });
 $('ncreate').addEventListener('click',createGame);
-$('njoin').addEventListener('click',()=>{netView('join','Escribe el código que te ha dado tu amigo.');$('ninput').value='';$('ninput').focus();});
+$('njoin').addEventListener('click',()=>{netView('join',$t('Escribe el código que te ha dado tu amigo.'));$('ninput').value='';$('ninput').focus();});
 $('ngo').addEventListener('click',()=>joinGame($('ninput').value));
 $('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput').value);});
-$('ndisc').addEventListener('click',()=>{leaveNet();stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
+$('ndisc').addEventListener('click',()=>{leaveNet();stopNet();newGame();netView('choose',$t('Te has desconectado. Ya juegas en local.'));});
 $('nclose').addEventListener('click',closeNet);
 $('nback').addEventListener('click',netBack);
 for(const k of [1,2,3,4])$('nai'+k).addEventListener('click',()=>startAI(k));
@@ -2069,19 +2133,19 @@ async function acctRefresh(){
   try{const r=await api('/api/me',{sid:acct.sid});acct.name=r.profile.name;acct.profile=r.profile;saveAcct();}
   catch(e){if(e.status===401){acct=null;saveAcct();}}
 }
-function renderAcct(msgText){
+function renderAcct(msgText){   // (msgText ya llega traducido)
   const box=$('acbox');box.textContent='';
   $('acmsg').textContent=msgText||'';
   const inForm=!acct;
   $('acform').hidden=!inForm;
   $('acsession').hidden=inForm;
-  if(inForm){$('act').textContent='Mi perfil';$('acx').textContent='Escribe tu nombre y un PIN de 4 números. Sirve para recordarte en cualquier móvil, guardar tus partidos y jugar torneos.';return;}
+  if(inForm){$('act').textContent=$t('Mi perfil');$('acx').textContent=$t('Escribe tu nombre y un PIN de 4 números. Sirve para recordarte en cualquier móvil, guardar tus partidos y jugar torneos.');return;}
   const p=acct.profile||{name:acct.name,played:0,won:0,lost:0,gf:0,ga:0,history:[]};
   $('act').textContent=p.name;
-  $('acx').textContent=p.played?('Partidos '+p.played+' · Ganados '+p.won+' · Perdidos '+p.lost+' · Goles '+p.gf+'-'+p.ga):'Aún no has jugado ninguna partida con tu usuario. Entra en una partida online con tu sesión iniciada y se anotará aquí.';
+  $('acx').textContent=p.played?$t('Partidos {0} · Ganados {1} · Perdidos {2} · Goles {3}-{4}',p.played,p.won,p.lost,p.gf,p.ga):$t('Aún no has jugado ninguna partida con tu usuario. Entra en una partida online con tu sesión iniciada y se anotará aquí.');
   if(p.history&&p.history.length){
-    box.appendChild(el('h3','acs','Últimos partidos'));
-    for(const h of p.history)box.appendChild(el('div','acrow '+(h.gf>h.ga?'win':'loss'),(h.gf>h.ga?'Victoria':'Derrota')+' contra '+h.opp+' · '+h.gf+'-'+h.ga+(h.torneo?' · torneo':'')));
+    box.appendChild(el('h3','acs',$t('Últimos partidos')));
+    for(const h of p.history)box.appendChild(el('div','acrow '+(h.gf>h.ga?'win':'loss'),$t(h.gf>h.ga?'Victoria contra {0} · {1}-{2}':'Derrota contra {0} · {1}-{2}',bn(h.opp),h.gf,h.ga)+(h.torneo?' · '+$t('torneo'):'')));
   }
 }
 async function openAcct(){
@@ -2090,7 +2154,7 @@ async function openAcct(){
   try{
     const r=await fetch(API+'/api/ranking').then(x=>x.json());
     const rk=$('acrank');rk.textContent='';
-    if(r.ranking&&r.ranking.length){rk.appendChild(el('h3','acs','Ranking'));r.ranking.slice(0,10).forEach((x,i)=>rk.appendChild(el('div','acrow',(i+1)+'. '+x.name+' · '+x.won+' ganadas de '+x.played)));}
+    if(r.ranking&&r.ranking.length){rk.appendChild(el('h3','acs',$t('Ranking')));r.ranking.slice(0,10).forEach((x,i)=>rk.appendChild(el('div','acrow',(i+1)+'. '+x.name+' · '+$t('{0} ganadas de {1}',x.won,x.played))));}
   }catch(e){}
 }
 async function acctGo(kind){
@@ -2099,7 +2163,7 @@ async function acctGo(kind){
   try{
     const r=await api(kind==='new'?'/api/register':'/api/login',{name,pin});
     acct={sid:r.sid,name:r.profile.name,profile:r.profile};saveAcct();$('acpin').value='';
-    renderAcct('Listo: te recordaremos en este móvil.');
+    renderAcct($t('Listo: te recordaremos en este móvil.'));
   }catch(e){$('acmsg').textContent=e.message;}
 }
 $('aclogin').addEventListener('click',()=>acctGo('login'));
@@ -2114,9 +2178,9 @@ function wMsg(t){$('wmsg').textContent=t||'';}
 function wSetMode(m){
   wMode=m;
   $('wtlogin').classList.toggle('sel',m==='login');$('wtnew').classList.toggle('sel',m==='new');
-  $('wpin2').hidden=m!=='new';$('wgo').textContent=m==='new'?'Crear usuario':'Entrar';
+  $('wpin2').hidden=m!=='new';$('wgo').textContent=$t(m==='new'?'Crear usuario':'Entrar');
   $('wpin').autocomplete=m==='new'?'new-password':'current-password';
-  $('wlx').textContent=m==='new'?'Elige un nombre (de 3 a 14 caracteres) y un PIN de 4 números. Escribe el PIN dos veces para confirmarlo: con él te reconoceremos en cualquier móvil.':'Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.';
+  $('wlx').textContent=$t(m==='new'?'Elige un nombre (de 3 a 14 caracteres) y un PIN de 4 números. Escribe el PIN dos veces para confirmarlo: con él te reconoceremos en cualquier móvil.':'Entra con tu nombre de usuario y tu PIN de 4 números para guardar tus partidos, tu ranking y jugar torneos.');
   wMsg('');
 }
 function showWelcome(){
@@ -2129,28 +2193,28 @@ async function wBoot(){
   if(!acct){wShow('wlogin');wSetMode('login');return;}
   wShow('wload');
   await acctRefresh();
-  if(acct)wHome();else{wShow('wlogin');wSetMode('login');wMsg('Tu sesión ha caducado: entra otra vez con tu nombre y tu PIN.');}
+  if(acct)wHome();else{wShow('wlogin');wSetMode('login');wMsg($t('Tu sesión ha caducado: entra otra vez con tu nombre y tu PIN.'));}
 }
 function wHome(){
   wShow('whome');
   $('wresume').hidden=$('wresx').hidden=!matchOn();
   const p=acct.profile||{name:acct.name,played:0,won:0,lost:0,gf:0,ga:0,history:[]};
-  $('whello').textContent='Hola, '+p.name;
+  $('whello').textContent=$t('Hola, {0}',p.name);
   const st=$('wstats');st.textContent='';
   const pc=p.played?Math.round(100*p.won/p.played)+'%':'–';
-  for(const [v,l] of [[p.played,'Jugados'],[p.won,'Ganados'],[p.lost,'Perdidos'],[pc,'Victorias']]){const d=el('div');d.appendChild(el('b','',String(v)));d.appendChild(el('small','',l));st.appendChild(d);}
+  for(const [v,l] of [[p.played,$t('Jugados')],[p.won,$t('Ganados')],[p.lost,$t('Perdidos')],[pc,$t('Victorias')]]){const d=el('div');d.appendChild(el('b','',String(v)));d.appendChild(el('small','',l));st.appendChild(d);}
   const ln=$('wline');ln.textContent='';
   const h=p.history||[];
   let streak=0;for(const r of h){if(r.gf>r.ga)streak++;else break;}
-  ln.appendChild(el('span','','Goles '+p.gf+' a favor · '+p.ga+' en contra'));
-  ln.appendChild(el('span','mid',p.pos?('Puesto '+p.pos+' de '+p.total):(p.played?'':'Aún sin clasificar')));
-  if(streak>1)ln.appendChild(el('span','wn','Racha: '+streak+' victorias'));
+  ln.appendChild(el('span','',$t('Goles {0} a favor · {1} en contra',p.gf,p.ga)));
+  ln.appendChild(el('span','mid',p.pos?$t('Puesto {0} de {1}',p.pos,p.total):(p.played?'':$t('Aún sin clasificar'))));
+  if(streak>1)ln.appendChild(el('span','wn',$t('Racha: {0} victorias',streak)));
   const lw=$('wlast');lw.textContent='';
-  if(!h.length)lw.appendChild(el('p','','Todavía no has jugado con tu usuario. Juega una partida online o un torneo y aparecerá aquí.'));
+  if(!h.length)lw.appendChild(el('p','',$t('Todavía no has jugado con tu usuario. Juega una partida online o un torneo y aparecerá aquí.')));
   for(const r of h.slice(0,5)){
     const win=r.gf>r.ga;
-    let when='';try{when=new Date(r.ts).toLocaleDateString('es-ES',{day:'numeric',month:'short'});}catch(e){}
-    lw.appendChild(el('div','acrow '+(win?'win':'loss'),(win?'Victoria':'Derrota')+' contra '+r.opp+' · '+r.gf+'-'+r.ga+(r.torneo?' · torneo':'')+(when?' · '+when:'')));
+    let when='';try{when=new Date(r.ts).toLocaleDateString(LOCALE,{day:'numeric',month:'short'});}catch(e){}
+    lw.appendChild(el('div','acrow '+(win?'win':'loss'),$t(win?'Victoria contra {0} · {1}-{2}':'Derrota contra {0} · {1}-{2}',bn(r.opp),r.gf,r.ga)+(r.torneo?' · '+$t('torneo'):'')+(when?' · '+when:'')));
   }
   wRank(p);pushRefresh();
 }
@@ -2159,15 +2223,15 @@ async function wRank(p){
   try{
     const r=await fetch(API+'/api/ranking').then(x=>x.json());
     box.textContent='';
-    if(!r.ranking||!r.ranking.length){box.appendChild(el('p','','Todavía no hay partidas en el ranking. ¡Sé el primero!'));return;}
-    r.ranking.slice(0,5).forEach((x,i)=>box.appendChild(el('div','acrow wacrow'+(x.name===p.name?' me':''),(i+1)+'. '+x.name+' · '+x.won+' ganadas de '+x.played)));
-  }catch(e){box.textContent='';box.appendChild(el('p','','No se ha podido cargar el ranking.'));}
+    if(!r.ranking||!r.ranking.length){box.appendChild(el('p','',$t('Todavía no hay partidas en el ranking. ¡Sé el primero!')));return;}
+    r.ranking.slice(0,5).forEach((x,i)=>box.appendChild(el('div','acrow wacrow'+(x.name===p.name?' me':''),(i+1)+'. '+x.name+' · '+$t('{0} ganadas de {1}',x.won,x.played))));
+  }catch(e){box.textContent='';box.appendChild(el('p','',$t('No se ha podido cargar el ranking.')));}
 }
 async function wSubmit(){
   const name=$('wname').value.trim(),pin=$('wpin').value,pin2=$('wpin2').value;
-  if(name.length<3){wMsg('Escribe tu nombre de usuario (mínimo 3 caracteres).');return;}
-  if(!/^\d{4}$/.test(pin)){wMsg('El PIN son 4 números.');return;}
-  if(wMode==='new'&&pin!==pin2){wMsg('Los dos PIN no coinciden. Escríbelos de nuevo.');$('wpin2').value='';$('wpin2').focus();return;}
+  if(name.length<3){wMsg($t('Escribe tu nombre de usuario (mínimo 3 caracteres).'));return;}
+  if(!/^\d{4}$/.test(pin)){wMsg($t('El PIN son 4 números.'));return;}
+  if(wMode==='new'&&pin!==pin2){wMsg($t('Los dos PIN no coinciden. Escríbelos de nuevo.'));$('wpin2').value='';$('wpin2').focus();return;}
   wMsg('…');$('wgo').disabled=true;
   try{
     const r=await api(wMode==='new'?'/api/register':'/api/login',wMode==='new'?{name,pin,pin2}:{name,pin});
@@ -2186,7 +2250,7 @@ $('wtlogin').addEventListener('click',()=>wSetMode('login'));
 $('wtnew').addEventListener('click',()=>wSetMode('new'));
 $('woff').addEventListener('click',()=>startFlow('loc',()=>{if(net){clearAI();stopNet();}locOn=true;newGame();$('wel').hidden=true;}));
 $('wloc').addEventListener('click',()=>startFlow('loc',()=>{if(net){clearAI();stopNet();}locOn=true;newGame();labelChips();$('wel').hidden=true;}));
-$('wai').addEventListener('click',()=>startFlow('ai',()=>{$('wel').hidden=true;openNet();netView('ai','Elige la dificultad de la IA.');}));
+$('wai').addEventListener('click',()=>startFlow('ai',()=>{$('wel').hidden=true;openNet();netView('ai',$t('Elige la dificultad de la IA.'));}));
 $('won').addEventListener('click',()=>startFlow('online',()=>{$('wel').hidden=true;openNet();}));
 $('wtour').addEventListener('click',openTour);
 $('whowbtn').addEventListener('click',openTut);
@@ -2200,7 +2264,7 @@ addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;instSync(
 addEventListener('appinstalled',()=>{instEv=null;instSync();});
 $('winst').addEventListener('click',async()=>{
   if(instEv){instEv.prompt();try{await instEv.userChoice;}catch(e){}instEv=null;instSync();return;}
-  const t=$('winstx');t.hidden=!t.hidden;t.textContent='En el iPhone: pulsa el botón Compartir de Safari y elige «Añadir a pantalla de inicio».';
+  const t=$('winstx');t.hidden=!t.hidden;t.textContent=$t('En el iPhone: pulsa el botón Compartir de Safari y elige «Añadir a pantalla de inicio».');
 });
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;}).catch(()=>{});
 let swReg=null,updReady=false;
@@ -2227,25 +2291,25 @@ async function pushRefresh(){
   $('wpush').hidden=false;
   if(!pushOK()){
     $('wpush').hidden=!(isIOS()&&!isStandalone());
-    if(!$('wpush').hidden){x.textContent='En el iPhone los avisos solo funcionan con el juego instalado en la pantalla de inicio (Safari → Compartir → «Añadir a pantalla de inicio»).';btn.hidden=true;$('wpprefs').hidden=true;}
+    if(!$('wpush').hidden){x.textContent=$t('En el iPhone los avisos solo funcionan con el juego instalado en la pantalla de inicio (Safari → Compartir → «Añadir a pantalla de inicio»).');btn.hidden=true;$('wpprefs').hidden=true;}
     return;
   }
   btn.hidden=false;
-  if(Notification.permission==='denied'){x.textContent='Has bloqueado las notificaciones de esta web. Actívalas en los ajustes de Chrome (icono del candado junto a la dirección → Permisos → Notificaciones).';btn.hidden=true;$('wpprefs').hidden=true;return;}
+  if(Notification.permission==='denied'){x.textContent=$t('Has bloqueado las notificaciones de esta web. Actívalas en los ajustes de Chrome (icono del candado junto a la dirección → Permisos → Notificaciones).');btn.hidden=true;$('wpprefs').hidden=true;return;}
   let on=false,prefs=null;
   try{
     const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();
     if(sub&&acct){const r=await api('/api/push/state',{sid:acct.sid,endpoint:sub.endpoint});on=r.on;prefs=r.prefs;}
   }catch(e){}
-  btn.textContent=on?'Desactivar avisos':'Activar avisos';btn.classList.toggle('primary',!on);
+  btn.textContent=$t(on?'Desactivar avisos':'Activar avisos');btn.classList.toggle('primary',!on);
   $('wpprefs').hidden=!on;
   if(prefs){$('wpg').checked=prefs.game;$('wpc').checked=prefs.chat;$('wpt').checked=prefs.tour;}
-  x.textContent=on?'Avisos activados en este móvil.':'Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.';
+  x.textContent=on?$t('Avisos activados en este móvil.'):$t('Te avisamos cuando te toca jugar, te escriben o tu partido de torneo está listo, aunque tengas el juego cerrado.');
 }
 async function pushToggle(){
   const x=$('wpx');x.textContent='…';
   try{
-    const reg=await pushReg();if(!reg)throw new Error('No se puede usar el modo de avisos en este navegador.');
+    const reg=await pushReg();if(!reg)throw new Error($t('No se puede usar el modo de avisos en este navegador.'));
     const cur=await reg.pushManager.getSubscription();
     if(cur){try{await api('/api/push/unsub',{sid:acct.sid,endpoint:cur.endpoint});}catch(e){}await cur.unsubscribe();}
     else{
@@ -2255,7 +2319,7 @@ async function pushToggle(){
       const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:unb64u(k.key)});
       await api('/api/push/sub',{sid:acct.sid,sub:sub.toJSON(),prefs:pushPrefs()});
     }
-  }catch(e){x.textContent='No se han podido activar los avisos: '+e.message;return;}
+  }catch(e){x.textContent=$t('No se han podido activar los avisos: {0}',e.message);return;}
   pushRefresh();
 }
 async function pushSavePrefs(){try{const reg=await pushReg(),sub=reg&&await reg.pushManager.getSubscription();if(sub)await api('/api/push/prefs',{sid:acct.sid,endpoint:sub.endpoint,prefs:pushPrefs()});}catch(e){}}
@@ -2264,7 +2328,7 @@ for(const k of ['wpg','wpc','wpt'])$(k).addEventListener('change',pushSavePrefs)
 /* ---------- torneos ---------- */
 let tourCode='',tourTimer=0;
 try{tourCode=localStorage.getItem(TOURK)||'';}catch(e){}
-const roundName=n=>n===1?'Final':n===2?'Semifinales':n===4?'Cuartos de final':n===8?'Octavos de final':n===16?'Dieciseisavos':'Primera ronda';
+const roundName=n=>$t(n===1?'Final':n===2?'Semifinales':n===4?'Cuartos de final':n===8?'Octavos de final':n===16?'Dieciseisavos':'Primera ronda');
 function tourMsg(t){$('tmsg').textContent=t||'';}
 async function openTour(){
   $('tour').hidden=false;tourMsg('');
@@ -2279,42 +2343,42 @@ async function tourLoad(quiet){
 }
 function renderTour(t){
   const home=$('thome'),view=$('tview');
-  if(!acct){home.hidden=false;view.hidden=true;$('thome').querySelectorAll('input,button').forEach(b=>b.disabled=true);$('ttx').textContent='Para jugar torneos necesitas un usuario con PIN.';$('tgo').hidden=false;return;}
+  if(!acct){home.hidden=false;view.hidden=true;$('thome').querySelectorAll('input,button').forEach(b=>b.disabled=true);$('ttx').textContent=$t('Para jugar torneos necesitas un usuario con PIN.');$('tgo').hidden=false;return;}
   $('tgo').hidden=true;$('thome').querySelectorAll('input,button').forEach(b=>b.disabled=false);
-  if(!t){home.hidden=false;view.hidden=true;$('ttx').textContent='Crea un torneo de 4 u 8 jugadores o únete con el código que te den. Se juega por eliminatorias. Los huecos pueden rellenarlos jugadores de verdad o la IA.';return;}
+  if(!t){home.hidden=false;view.hidden=true;$('ttx').textContent=$t('Crea un torneo de 4 u 8 jugadores o únete con el código que te den. Se juega por eliminatorias. Los huecos pueden rellenarlos jugadores de verdad o la IA.');return;}
   home.hidden=true;view.hidden=false;
   $('ttx').textContent='';
-  $('ttitle').textContent=t.name;
+  $('ttitle').textContent=bn(t.name);
   $('tcode').textContent=t.code;
   const box=$('tbody');box.textContent='';
-  const estado=t.state==='open'?'Inscripción abierta':t.state==='running'?'En juego':'Terminado';
-  box.appendChild(el('p','tmeta',estado+' · '+t.count+' de '+t.maxp+' jugadores'+(t.bots?' (+ IA '+['fácil','normal','difícil','pesadilla'][(t.ai||2)-1]+')':'')+' · Organiza '+t.owner));
-  if(t.state==='done')box.appendChild(el('p','tchamp','🏆 Campeón: '+t.champion));
+  const estado=$t(t.state==='open'?'Inscripción abierta':t.state==='running'?'En juego':'Terminado');
+  box.appendChild(el('p','tmeta',estado+' · '+$t('{0} de {1} jugadores',t.count,t.maxp)+(t.bots?' '+$t('(+ IA {0})',$t(['fácil','normal','difícil','pesadilla'][(t.ai||2)-1])):'')+' · '+$t('Organiza {0}',bn(t.owner))));
+  if(t.state==='done')box.appendChild(el('p','tchamp',$t('🏆 Campeón: {0}',bn(t.champion))));
   if(t.state==='open'){
-    box.appendChild(el('p','tmeta','Inscritos: '+t.members.join(', ')));
+    box.appendChild(el('p','tmeta',$t('Inscritos: {0}',t.members.map(bn).join(', '))));
     const row=el('div','net-row');
-    if(t.isOwner){const b=el('button','primary',t.bots&&t.count<t.maxp?'Empezar (las IA rellenan los huecos)':'Empezar torneo');b.onclick=()=>tourAct('/api/t/start');row.appendChild(b);}
-    else if(t.joined){const b=el('button','','Salirme');b.onclick=async()=>{await tourAct('/api/t/leave');tourCode='';renderTour(null);};row.appendChild(b);}
-    else{const b=el('button','primary','Apuntarme');b.onclick=()=>tourAct('/api/t/join');row.appendChild(b);}
+    if(t.isOwner){const b=el('button','primary',$t(t.bots&&t.count<t.maxp?'Empezar (las IA rellenan los huecos)':'Empezar torneo'));b.onclick=()=>tourAct('/api/t/start');row.appendChild(b);}
+    else if(t.joined){const b=el('button','',$t('Salirme'));b.onclick=async()=>{await tourAct('/api/t/leave');tourCode='';renderTour(null);};row.appendChild(b);}
+    else{const b=el('button','primary',$t('Apuntarme'));b.onclick=()=>tourAct('/api/t/join');row.appendChild(b);}
     box.appendChild(row);
-    if(t.isOwner)box.appendChild(el('p','tmeta','Pasa el código a tus amigos (hasta '+t.maxp+'). '+(t.bots?'Puedes empezar cuando quieras: los huecos que queden los juega la IA.':'Empieza cuando estéis todos; si falta gente, algunos pasan la primera ronda sin jugar.')));
+    if(t.isOwner)box.appendChild(el('p','tmeta',$t('Pasa el código a tus amigos (hasta {0}).',t.maxp)+' '+$t(t.bots?'Puedes empezar cuando quieras: los huecos que queden los juega la IA.':'Empieza cuando estéis todos; si falta gente, algunos pasan la primera ronda sin jugar.')));
   }
   if(t.mine){
     const c=el('div','tmine');
-    c.appendChild(el('strong','','Tu partido: contra '+t.mine.opp));
-    const b=el('button','primary','Jugar mi partido');b.onclick=playMine;c.appendChild(b);box.appendChild(c);
-  }else if(t.state==='running'&&t.joined)box.appendChild(el('p','tmeta','Ahora mismo no tienes partido pendiente: espera a que terminen los demás.'));
+    c.appendChild(el('strong','',$t('Tu partido: contra {0}',bn(t.mine.opp))));
+    const b=el('button','primary',$t('Jugar mi partido'));b.onclick=playMine;c.appendChild(b);box.appendChild(c);
+  }else if(t.state==='running'&&t.joined)box.appendChild(el('p','tmeta',$t('Ahora mismo no tienes partido pendiente: espera a que terminen los demás.')));
   if(t.rounds&&t.rounds.length){
     t.rounds.forEach(r=>{
       box.appendChild(el('h3','acs',roundName(r.length)));
       r.forEach(m=>{
         const row=el('div','acrow');
-        const a=el('span',m.w===0?'wn':'',m.p0||'?'),bb=el('span',m.w===1?'wn':'',m.state==='bye'?'(pasa directo)':(m.p1||'?'));
-        const mid=el('span','mid',m.state==='done'&&m.state!=='bye'&&m.p1?(m.s0+' - '+m.s1):m.state==='ready'?'vs':'·');
+        const a=el('span',m.w===0?'wn':'',bn(m.p0)||'?'),bb=el('span',m.w===1?'wn':'',m.state==='bye'?$t('(pasa directo)'):(bn(m.p1)||'?'));
+        const mid=el('span','mid',m.state==='done'&&m.state!=='bye'&&m.p1?(m.s0+' - '+m.s1):m.state==='ready'?$t('vs'):'·');
         row.append(a,mid,bb);
         if(t.isOwner&&m.state==='ready'){
-          const w0=el('button','mini','Gana '+m.p0);w0.onclick=()=>tourAct('/api/t/walkover',{matchId:m.id,seat:0});
-          const w1=el('button','mini','Gana '+m.p1);w1.onclick=()=>tourAct('/api/t/walkover',{matchId:m.id,seat:1});
+          const w0=el('button','mini',$t('Gana {0}',bn(m.p0)));w0.onclick=()=>tourAct('/api/t/walkover',{matchId:m.id,seat:0});
+          const w1=el('button','mini',$t('Gana {0}',bn(m.p1)));w1.onclick=()=>tourAct('/api/t/walkover',{matchId:m.id,seat:1});
           row.append(w0,w1);
         }
         box.appendChild(row);
@@ -2327,7 +2391,7 @@ async function tourAct(path,extra){
   try{const t=await api(path,{sid:acct.sid,code:tourCode,...(extra||{})});tourMsg('');if(t&&t.code)renderTour(t);else await tourLoad();}
   catch(e){tourMsg(e.message);}
 }
-const tmName=(n,ti)=>n?n+(ti>=0&&TEAMS[ti]?' · '+TEAMS[ti][1]:''):'Por decidir';
+const tmName=(n,ti)=>n?bn(n)+(ti>=0&&TEAMS[ti]?' · '+TEAMS[ti][1]:''):$t('Por decidir');
 function menuTour(){                       // en los torneos, el menú enseña el cuadro con equipos y resultados (en los amistosos no)
   const box=$('mtour');if(!box)return;
   box.hidden=true;box.textContent='';
@@ -2335,7 +2399,7 @@ function menuTour(){                       // en los torneos, el menú enseña e
   api('/api/t/get',{code:tourCode,sid:acct.sid}).then(t=>{
     if(!net||!net.tn)return;
     box.textContent='';
-    box.appendChild(el('h3','acs',t.name));
+    box.appendChild(el('h3','acs',bn(t.name)));
     (t.rounds||[]).forEach(r=>{
       box.appendChild(el('p','tmeta',roundName(r.length)));
       r.forEach(m=>{
@@ -2343,8 +2407,8 @@ function menuTour(){                       // en los torneos, el menú enseña e
         if(m.state==='ready'&&acct&&(m.p0===acct.name||m.p1===acct.name)){t0=team[0];t1=team[1];}   // tu partido en juego: los equipos de ahora
         const row=el('div','acrow');
         const a=el('span',m.w===0?'wn':'',tmName(m.p0,t0));
-        const bb=el('span',m.w===1?'wn':'',m.state==='bye'?'(pasa directo)':tmName(m.p1,t1));
-        const mid=el('span','mid',m.state==='done'&&m.p1?(m.s0+' - '+m.s1):m.state==='ready'?'vs':'·');
+        const bb=el('span',m.w===1?'wn':'',m.state==='bye'?$t('(pasa directo)'):tmName(m.p1,t1));
+        const mid=el('span','mid',m.state==='done'&&m.p1?(m.s0+' - '+m.s1):m.state==='ready'?$t('vs'):'·');
         row.append(a,mid,bb);box.appendChild(row);
       });
     });
@@ -2352,7 +2416,7 @@ function menuTour(){                       // en los torneos, el menú enseña e
   }).catch(()=>{});
 }
 async function playMine(){
-  tourMsg('Preparando tu partido…');
+  tourMsg($t('Preparando tu partido…'));
   try{
     const m=await api('/api/t/match',{sid:acct.sid,code:tourCode});
     tourMsg('');closeTour();$('wel').hidden=true;$('net').hidden=true;
@@ -2360,7 +2424,8 @@ async function playMine(){
   }catch(e){tourMsg(e.message);}
 }
 let tAi=2;
-const TAI_TXT={1:'IA fácil: nivel base fácil, pero cada rival juega mejor o peor según lo bueno que sea su equipo hoy en el fútbol mundial.',2:'IA normal: nivel base normal, ajustado por lo bueno que sea cada equipo rival (un grande juega mejor que un equipo pequeño).',3:'IA difícil: nivel base difícil, ajustado por lo bueno que sea cada equipo rival.',4:'IA pesadilla: el máximo nivel base, ajustado por lo bueno que sea cada equipo rival.'};
+const TAI_TXT0={1:'IA fácil: nivel base fácil, pero cada rival juega mejor o peor según lo bueno que sea su equipo hoy en el fútbol mundial.',2:'IA normal: nivel base normal, ajustado por lo bueno que sea cada equipo rival (un grande juega mejor que un equipo pequeño).',3:'IA difícil: nivel base difícil, ajustado por lo bueno que sea cada equipo rival.',4:'IA pesadilla: el máximo nivel base, ajustado por lo bueno que sea cada equipo rival.'};
+const TAI_TXT=new Proxy(TAI_TXT0,{get:(o,k)=>$t(o[k])});
 function taiSync(){document.querySelectorAll('#tai button').forEach(x=>x.classList.toggle('sel',+x.dataset.l===tAi));$('tait').textContent=TAI_TXT[tAi];$('tailv').hidden=!$('tbots').checked;}
 $('tai').addEventListener('click',e=>{const b=e.target.closest('button[data-l]');if(!b)return;tAi=+b.dataset.l;taiSync();});
 $('tbots').addEventListener('change',taiSync);taiSync();
@@ -2372,7 +2437,7 @@ $('tcreate').addEventListener('click',async()=>{
 });
 $('tjoin').addEventListener('click',async()=>{
   const code=$('tjcode').value.trim().toUpperCase();
-  if(!code){tourMsg('Escribe el código del torneo.');return;}
+  if(!code){tourMsg($t('Escribe el código del torneo.'));return;}
   tourMsg('…');
   try{await syncTeam();const t=await api('/api/t/join',{sid:acct.sid,code});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
   catch(e){tourMsg(e.message);}
@@ -2385,7 +2450,7 @@ $('tclose').addEventListener('click',closeTour);
 team=loadTeams();labelChips();
 newGame();
 requestAnimationFrame(frame);
-{const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent='Versión '+VER;$('net').firstElementChild.appendChild(v);}
+{const v=document.createElement('p');v.style.cssText='margin:6px 0 0;font-size:11px;opacity:.6';v.textContent=$t('Versión {0}',VER);$('net').firstElementChild.appendChild(v);}
 if(!restoreSession()&&!restoreAI()){if(locRestore())locOn=true;}
 wBoot();   // siempre se entra por la pantalla principal; si hay un partido guardado, aparece «Volver al partido»
 /* ---------- botón Atrás: de la partida sale a la pantalla principal; desde ahí hacen falta dos pulsaciones para salir ---------- */
@@ -2402,9 +2467,9 @@ addEventListener('popstate',()=>{
     else open.hidden=true;
     rep();return;}
   if(!$('wel').hidden&&!$('wlogin').hidden&&wMode==='new'){wSetMode('login');rep();return;}
-  if($('wel').hidden){showWelcome();rep();if(matchOn())toastMsg('El partido sigue en curso. Vuelve con «Volver al partido».');return;}
+  if($('wel').hidden){showWelcome();rep();if(matchOn())toastMsg($t('El partido sigue en curso. Vuelve con «Volver al partido».'));return;}
   if(Date.now()-exitArm<2500){history.back();return;}
-  exitArm=Date.now();toastMsg('Pulsa otra vez atrás para salir del juego');rep();
+  exitArm=Date.now();toastMsg($t('Pulsa otra vez atrás para salir del juego'));rep();
 });
 $('wresume').addEventListener('click',()=>{$('wel').hidden=true;});
 })();

@@ -101,7 +101,7 @@ export class Hub {
       case '/api/push/unsub': { const u = this.auth(b.sid); this.q('DELETE FROM push WHERE endpoint=? AND pid=?', String(b.endpoint || ''), u.id); return { ok: 1 }; }
       case '/api/push/prefs': return this.pPrefs(b);
       case '/api/push/state': return this.pState(b);
-      case '/internal/push': this.outbox.push([Number(b.pid) | 0, String(b.kind), { title: String(b.title || 'Fútbol Monedas').slice(0, 60), body: String(b.body || '').slice(0, 120), tag: String(b.tag || ''), url: './' }]); return { ok: 1 };
+      case '/internal/push': this.outbox.push([Number(b.pid) | 0, String(b.kind), { title: String(b.title || 'Fútbol Monedas').slice(0, 60), body: String(b.body || '').slice(0, 120), tag: String(b.tag || ''), url: './', c: String(b.c || '').slice(0, 12), a: (Array.isArray(b.a) ? b.a : []).slice(0, 2).map(x => String(x).slice(0, 30)) }]); return { ok: 1 };
       case '/internal/who': { const u = this.one('SELECT p.id,p.name FROM sessions s JOIN players p ON p.id=s.pid WHERE s.sid=?', String(b.sid || '')); return u ? { pid: u.id, name: u.name } : {}; }
       case '/internal/result': return this.result(b);
     }
@@ -152,7 +152,7 @@ export class Hub {
     await Promise.all(o.map(([pid, kind, payload]) => this.notify(pid, kind, payload)));
   }
   readyPush(m, tname) {                          // un partido de torneo ya se puede jugar: avisa a los jugadores reales
-    for (const pid of [m.p0, m.p1]) if (pid > 0) this.outbox.push([pid, 'tour', { title: 'Torneo' + (tname ? ' «' + tname + '»' : ''), body: 'Tu siguiente partido ya está listo. ¡A jugar!', tag: 'torneo-' + m.tid, url: './' }]);
+    for (const pid of [m.p0, m.p1]) if (pid > 0) this.outbox.push([pid, 'tour', { title: 'Torneo' + (tname ? ' «' + tname + '»' : ''), body: 'Tu siguiente partido ya está listo. ¡A jugar!', tag: 'torneo-' + m.tid, url: './', c: 'tour', a: [tname || ''] }]);
   }
   profile(u) {
     const last = this.q(`SELECT m.p0,m.p1,m.s0,m.s1,m.ts,m.tm,a.name AS n0,b.name AS n1 FROM matches m
