@@ -255,6 +255,22 @@ export class Room {
     this.turnKey = key;
     if (this.g.phase === 'aim' || this.g.phase === 'place') this.pushTo(this.g.turn, 'game', '¡Te toca!', 'Es tu turno en la partida.', 'turno');
   }
+  showBot(seat, a, done) {                         // la IA enseña en directo cómo coloca su moneda o cómo apunta (dirección, contacto, potencia) antes de actuar
+    const tot = a.t === 'shot' ? 2300 : 1150, t0 = Date.now(), place = a.t !== 'shot';
+    const init = place ? this.g.placeInfo().init : null, ang0 = Math.atan2(seat === 0 ? -1 : 1, 0), ang1 = Math.atan2(a.uy || 0, a.ux || 0);
+    let d = ang1 - ang0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    const ease = u => (u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2), cl = u => Math.max(0, Math.min(1, u));
+    const tm = setInterval(() => {
+      const el = Date.now() - t0;
+      if (el >= tot || this.g.turn !== seat || !this.g.idleWait || this.g.over) { clearInterval(tm); done(); return; }
+      let m;
+      if (place) { const u = ease(cl(el / 900)); m = { t: 'aim', pl: [Math.round(init.x + (a.x - init.x) * u), Math.round(init.y + (a.y - init.y) * u)] }; }
+      else if (el < 900) { const g = ang0 + d * ease(el / 900); m = { t: 'aim', s: 1, ux: Math.cos(g), uy: Math.sin(g), e: 0, p: 0, ok: 1 }; }
+      else if (el < 1400) m = { t: 'aim', s: 2, ux: a.ux, uy: a.uy, e: a.e * ease((el - 900) / 500), p: 0, ok: 1 };
+      else m = { t: 'aim', s: 3, ux: a.ux, uy: a.uy, e: a.e, p: a.p * ease(cl((el - 1400) / 600)), ok: 1 };
+      for (const x of this.seats) if (!x.bot && x.ws) this.send(x.ws, m);
+    }, 50);
+  }
   botCheck() {
     this.notifyTurn();                               // si le toca mover a un bot (partido de torneo contra la IA), piensa y juega
     if (this.thinking || this.g.over || !this.g.idleWait) return;
@@ -262,14 +278,14 @@ export class Room {
     if (!s || !s.bot || !this.seats.some(x => !x.bot && x.ws)) return;
     this.thinking = true;
     setTimeout(() => {
-      plan(this.g, seat, s.lv || 2, a => {
+      plan(this.g, seat, s.lv || 2, a => this.showBot(seat, a, () => {
         this.thinking = false;
         if (this.g.turn !== seat || !this.g.idleWait || this.g.over) return;
         let ok = a.t === 'shot' ? this.g.shot(seat, a) : this.g.placeCoin(seat, a);
         if (!ok && this.g.phase === 'place') { const i = this.g.placeInfo(); ok = this.g.placeCoin(seat, { x: i.init.x, y: i.init.y }); }
         if (ok) { this.lastAct = Date.now(); this.run(); this.broadcast(true); if (a.t === 'place') this.save(); this.botCheck(); }
         else setTimeout(() => this.botCheck(), 1000);
-      });
+      }));
     }, 900 + Math.random() * 900);
   }
 
