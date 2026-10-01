@@ -147,7 +147,7 @@ function hostUpdate(){
   if(fx){fx.t++;if(fx.t>10)fx=null;}
   if(phase==='foul'){if(--msgT<=0){
     const m0=msg,rs=m0&&m0.restart;msg=null;turn=foulBen;movesLeft=rs?1:2;dbl=!rs;chain=null;pm={m:null};
-    if(rs&&m0.k==='b'){pm={m:'bdef',k:'b'};chain={t:foulBen,m:'side',s:m0.side,mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
+    if(rs&&m0.k==='b'){pm={m:'bdef',k:'b'};chain={t:foulBen,m:'side',s:m0.side,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // saque de banda: primero coloca el rival; luego el que saca elige dónde colocarse, fuera de la banda
     else if(rs&&m0.k==='c'){pm={m:'bdef',k:'c',y:m0.gy};chain={t:foulBen,m:'any',s:m0.side,y:m0.gy,mv:2};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}   // córner: primero coloca el defensor
     else if(rs&&m0.k==='g'){pm={m:'gkdef',y:m0.gy};chain={t:foulBen,m:'line',y:m0.gy,mv:1};turn=1-foulBen;movesLeft=1;dbl=false;beginPlace();}  // saque de puerta: primero coloca el rival
     else beginPlace();
@@ -266,7 +266,7 @@ function score_(o,seat,gy){                        // gy: y de la portería que 
   if(o.out)v-=150;                                   // salirse del campo = perder el turno
   if(o.restart){
     const mine=o.taker===seat;
-    v+=o.restart==='c'?(mine?90:-90):o.restart==='g'?(mine?-40:40):(mine?30:-30);   // con las reglas nuevas el saque de banda y el córner dan ventaja real al que saca
+    v+=o.restart==='c'?(mine?90:-90):o.restart==='g'?(mine?-40:40):(mine?12:-12);   // el córner da ventaja real al que saca; el saque de banda, poca
     if(o.restart==='g'&&o.taker!==seat)v-=30;
   }
   if(!o.touched)v-=30;
