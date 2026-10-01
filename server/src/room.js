@@ -8,7 +8,7 @@ export class Room {
   constructor(state, env) {
     this.state = state;
     this.env = env;
-    this.g = createGame();
+    this.g = createGame({ rec: true });
     this.seats = [0, 1].map(() => ({ tok: null, ws: null, pid: 0, name: '', team: -1, bot: false }));
     this.thinking = false;
     this.matchId = 0;          // partido de torneo (0 = partida libre)

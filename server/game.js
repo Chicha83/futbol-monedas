@@ -14,6 +14,7 @@ const R=21,RB=12.5,MAXD=110,POWER=2.25,MAXV=10*POWER,MINV=1.4*POWER,SUB=4,FRIC=0
 const posts=[[GX0,FY0],[GX1,FY0],[GX0,FY1],[GX1,FY1]];
 
 const tick=()=>{},ui=()=>{},refreshAim=()=>{};
+let rec=null;   // último golpe (estado antes de pegar + datos del golpe): sirve para repetir el gol; solo se guarda en partidas reales (opts.rec)
 let coins,turn=0,phase='aim',step=1,sel={},drag=null,strike=null,fx=null,settle=0,msg=null,msgT=0,over=false,concede=0,score=[0,0],movesLeft=1,dbl=false,touched=false,oppFoul=false,leftField=false,inSeen=true,lastTouch=-1,chain=null,pm={m:null},foulBen=0,place=null,bhN=0,bhV=0,goalEnd=0;
 const mk=(x,y,r,m,t)=>({x,y,vx:0,vy:0,spin:0,r,m,t});
 function reset(t){
@@ -191,10 +192,11 @@ const rd=(v,n)=>{const k=Math.pow(10,n);return Math.round(v*k)/k;};
 const num=v=>typeof v==='number'&&isFinite(v);
 function snapshot(team){
   return {t:'s',c:coins.map(c=>[rd(c.x,2),rd(c.y,2),rd(c.vx,3),rd(c.vy,3),rd(c.spin,5),c.out||0]),
-    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score.slice(),ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx,tc:touched,lt:lastTouch,tm:team,bh:[bhN,rd(bhV,2)]};
+    p:phase,tu:turn,ml:movesLeft,db:dbl,sc:score.slice(),ov:over,fb:foulBen,cn:chain,pm:pm,mt:msgT,ms:msg,st:strike,fx:fx,tc:touched,lt:lastTouch,tm:team,bh:[bhN,rd(bhV,2)],rp:phase==='goal'?rec:undefined};
 }
 function shot(seat,m){
   if(phase==='aim'&&turn===seat&&!over&&num(m.ux)&&num(m.uy)&&num(m.p)&&num(m.f)&&num(m.e)&&num(m.spin)&&m.p>0&&m.p<=1&&m.f>=.1&&m.f<=.9&&Math.abs(Math.hypot(m.ux,m.uy)-1)<.01){
+    if(opts&&opts.rec)rec={snap:snapshot(null),seat,m:{ux:m.ux,uy:m.uy,p:m.p,f:m.f,e:clamp(m.e,-1,1),spin:m.spin}};
     startStrike({ux:m.ux,uy:m.uy,p:m.p,f:m.f,e:clamp(m.e,-1,1),spin:m.spin});return true;}
   return false;
 }
@@ -224,7 +226,7 @@ function restore(s){
   s.c.forEach((a,i)=>{const c=coins[i];c.x=a[0];c.y=a[1];c.vx=a[2];c.vy=a[3];c.spin=a[4];c.out=a[5]||0;});
   phase=s.p;turn=s.tu;movesLeft=s.ml;dbl=s.db;score=s.sc.slice();over=s.ov;foulBen=s.fb;touched=!!s.tc;lastTouch=s.lt===undefined?-1:s.lt;
   {const c=coins[turn]||coins[0];leftField=false;inSeen=c.x>=FX0&&c.x<=FX1&&c.y>=FY0&&c.y<=FY1;}
-  chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt||0;msg=s.ms||null;strike=s.st||null;fx=s.fx||null;settle=0;concede=s.ov?0:(msg&&typeof msg.s==='number'?1-msg.s:0);
+  rec=s.rp||null;chain=s.cn||null;pm=s.pm||{m:null};msgT=s.mt||0;msg=s.ms||null;strike=s.st||null;fx=s.fx||null;settle=0;concede=s.ov?0:(msg&&typeof msg.s==='number'?1-msg.s:0);
   if(s.bh){bhN=s.bh[0];bhV=s.bh[1];}
   if(phase==='goal'&&!over){goalEnd=Date.now()+2000;}
 }
