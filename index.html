@@ -755,11 +755,11 @@ function callFoul(reason){
 function newGame(){if(net&&net.local){net.g.newGame();return;}score=[0,0];over=false;reset(0);}
 function startStrike(s){phase='strike';strike={t:0,p:s.p,ux:s.ux,uy:s.uy,o0:4+s.p*55,f:s.f,e:s.e,spin:s.spin};ui();}
 const dn=i=>names[i]||(net&&net.me===i&&acct?acct.name:'')||(team[i]>=0?TEAMS[team[i]][1]:'Jugador '+(i+1));
-const fixN=t=>String(t).replace(/Jugador ([12])/g,(m,d)=>dn(d-1));
+const fixN=t=>String(t).replace(/\b(?:(del|al|el|El) )?Jugador ([12])/g,(m,p,d)=>(p==='del'?'de ':p==='al'?'a ':'')+dn(d-1));   // sin artículo delante del nombre: «Gana CHICHA83», «Doble turno para CHICHA83»
 function statusText(){return fixN(statusText0())+((phase==='place'&&mine()&&!over)?' Cuando esté bien, pulsa «Colocar aquí».':'');}
 function statusText0(){
   if(over)return '¡Gana el Jugador '+(msg?msg.s+1:1)+'! '+(net?(net.tn?'Partido de torneo terminado.':''):'Toca el campo para jugar otra vez.');
-  if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca el otro jugador.';
+  if(phase==='goal')return '¡Gol del Jugador '+(msg?msg.s+1:1)+'! Saca Jugador '+(msg?2-msg.s:2)+'.';
   if(phase==='foul'&&msg&&msg.restart)return msg.t.charAt(0)+msg.t.slice(1).toLowerCase()+': saca Jugador '+(foulBen+1)+'.';
   if(phase==='foul')return 'Falta del Jugador '+(msg?msg.s+1:turn+1)+': '+(msg?msg.reason:'')+'. Doble turno para el Jugador '+(foulBen+1)+'.';
   if(phase==='place'){
@@ -1611,7 +1611,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='83';
+const VER='84';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
