@@ -1,7 +1,7 @@
 import { newVapid, sendPush, endpointOk } from './push.js';
 // Base de datos del juego (un único Hub): usuarios con PIN de 4 cifras, estadísticas, ranking y torneos.
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-import { botTeam, AIENG, eloOf, winProb } from './elo.js';
+import { botTeam, botSkill, eloOf, winProb } from './elo.js';
 const BOTS = ['IA Lobo', 'IA Halcón', 'IA Tigre', 'IA Toro', 'IA Zorro', 'IA Águila', 'IA Oso', 'IA Pantera'];
 const LOCK_MS = 15 * 60 * 1000;
 const MAX_FAILS = 5;
@@ -357,7 +357,7 @@ export class Hub {
       const stub = this.env.ROOM.get(this.env.ROOM.idFromName(room));
       await stub.fetch('https://room/init', {
         method: 'POST',
-        body: JSON.stringify({ matchId: m.id, seats: [m.p0, m.p1].map((pid, i) => { const tm = pid < 0 ? this.botTm(t, pid) : -1; return { pid, name: this.pname(pid), tok: pid < 0 ? 'bot' : (i === 0 ? tok0 : tok1), bot: pid < 0, team: tm, lv: pid < 0 ? (AIENG[t.blevel || 2] || 3) : 0 }; }) })
+        body: JSON.stringify({ matchId: m.id, seats: [m.p0, m.p1].map((pid, i) => { const tm = pid < 0 ? this.botTm(t, pid) : -1; return { pid, name: this.pname(pid), tok: pid < 0 ? 'bot' : (i === 0 ? tok0 : tok1), bot: pid < 0, team: tm, lv: pid < 0 ? botSkill(eloOf(tm), t.blevel || 2) : 0 }; }) })
       });
       this.q('UPDATE tmatches SET room=?, tok0=?, tok1=? WHERE id=?', room, tok0, tok1, m.id);
     }

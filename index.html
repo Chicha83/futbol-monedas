@@ -1611,7 +1611,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='80';
+const VER='81';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -2240,7 +2240,7 @@ async function playMine(){
   }catch(e){tourMsg(e.message);}
 }
 let tAi=2;
-const TAI_TXT={1:'IA fácil: la misma dificultad que jugar contra la IA en fácil. Los rivales son equipos de la parte baja del fútbol actual.',2:'IA normal: la misma dificultad que jugar contra la IA en normal. Los rivales son equipos de nivel medio.',3:'IA difícil: la misma dificultad que jugar contra la IA en difícil. Los rivales son de los mejores equipos del mundo hoy.',4:'IA pesadilla: el máximo nivel, igual que jugar contra la IA en pesadilla. Los rivales son de los mejores equipos del mundo hoy.'};
+const TAI_TXT={1:'IA fácil: nivel base fácil, pero cada rival juega mejor o peor según lo bueno que sea su equipo hoy en el fútbol mundial.',2:'IA normal: nivel base normal, ajustado por lo bueno que sea cada equipo rival (un grande juega mejor que un equipo pequeño).',3:'IA difícil: nivel base difícil, ajustado por lo bueno que sea cada equipo rival.',4:'IA pesadilla: el máximo nivel base, ajustado por lo bueno que sea cada equipo rival.'};
 function taiSync(){document.querySelectorAll('#tai button').forEach(x=>x.classList.toggle('sel',+x.dataset.l===tAi));$('tait').textContent=TAI_TXT[tAi];$('tailv').hidden=!$('tbots').checked;}
 $('tai').addEventListener('click',e=>{const b=e.target.closest('button[data-l]');if(!b)return;tAi=+b.dataset.l;taiSync();});
 $('tbots').addEventListener('change',taiSync);taiSync();
