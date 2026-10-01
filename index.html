@@ -341,7 +341,7 @@ canvas{background:#0F6B3A;box-shadow:0 0 0 2px #22365A,0 10px 40px rgba(0,0,0,.6
       <button type="button" id="nprof">Inicio y mi perfil</button>
     </div>
     <div class="net-row" id="nai" hidden>
-      <button type="button" id="nai1">Fácil</button><button type="button" id="nai2" class="primary">Normal</button><button type="button" id="nai3">Difícil</button>
+      <button type="button" id="nai1">Fácil</button><button type="button" id="nai2" class="primary">Normal</button><button type="button" id="nai3">Difícil</button><button type="button" id="nai4">Pesadilla</button>
       <button type="button" id="nai0">Atrás</button>
     </div>
     <div class="net-code" id="ncode" hidden></div>
@@ -1443,18 +1443,20 @@ return {
 }
 
 /* ---------- inteligencia artificial: prueba muchos golpes en una copia de la partida y elige el que deja mejor el balón ---------- */
-const LEVELS=[   // anclas de nivel: 0 flojo, .5 medio antiguo, 1 = el difícil de antes (ahora el fácil), 2 fuerte, 3 máximo; en medio se interpola
-  {lv:0,off:[-40,-30,-20,-10,0,10,20,30,40],pw:[.4,.7,1],ef:[0],noise:9,top:5,rf:0},
-  {lv:.5,off:[-48,-40,-32,-24,-16,-8,0,8,16,24,32,40,48],pw:[.55,.8,1],ef:[0,-.45,.45],noise:3.5,top:3,rf:0},
-  {lv:1,off:[-50,-42,-35,-28,-21,-14,-7,0,7,14,21,28,35,42,50],pw:[.5,.7,.85,1],ef:[0,-.5,-.25,.25,.5],noise:1.2,top:2,rf:0},
+const LEVELS=[   // anclas de nivel: 0 flojo, .5 medio antiguo, 1 = el difícil antiguo, 2..5 cada vez más fuerte (en la app: Fácil=2, Normal=3, Difícil=4, Pesadilla=5); en medio se interpola
+  {lv:0,off:[-40,-30,-20,-10,0,10,20,30,40],pw:[.4,.7,1],ef:[0],noise:9,top:5,rf:0,la:0},
+  {lv:.5,off:[-48,-40,-32,-24,-16,-8,0,8,16,24,32,40,48],pw:[.55,.8,1],ef:[0,-.45,.45],noise:3.5,top:3,rf:0,la:0},
+  {lv:1,off:[-50,-42,-35,-28,-21,-14,-7,0,7,14,21,28,35,42,50],pw:[.5,.7,.85,1],ef:[0,-.5,-.25,.25,.5],noise:1.2,top:2,rf:0,la:0},
   {lv:2,off:[-50,-45,-40,-35,-30,-25,-20,-15,-10,-5,0,5,10,15,20,25,30,35,40,45,50],pw:[.5,.7,.85,1],ef:[0,-.5,-.25,.25,.5],noise:.5,top:2,rf:1,la:1},
-  {lv:3,off:[-48,-44,-40,-36,-32,-28,-24,-20,-16,-12,-8,-4,0,4,8,12,16,20,24,28,32,36,40,44,48],pw:[.45,.6,.75,.9,1],ef:[0,-.5,-.25,.25,.5],noise:.15,top:1,rf:2,la:2}
+  {lv:3,off:[-48,-44,-40,-36,-32,-28,-24,-20,-16,-12,-8,-4,0,4,8,12,16,20,24,28,32,36,40,44,48],pw:[.45,.6,.75,.9,1],ef:[0,-.5,-.25,.25,.5],noise:.15,top:1,rf:2,la:2},
+  {lv:4,off:[-48,-45,-42,-39,-36,-33,-30,-27,-24,-21,-18,-15,-12,-9,-6,-3,0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48],pw:[.4,.55,.7,.85,1],ef:[0,-.6,-.4,-.2,.2,.4,.6],noise:.03,top:1,rf:3,la:3},
+  {lv:5,off:[-48,-44,-40,-36,-32,-28,-24,-20,-16,-12,-8,-4,0,4,8,12,16,20,24,28,32,36,40,44,48],pw:[.3,.45,.6,.75,.9,1],ef:[0,-.75,-.5,-.25,.25,.5,.75],noise:0,top:1,rf:4,la:4}
 ];
-function levelParams(level){                      // 1 fácil, 2 normal, 3 difícil (más fuerte que antes); los decimales mezclan niveles (la IA de un torneo depende de lo bueno que sea su equipo)
-  const lv=Math.max(0,Math.min(3,level===undefined||level===null||isNaN(+level)?2:+level));
+function levelParams(level){                      // los decimales mezclan niveles (la IA de un torneo depende de lo bueno que sea su equipo)
+  const lv=Math.max(0,Math.min(5,level===undefined||level===null||isNaN(+level)?3:+level));
   let i=0;while(i<LEVELS.length-2&&lv>LEVELS[i+1].lv)i++;
   const A=LEVELS[i],B=LEVELS[i+1],t=Math.max(0,Math.min(1,(lv-A.lv)/(B.lv-A.lv))),N=t<.5?A:B;
-  return {off:N.off,pw:N.pw,ef:N.ef,noise:A.noise+(B.noise-A.noise)*t,top:Math.max(1,Math.round(A.top+(B.top-A.top)*t)),rf:N.rf,la:N.la||0,lv};
+  return {off:N.off,pw:N.pw,ef:N.ef,noise:A.noise+(B.noise-A.noise)*t,top:Math.max(1,Math.round(A.top+(B.top-A.top)*t)),rf:N.rf,la:N.la,lv};
 }
 let SIM=null;
 const fE=e=>.5+e*.38;
@@ -1480,49 +1482,89 @@ function score_(o,seat,gy){                        // gy: y de la portería que 
   v-=22*(1-Math.min(Math.hypot(o.ox-o.bx,o.oy-o.by),420)/420);       // y que el rival quede lejos
   return v;
 }
-function plan(main,seat,level,done){
-  const L=levelParams(level);
-  if(main.phase==='place'){done(planPlace(main.placeInfo(),seat));return;}
-  const snap=main.snapshot(null),b=snap.c[2],c=snap.c[seat];
-  const gy=seat===0?FY0:FY1;
-  const a0=Math.atan2(b[1]-c[1],b[0]-c[0]);
-  const cands=[];
+const GRID={   // rejilla de respuestas del rival según el nivel de mirada adelante: ángulos, potencias, efectos y cuántos golpes míos se comprueban
+  1:{K:3,off:[-45,-30,-15,0,15,30,45],pw:[.6,1],ef:[0]},
+  2:{K:5,off:[-50,-40,-30,-20,-10,0,10,20,30,40,50],pw:[.5,.75,1],ef:[0]},
+  3:{K:6,off:[-48,-42,-36,-30,-24,-18,-12,-6,0,6,12,18,24,30,36,42,48],pw:[.4,.6,.8,1],ef:[0]},
+  4:{K:8,off:[-50,-45,-40,-35,-30,-25,-20,-15,-10,-5,0,5,10,15,20,25,30,35,40,45,50],pw:[.35,.55,.75,1],ef:[0,-.5,.5]}
+};
+const shotOf=(a,p,e)=>({ux:Math.cos(a),uy:Math.sin(a),p,f:fE(e),e,spin:e*OMEGA});
+let T0=0;
+const yieldNow=async()=>{if(Date.now()-T0>8){await new Promise(r=>setTimeout(r,0));T0=Date.now();}};
+async function bestReply(post,who,G){             // mejor valoración que consigue 'who' con un golpe desde el estado 'post'
+  const gy=who===0?FY0:FY1,bo=post.c[2],co=post.c[who],a1=Math.atan2(bo[1]-co[1],bo[0]-co[0]);let best=-1e9,bm=null;
+  for(const off of G.off)for(const pw of G.pw)for(const e of G.ef){
+    await yieldNow();SIM.restore(post);
+    const m=shotOf(a1+off*Math.PI/180,pw,e),o=SIM.probe(who,m);if(o){const v=score_(o,who,gy);if(v>best){best=v;bm=m;}}}
+  bestReply.m=bm;return best;
+}
+async function planShot(main,seat,L){
+  const snap=main.snapshot(null),b=snap.c[2],c=snap.c[seat],gy=seat===0?FY0:FY1;
+  const a0=Math.atan2(b[1]-c[1],b[0]-c[0]),cands=[];
   for(const off of L.off)for(const p of L.pw)for(const e of L.ef)cands.push({a:a0+off*Math.PI/180,p,e});
   if(L.lv>=.5)for(let k=0;k<8;k++)cands.push({a:k*Math.PI/4,p:.45,e:0});      // golpes sin contacto (colocarse)
   if(!SIM)SIM=createGame();
-  const res=[];let i=0,refined=false;
-  const slice=()=>{
-    const t0=Date.now();
-    while(i<cands.length&&Date.now()-t0<6){
-      const k=cands[i++];
-      SIM.restore(snap);
-      const m={ux:Math.cos(k.a),uy:Math.sin(k.a),p:k.p,f:fE(k.e),e:k.e,spin:k.e*OMEGA};
-      const o=SIM.probe(seat,m);
-      if(o)res.push({m,k,v:score_(o,seat,gy)+(L.rf?0:Math.random()*3)});
+  const res=[];
+  const run=async list=>{for(const k of list){await yieldNow();SIM.restore(snap);const m=shotOf(k.a,k.p,k.e),o=SIM.probe(seat,m);
+    if(o)res.push({m,k,v:score_(o,seat,gy)+(L.rf?0:Math.random()*3)});}};
+  await run(cands);
+  if(L.rf){                                          // afinado: variaciones cada vez más pequeñas de ángulo y potencia alrededor de los mejores golpes
+    const rounds=L.rf>=3?[[2.5,1.2,.07],[.6,.3,.03]]:[[2.5,1.2,.07]];
+    for(const [d1,d2,dp] of rounds){
+      res.sort((x,y)=>y.v-x.v);const list=[];
+      for(const r of res.slice(0,L.rf>=4?6:L.rf===3?4:L.rf===2?4:3))for(const da of [-d1,-d2,d2,d1])for(const q of [-dp,0,dp])list.push({a:r.k.a+da*Math.PI/180,p:Math.max(.1,Math.min(1,r.k.p+q)),e:r.k.e});
+      if(L.rf>=4)for(const r of res.slice(0,3))for(const de of [-.12,.12])list.push({a:r.k.a,p:r.k.p,e:Math.max(-1,Math.min(1,r.k.e+de))});
+      await run(list);
     }
-    if(i<cands.length){setTimeout(slice,0);return;}
-    if(L.rf&&!refined){refined=true;res.sort((x,y)=>y.v-x.v);   // afinado: variaciones pequeñas de ángulo y potencia alrededor de los mejores golpes
-      for(const r of res.slice(0,L.rf===2?4:3))for(const da of [-2.5,-1.2,1.2,2.5])for(const dp of [-.07,0,.07])cands.push({a:r.k.a+da*Math.PI/180,p:Math.max(.12,Math.min(1,r.k.p+dp)),e:r.k.e});
-      if(i<cands.length){setTimeout(slice,0);return;}}
-    if(L.la){                                       // mirada adelante: para los mejores golpes, simula la mejor respuesta del rival y descuenta lo que me puede hacer
-      res.sort((x,y)=>y.v-x.v);const opp=1-seat,gyO=opp===0?FY0:FY1,K=L.la===2?5:3;
-      const offs=L.la===2?[-50,-40,-30,-20,-10,0,10,20,30,40,50]:[-45,-30,-15,0,15,30,45],pws=L.la===2?[.5,.75,1]:[.6,1];
-      for(const r of res.slice(0,K)){
-        SIM.restore(snap);const o1=SIM.probe(seat,r.m);
-        if(!o1||o1.goalFor||o1.goalAg||SIM.turn!==opp||SIM.phase!=='aim')continue;   // si no le toca mover al rival directamente, se queda la valoración simple
-        const post=SIM.snapshot(null),bo=post.c[2],co=post.c[opp],a1=Math.atan2(bo[1]-co[1],bo[0]-co[0]);let best=-1e9;
-        for(const off of offs)for(const pw of pws){
-          SIM.restore(post);const e=0,m2={ux:Math.cos(a1+off*Math.PI/180),uy:Math.sin(a1+off*Math.PI/180),p:pw,f:fE(e),e,spin:0};
-          const o2=SIM.probe(opp,m2);if(o2){const v2=score_(o2,opp,gyO);if(v2>best)best=v2;}}
-        if(best>-1e9)r.v-=.5*best;}
+  }
+  if(L.la&&GRID[L.la]){                               // mirada adelante: para los mejores golpes simula la mejor respuesta del rival (o mi segundo golpe) y descuenta lo que me puede hacer
+    res.sort((x,y)=>y.v-x.v);const opp=1-seat,G=GRID[L.la],W=.7;
+    for(const r of res.slice(0,G.K)){
+      await yieldNow();SIM.restore(snap);const o1=SIM.probe(seat,shotOf(r.k.a,r.k.p,r.k.e));
+      if(!o1||o1.goalFor||o1.goalAg||SIM.phase!=='aim')continue;
+      const post=SIM.snapshot(null);
+      if(SIM.turn===opp){const best=await bestReply(post,opp,G),om=bestReply.m;
+        if(best>-1e9)r.v-=best>=9000?10000:W*best*.3;
+        if(L.la>=4&&best>-1e9&&best<9000&&om){            // tercer plano: tras su mejor respuesta, ¿qué ocasión me queda a mí?
+          SIM.restore(post);const o2=SIM.probe(opp,om);
+          if(o2&&!o2.goalFor&&!o2.goalAg&&SIM.phase==='aim'&&SIM.turn===seat){const mine=await bestReply(SIM.snapshot(null),seat,GRID[3]);r.v+=mine>=9000?2500:.3*mine;}}}
+      else if(SIM.turn===seat&&L.la>=3){const best=await bestReply(post,seat,G);if(best>-1e9)r.v=.5*r.v+.5*best;}   // segundo golpe seguido (saque de banda/córner)
     }
-    res.sort((x,y)=>y.v-x.v);
-    const pick=res[Math.floor(Math.random()*Math.min(L.top,res.length))]||res[0];
-    if(!pick){done({t:'shot',ux:0,uy:seat===0?-1:1,p:.6,f:.5,e:0,spin:0});return;}
-    const ang=Math.atan2(pick.m.uy,pick.m.ux)+(Math.random()*2-1)*L.noise*Math.PI/180;
-    done({t:'shot',ux:Math.cos(ang),uy:Math.sin(ang),p:Math.max(.12,Math.min(1,pick.m.p*(1+(Math.random()*2-1)*L.noise/60))),f:pick.m.f,e:pick.m.e,spin:pick.m.spin});
-  };
-  slice();
+  }
+  res.sort((x,y)=>y.v-x.v);
+  const pick=res[Math.floor(Math.random()*Math.min(L.top,res.length))]||res[0];
+  if(!pick)return {t:'shot',ux:0,uy:seat===0?-1:1,p:.6,f:.5,e:0,spin:0};
+  const ang=Math.atan2(pick.m.uy,pick.m.ux)+(Math.random()*2-1)*L.noise*Math.PI/180;
+  return {t:'shot',ux:Math.cos(ang),uy:Math.sin(ang),p:Math.max(.12,Math.min(1,pick.m.p*(1+(Math.random()*2-1)*L.noise/60))),f:pick.m.f,e:pick.m.e,spin:pick.m.spin};
+}
+async function planDefense(main,seat,L){           // defensa de saque de banda/córner: entre los sitios legales más tapadores, el que menos deja al rival tras simular su mejor saque
+  const info=main.placeInfo(),b=info.ball,ownY=seat===0?FY1:FY0,snap=main.snapshot(null),taker=1-seat,G=GRID[Math.min(3,L.la)],cs=[];
+  for(let x=FX0+R;x<=FX1-R;x+=15)for(let y=FY0+R;y<=FY1-R;y+=15)if(info.ok(x,y)){
+    const lane=Math.min(segDist(x,y,b.x,b.y,CX,ownY),segDist(x,y,b.x,b.y,312,ownY),segDist(x,y,b.x,b.y,408,ownY));
+    cs.push({x,y,d:lane*1.4+Math.hypot(x-CX,y-ownY)*.22+Math.hypot(x-b.x,y-b.y)*.05});}
+  cs.sort((p,q)=>p.d-q.d);let best=null,bv=1e9;
+  for(const q of cs.slice(0,L.la>=4?14:8)){
+    await yieldNow();SIM.restore(snap);
+    if(!SIM.placeCoin(seat,{x:q.x,y:q.y}))continue;
+    if(SIM.phase==='place'&&SIM.turn===taker){const a=planPlace(SIM.placeInfo(),taker);if(!SIM.placeCoin(taker,a)){const i=SIM.placeInfo();SIM.placeCoin(taker,{x:i.init.x,y:i.init.y});}}
+    if(SIM.phase!=='aim'||SIM.turn!==taker)continue;
+    const v=await bestReply(SIM.snapshot(null),taker,G);
+    if(v<bv){bv=v;best=q;}
+  }
+  return best?{t:'place',x:best.x,y:best.y}:null;
+}
+function plan(main,seat,level,done){
+  const L=levelParams(level);
+  if(!SIM)SIM=createGame();
+  T0=Date.now();
+  (async()=>{
+    if(main.phase==='place'){
+      const info=main.placeInfo();
+      if(L.la>=3&&info.defender){try{const r=await planDefense(main,seat,L);if(r)return r;}catch(e){}}
+      return planPlace(info,seat);
+    }
+    return planShot(main,seat,L);
+  })().then(done,()=>{try{done({t:'shot',ux:0,uy:seat===0?-1:1,p:.6,f:.5,e:0,spin:0});}catch(e){}});
 }
 function segDist(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/l));return Math.hypot(px-ax-t*dx,py-ay-t*dy);}
 function planPlace(info,seat){
@@ -1560,7 +1602,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='75';
+const VER='76';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1585,7 +1627,7 @@ function netSend(m){
   }catch(e){}
 }
 /* ---------- partida contra la IA: el mismo motor del servidor, pero dentro del móvil ---------- */
-const AILEV=['fácil','normal','difícil'];
+const AILEV=['fácil','normal','difícil','pesadilla'],AIENG=[0,2,3,4,5];   // nivel de la app → nivel del motor
 function startAI(level){
   stopNet();
   const g=Engine.createGame({goalMs:()=>(soundOn&&CR&&CR.golB)?8300:1800});
@@ -1621,7 +1663,7 @@ function localStep(){
     n.think=true;
     setTimeout(()=>{
       if(net!==n)return;
-      Engine.plan(g,1,n.level,a=>{
+      Engine.plan(g,1,AIENG[n.level]||3,a=>{
         n.think=false;
         if(net!==n||g.turn!==1||!g.idleWait||g.over)return;
         let ok=a.t==='shot'?g.shot(1,a):g.placeCoin(1,a);
@@ -1886,7 +1928,7 @@ $('ninput').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame($('ninput
 $('ndisc').addEventListener('click',()=>{leaveNet();stopNet();newGame();netView('choose','Te has desconectado. Ya juegas en local.');});
 $('nclose').addEventListener('click',closeNet);
 $('nback').addEventListener('click',netBack);
-for(const k of [1,2,3])$('nai'+k).addEventListener('click',()=>startAI(k));
+for(const k of [1,2,3,4])$('nai'+k).addEventListener('click',()=>startAI(k));
 $('nai0').addEventListener('click',closeNet);
 $('nprof').addEventListener('click',()=>{$('net').hidden=true;showWelcome();});
 /* ---------- cuenta (nombre + PIN de 4 cifras) ---------- */
