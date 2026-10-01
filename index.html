@@ -1611,7 +1611,7 @@ return {createGame,plan};
 })();
 /*ENGINE_END*/
 /* ---------- online: el servidor calcula toda la partida; los móviles solo envían golpes y dibujan lo que reciben ---------- */
-const VER='84';
+const VER='85';
 const DEFAULT_SERVER='wss://futbol-monedas.arturopg1983.workers.dev';
 const SERVER=(()=>{try{const s=new URLSearchParams(location.search).get('srv');if(s&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))return s;}catch(e){}return DEFAULT_SERVER;})();
 const API=SERVER.replace(/^ws/,'http');
@@ -1629,6 +1629,7 @@ async function api(path,body){
   if(!r.ok){const err=new Error(j.error||'Error del servidor');err.status=r.status;throw err;}
   return j;
 }
+async function syncTeam(){try{if(acct&&acct.sid){const t=myTeam();if(t>=0)await api('/api/team',{sid:acct.sid,team:t});}}catch(e){}}   // el servidor necesita saber tu equipo (los torneos no repiten equipos con la IA)
 function netSend(m){
   try{
     if(net&&net.local){localMsg(m);return;}
@@ -1714,7 +1715,7 @@ const TKEY='fmon-teams2',MYKEY='fmon-my2';
 const okTeam=v=>Number.isInteger(v)&&v>=-1&&v<TEAMS.length;
 function loadTeams(){try{const a=JSON.parse(localStorage.getItem(TKEY)||'null');if(Array.isArray(a)&&a.length===2)return a.map(v=>okTeam(v)?v:-1);}catch(e){}return[-1,-1];}
 function myTeam(){try{const v=parseInt(localStorage.getItem(MYKEY),10);return okTeam(v)?v:-1;}catch(e){return -1;}}
-function saveTeams(){try{if(net)localStorage.setItem(MYKEY,String(team[net.me]));else localStorage.setItem(TKEY,JSON.stringify(team));}catch(e){}}
+function saveTeams(){try{if(net)localStorage.setItem(MYKEY,String(team[net.me]));else localStorage.setItem(TKEY,JSON.stringify(team));}catch(e){}syncTeam();}
 let tmSel=0,tmBuilt=false;
 let flow=null;
 const solo=()=>!!(flow&&flow.kind!=='loc');
@@ -1742,7 +1743,7 @@ function buildTeams(){
 function openTeams(){flow=null;$('tmclose').textContent='Listo';buildTeams();tmSel=net?net.me:0;markTeams();$('teams').hidden=false;}
 function closeTeams(){$('teams').hidden=true;flow=null;$('tmclose').textContent='Listo';}
 function pickTeam(i){
-  if(solo()){try{localStorage.setItem(MYKEY,String(i));}catch(e){}markTeams();return;}
+  if(solo()){try{localStorage.setItem(MYKEY,String(i));}catch(e){}syncTeam();markTeams();return;}
   if(net){team[net.me]=i;net.tmT=performance.now();netSend({t:'team',i});}
   else{team[tmSel]=i;if(tmSel===0)tmSel=1;}
   saveTeams();labelChips();markTeams();
@@ -2214,7 +2215,7 @@ function renderTour(t){
   }
 }
 async function tourAct(path,extra){
-  tourMsg('…');
+  tourMsg('…');await syncTeam();
   try{const t=await api(path,{sid:acct.sid,code:tourCode,...(extra||{})});tourMsg('');if(t&&t.code)renderTour(t);else await tourLoad();}
   catch(e){tourMsg(e.message);}
 }
@@ -2258,14 +2259,14 @@ $('tbots').addEventListener('change',taiSync);taiSync();
 $('tsize').addEventListener('click',e=>{const b=e.target.closest('button[data-n]');if(!b)return;tSize=+b.dataset.n;document.querySelectorAll('#tsize button').forEach(x=>x.classList.toggle('sel',x===b));});
 $('tcreate').addEventListener('click',async()=>{
   tourMsg('…');
-  try{const t=await api('/api/t/create',{sid:acct.sid,name:$('tname').value,size:tSize,bots:$('tbots').checked,ai:tAi});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
+  try{await syncTeam();const t=await api('/api/t/create',{sid:acct.sid,name:$('tname').value,size:tSize,bots:$('tbots').checked,ai:tAi});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
   catch(e){tourMsg(e.message);}
 });
 $('tjoin').addEventListener('click',async()=>{
   const code=$('tjcode').value.trim().toUpperCase();
   if(!code){tourMsg('Escribe el código del torneo.');return;}
   tourMsg('…');
-  try{const t=await api('/api/t/join',{sid:acct.sid,code});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
+  try{await syncTeam();const t=await api('/api/t/join',{sid:acct.sid,code});tourCode=t.code;try{localStorage.setItem(TOURK,tourCode);}catch(e){}tourMsg('');renderTour(t);}
   catch(e){tourMsg(e.message);}
 });
 $('tgo').addEventListener('click',()=>{closeTour();showWelcome();});
